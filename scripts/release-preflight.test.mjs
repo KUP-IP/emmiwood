@@ -36,7 +36,7 @@ concurrency:
 jobs:
   heartbeat:
     env:
-      EMMIWOOD_NOTIFICATION_URL: https://emmiwood.example/api/emmiwood/internal/notifications
+      EMMIWOOD_NOTIFICATION_URL: \${{ vars.EMMIWOOD_NOTIFICATION_URL }}
       EMMIWOOD_NOTIFICATION_SECRET: \${{ secrets.EMMIWOOD_NOTIFICATION_SECRET }}
     steps:
       - name: Probe production notification readiness
@@ -64,7 +64,7 @@ const READY = {
   actionSecretNames: [...REQUIRED_ACTION_SECRETS],
   actionVariables: { [NOTIFICATION_SCHEDULER_VARIABLE]: 'false' },
   notificationWorkflow: VALID_WORKFLOW,
-  resource: { ...EXPECTED_PRODUCTION_RESOURCE },
+  resource: { ...EXPECTED_PRODUCTION_RESOURCE, databaseId: '11111111-1111-4111-8111-111111111111' },
 };
 
 function expectFailure(patch, pattern) {
@@ -102,7 +102,7 @@ test('missing processor Page binding fails closed', () => expectFailure({ secret
 test('missing Actions processor secret fails closed', () => expectFailure({ actionSecretNames: [] }, /GitHub Actions secret/i));
 test('missing scheduler variable fails closed', () => expectFailure({ actionVariables: {} }, /variable missing/i));
 test('malformed scheduler workflow fails closed', () => expectFailure({ notificationWorkflow: 'name: incomplete' }, /workflow missing/i));
-test('wrong D1 binding fails closed', () => expectFailure({ resource: { ...EXPECTED_PRODUCTION_RESOURCE, databaseId: 'wrong' } }, /databaseId/i));
+test('placeholder D1 binding fails closed', () => expectFailure({ resource: { ...EXPECTED_PRODUCTION_RESOURCE, databaseId: '00000000-0000-0000-0000-000000000000' } }, /databaseId/i));
 
 test('scheduler state gates distinguish configured, disabled, and enabled operation', () => {
   assert.deepEqual(validateReleaseState({ ...READY, schedulerState: 'configured' }).errors, []);

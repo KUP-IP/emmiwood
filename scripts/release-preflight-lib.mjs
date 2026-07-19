@@ -21,16 +21,15 @@ export const REQUIRED_ACTION_SECRETS = Object.freeze([
 
 export const NOTIFICATION_SCHEDULER_VARIABLE = 'EMMIWOOD_NOTIFICATIONS_ENABLED';
 export const NOTIFICATION_WORKFLOW_PATH = '.github/workflows/notifications.yml';
-export const NOTIFICATION_PROCESSOR_URL = 'https://emmiwood.example/api/emmiwood/internal/notifications';
+export const NOTIFICATION_PROCESSOR_VARIABLE = 'EMMIWOOD_NOTIFICATION_URL';
 
 export const EXPECTED_PRODUCTION_RESOURCE = Object.freeze({
   pagesProject: 'emmiwood',
   databaseName: 'emmiwood-db',
-  databaseId: '0d7f70d4-9799-4671-92d9-59f12420beb2',
 });
 
 export function parsePendingMigrations(output = '') {
-  const names = output.match(/\b001\d_[A-Za-z0-9._-]+\.sql\b/g) || [];
+  const names = output.match(/\b\d{4}_[A-Za-z0-9._-]+\.sql\b/g) || [];
   return [...new Set(names)];
 }
 
@@ -61,7 +60,7 @@ export function validateNotificationWorkflow(source = '') {
     [/workflow_dispatch:/, 'manual dispatch'],
     [/notification_id:/, 'exact notification id input'],
     [/process:/, 'explicit processing input'],
-    [new RegExp(NOTIFICATION_PROCESSOR_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'production processor URL'],
+    [/vars\.EMMIWOOD_NOTIFICATION_URL/, 'processor URL variable'],
     [/secrets\.EMMIWOOD_NOTIFICATION_SECRET/, 'GitHub Actions processor secret'],
     [/vars\.EMMIWOOD_NOTIFICATIONS_ENABLED\s*==\s*['"]true['"]/, 'disabled-by-default scheduler variable gate'],
     [/github\.event_name\s*==\s*['"]schedule['"]/, 'scheduled processing event gate'],
@@ -140,6 +139,9 @@ export function validateReleaseState(state) {
   const resource = state.resource || {};
   for (const [key, expected] of Object.entries(EXPECTED_PRODUCTION_RESOURCE)) {
     if (resource[key] !== expected) errors.push(`production resource ${key} must be ${expected}; observed ${resource[key] || '(missing)'}`);
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(resource.databaseId || '')) || resource.databaseId === '00000000-0000-0000-0000-000000000000') {
+    errors.push(`production resource databaseId must be a provisioned non-placeholder UUID; observed ${resource.databaseId || '(missing)'}`);
   }
 
   return {

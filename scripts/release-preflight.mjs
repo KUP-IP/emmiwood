@@ -27,11 +27,11 @@ function migrationNames(cwd) {
   const tracked = run('git', ['ls-tree', '-r', '--name-only', 'HEAD', 'migrations'], cwd).split(/\r?\n/);
   return tracked
     .map((entry) => entry.split('/').pop())
-    .filter((name) => /^[0-9]{4}_emmiwood_.*\.sql$/.test(name || ''));
+    .filter((name) => /^[0-9]{4}_[A-Za-z0-9._-]+\.sql$/.test(name || ''));
 }
 
 function readResource(cwd) {
-  const config = readFileSync(resolve(cwd, 'wrangler.pages.toml'), 'utf8');
+  const config = readFileSync(resolve(cwd, 'wrangler.toml'), 'utf8');
   const databaseName = config.match(/database_name\s*=\s*"([^"]+)"/)?.[1];
   const databaseId = config.match(/database_id\s*=\s*"([^"]+)"/)?.[1];
   return { pagesProject: EXPECTED_PRODUCTION_RESOURCE.pagesProject, databaseName, databaseId };

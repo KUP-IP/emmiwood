@@ -1,0 +1,80 @@
+# Archived patch from quarantined KUP worktree
+# Source: /Users/keepup/Developer/emmiwood-redesign-03-quality-lock
+# Preserved for incident provenance; do not apply without redesign.
+
+diff --git a/functions/lib/emmiwood-booking.js b/functions/lib/emmiwood-booking.js
+index ad90e08..624128a 100644
+--- a/functions/lib/emmiwood-booking.js
++++ b/functions/lib/emmiwood-booking.js
+@@ -78,11 +78,12 @@ export async function reserveAppointment(db, appointment) {
+       appointment.customer.smsConsent ? (appointment.customer.smsConsentAt || Math.floor(Date.now() / 1000)) : null,
+     ]),
+     statement(db, `INSERT INTO emmiwood_appointments
+-      (id,shop_id,barber_id,service_id,customer_id,start_at,end_at,claim_end_at,status,manage_token_hash,manage_token_expires_at,notes,created_by_admin_id)
+-      VALUES(?,?,?,?,?,?,?,?, 'booked',?,?,?,?)`, [
++      (id,shop_id,barber_id,service_id,customer_id,start_at,end_at,claim_end_at,status,manage_token_hash,manage_token_expires_at,notes,created_by_admin_id,booking_request_id,booking_request_fingerprint)
++      VALUES(?,?,?,?,?,?,?,?, 'booked',?,?,?,?,?,?)`, [
+       appointment.id, appointment.shopId, appointment.barberId, appointment.serviceId,
+       appointment.customer.id, appointment.startAt, endAt, claimEnd,
+       appointment.manageTokenHash, appointment.manageTokenExpiresAt || null, appointment.notes || '', appointment.adminId || null,
++      appointment.bookingRequestId || null, appointment.bookingRequestFingerprint || null,
+     ]),
+     ...claimBuckets(appointment.startAt, claimEnd).map((bucket) => statement(db,
+       'INSERT INTO emmiwood_time_claims(appointment_id,barber_id,bucket_start) VALUES(?,?,?)',
+diff --git a/functions/lib/emmiwood-booking.test.js b/functions/lib/emmiwood-booking.test.js
+index e9def0f..2734386 100644
+--- a/functions/lib/emmiwood-booking.test.js
++++ b/functions/lib/emmiwood-booking.test.js
+@@ -56,6 +56,9 @@ function setup() {
+   db.exec(readFileSync(`${ROOT}migrations/0013_emmiwood_booking.sql`, 'utf8'));
+   db.exec(readFileSync(`${ROOT}migrations/0014_emmiwood_launch_copy.sql`, 'utf8'));
+   db.exec(readFileSync(`${ROOT}migrations/0015_emmiwood_production_hardening.sql`, 'utf8'));
++  db.exec(readFileSync(`${ROOT}migrations/0016_emmiwood_auth_source_limits.sql`, 'utf8'));
++  db.exec(readFileSync(`${ROOT}migrations/0017_emmiwood_pricing_and_copy.sql`, 'utf8'));
++  db.exec(readFileSync(`${ROOT}migrations/0018_emmiwood_booking_idempotency.sql`, 'utf8'));
+   return db;
+ }
+ 
+diff --git a/functions/lib/emmiwood-test-d1.js b/functions/lib/emmiwood-test-d1.js
+index 0e0d305..fa7ec6e 100644
+--- a/functions/lib/emmiwood-test-d1.js
++++ b/functions/lib/emmiwood-test-d1.js
+@@ -80,5 +80,7 @@ export function setupEmmiwoodTestD1() {
+   db.exec(readFileSync(`${ROOT}migrations/0014_emmiwood_launch_copy.sql`, 'utf8'));
+   db.exec(readFileSync(`${ROOT}migrations/0015_emmiwood_production_hardening.sql`, 'utf8'));
+   db.exec(readFileSync(`${ROOT}migrations/0016_emmiwood_auth_source_limits.sql`, 'utf8'));
++  db.exec(readFileSync(`${ROOT}migrations/0017_emmiwood_pricing_and_copy.sql`, 'utf8'));
++  db.exec(readFileSync(`${ROOT}migrations/0018_emmiwood_booking_idempotency.sql`, 'utf8'));
+   return db;
+ }
+diff --git a/scripts/verify-emmiwood-migrations.sh b/scripts/verify-emmiwood-migrations.sh
+index d4a27ef..1ce4377 100755
+--- a/scripts/verify-emmiwood-migrations.sh
++++ b/scripts/verify-emmiwood-migrations.sh
+@@ -81,7 +81,7 @@ SECOND_OUTPUT="$(
+ AFTER_SCHEMA_HASH="$(non_emmiwood_schema_hash)"
+ FINAL_MIGRATION_COUNT="$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM d1_migrations;')"
+ EMMIWOOD_TABLE_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM sqlite_master WHERE type='table' AND name LIKE 'emmiwood_%';")"
+-EMMIWOOD_INDEX_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM sqlite_master WHERE type='index' AND name IN ('idx_emmiwood_appointments_schedule','idx_emmiwood_time_claims_appointment','idx_emmiwood_auth_rate_limits_window');")"
++EMMIWOOD_INDEX_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM sqlite_master WHERE type='index' AND name IN ('idx_emmiwood_appointments_schedule','idx_emmiwood_time_claims_appointment','idx_emmiwood_auth_rate_limits_window','idx_emmiwood_appointments_booking_request');")"
+ SERVICE_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_services WHERE shop_id='emmiwood';")"
+ BARBER_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_barbers WHERE shop_id='emmiwood';")"
+ OWNER_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_admins WHERE shop_id='emmiwood' AND role='owner' AND active=1;")"
+@@ -93,7 +93,7 @@ PRICE_LOCK_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_services W
+ [[ "$BEFORE_SCHEMA_HASH" == "$AFTER_SCHEMA_HASH" ]]
+ [[ "$FINAL_MIGRATION_COUNT" -eq $((BASE_MIGRATION_COUNT + EMMIWOOD_MIGRATION_COUNT)) ]]
+ [[ "$EMMIWOOD_TABLE_COUNT" -eq 15 ]]
+-[[ "$EMMIWOOD_INDEX_COUNT" -eq 3 ]]
++[[ "$EMMIWOOD_INDEX_COUNT" -eq 4 ]]
+ [[ "$SERVICE_COUNT" -eq 5 ]]
+ [[ "$BARBER_COUNT" -eq 2 ]]
+ [[ "$OWNER_COUNT" -eq 1 ]]
+
+--- /dev/null
++++ migrations/0018_emmiwood_booking_idempotency.sql
++-- Make public appointment creation safely retryable across transient network or edge failures.
++ALTER TABLE emmiwood_appointments ADD COLUMN booking_request_id TEXT;
++ALTER TABLE emmiwood_appointments ADD COLUMN booking_request_fingerprint TEXT;
++CREATE UNIQUE INDEX IF NOT EXISTS idx_emmiwood_appointments_booking_request
++  ON emmiwood_appointments(booking_request_id)
++  WHERE booking_request_id IS NOT NULL;
