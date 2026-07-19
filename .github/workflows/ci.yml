@@ -36,3 +36,7 @@ jobs:
         run: ./scripts/verify-migrations.sh
       - name: Release preflight tests
         run: node --test scripts/release-preflight.test.mjs
+      - name: Root dependency audit
+        run: npm audit --audit-level=high
+      - name: Client dependency audit
+        run: npm audit --prefix client --audit-level=high
