@@ -1,0 +1,15 @@
+{
+  "name":"emmiwood","version":"1.0.0","private":true,"type":"module",
+  "scripts":{
+    "dev":"wrangler pages dev client/dist --persist-to .wrangler/state --port 8788",
+    "build":"npm --prefix client run build",
+    "typecheck":"npm --prefix client run typecheck",
+    "test:unit":"node --test functions/lib/emmiwood-booking.test.js functions/lib/emmiwood-notifications.test.js functions/lib/emmiwood-admin.test.js functions/lib/emmiwood-launch.test.js",
+    "test:e2e":"playwright test",
+    "test":"npm run test:unit && npm run typecheck && npm run build",
+    "db:migrate:local":"wrangler d1 migrations apply emmiwood-db --local",
+    "release:preflight":"node scripts/release-preflight.mjs"
+  },
+  "devDependencies":{"@axe-core/playwright":"^4.10.2","@playwright/test":"^1.58.2","typescript":"5.6.3","wrangler":"^4.86.0"},
+  "engines":{"node":">=20","npm":">=10"}
+}

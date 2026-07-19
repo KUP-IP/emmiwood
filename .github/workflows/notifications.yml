@@ -1,0 +1,109 @@
+name: Emmiwood notification heartbeat
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      process:
+        description: Process one explicitly named outbox record after a separate delivery-smoke GO
+        type: boolean
+        required: true
+        default: false
+      notification_id:
+        description: Exact synthetic outbox id; required when process is enabled
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: emmiwood-notification-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    name: Verify notification readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      EMMIWOOD_NOTIFICATION_URL: ${{ vars.EMMIWOOD_NOTIFICATION_URL }}
+      EMMIWOOD_NOTIFICATION_SECRET: ${{ secrets.EMMIWOOD_NOTIFICATION_SECRET }}
+    steps:
+      - name: Require heartbeat configuration
+        shell: bash
+        run: |
+          test -n "$EMMIWOOD_NOTIFICATION_URL"
+          test -n "$EMMIWOOD_NOTIFICATION_SECRET"
+
+      - name: Probe production notification readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          status="$(curl --silent --show-error \
+            --connect-timeout 10 --max-time 30 \
+            --retry 2 --retry-all-errors \
+            --output "$response" --write-out '%{http_code}' \
+            -H "Authorization: Bearer $EMMIWOOD_NOTIFICATION_SECRET" \
+            "$EMMIWOOD_NOTIFICATION_URL")"
+          jq -e '.data.environment == "production"' "$response" >/dev/null
+          {
+            echo '### Emmiwood notification readiness'
+            echo
+            echo "HTTP status: $status"
+            jq -r '"Ready: \(.data.ready)\nProcessor: \(.data.processor.ready)\nSMS: \(.data.sms.ready) (\(.data.sms.provider))\nEmail: \(.data.email.ready) (\(.data.email.provider))"' "$response"
+          } >> "$GITHUB_STEP_SUMMARY"
+          test "$status" = "200"
+          jq -e '.ok == true and .data.ready == true' "$response" >/dev/null
+
+      - name: Process scheduled notification queue
+        if: github.event_name == 'schedule' && vars.EMMIWOOD_NOTIFICATIONS_ENABLED == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          curl --silent --show-error --fail-with-body \
+            --connect-timeout 10 --max-time 120 \
+            --output "$response" \
+            -X POST \
+            -H "Authorization: Bearer $EMMIWOOD_NOTIFICATION_SECRET" \
+            "$EMMIWOOD_NOTIFICATION_URL"
+          jq -e '.ok == true' "$response" >/dev/null
+          {
+            echo
+            echo '### Scheduled processing'
+            jq -r '"Processed: \(.data.processed)"' "$response"
+            jq -r '.data.results[]? | "- id=\(.id) status=\(.status) provider=\(.provider // "n/a") attempt=\(.attempt) provider_message_id=\(.providerMessageId // "n/a")"' "$response"
+          } >> "$GITHUB_STEP_SUMMARY"
+          jq -e '[.data.results[]? | select(.status == "retrying" or .status == "failed")] | length == 0' "$response" >/dev/null
+
+      - name: Process one approved synthetic notification
+        if: github.event_name == 'workflow_dispatch' && inputs.process == true
+        shell: bash
+        env:
+          NOTIFICATION_ID: ${{ inputs.notification_id }}
+        run: |
+          set -euo pipefail
+          test -n "$NOTIFICATION_ID"
+          [[ "$NOTIFICATION_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]
+          encoded_id="$(jq -rn --arg value "$NOTIFICATION_ID" '$value|@uri')"
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          curl --silent --show-error --fail-with-body \
+            --connect-timeout 10 --max-time 120 \
+            --output "$response" \
+            -X POST \
+            -H "Authorization: Bearer $EMMIWOOD_NOTIFICATION_SECRET" \
+            "$EMMIWOOD_NOTIFICATION_URL?id=$encoded_id"
+          jq -e --arg id "$NOTIFICATION_ID" '.ok == true and .data.processed == 1 and .data.results[0].id == $id and .data.results[0].status == "sent" and (.data.results[0].providerMessageId | length > 0)' "$response" >/dev/null
+          {
+            echo
+            echo '### Controlled synthetic processing'
+            jq -r '"Processed: \(.data.processed)"' "$response"
+            jq -r '.data.results[]? | "- id=\(.id) status=\(.status) provider=\(.provider // "n/a") attempt=\(.attempt) provider_message_id=\(.providerMessageId // "n/a")"' "$response"
+          } >> "$GITHUB_STEP_SUMMARY"
