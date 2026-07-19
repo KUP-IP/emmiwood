@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci
+      - name: Install client dependencies
+        run: npm ci --prefix client
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+      - name: Migration rehearsal
+        run: ./scripts/verify-migrations.sh
+      - name: Release preflight tests
+        run: node --test scripts/release-preflight.test.mjs
