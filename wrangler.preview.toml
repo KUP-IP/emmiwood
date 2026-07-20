@@ -7,3 +7,7 @@ binding = "DB"
 database_name = "emmiwood-standalone-preview-db"
 database_id = "b4a10012-e0c8-40f0-b203-31474393fb2a"
 migrations_dir = "migrations"
+
+[vars]
+ENVIRONMENT = "preview"
+EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood-barbers-preview.pages.dev"
