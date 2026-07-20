@@ -11,10 +11,11 @@ Last updated: 2026-07-20
 5. KUP receives permanent read-only `kup_support` access. That role must remain excluded from all mutation operations.
 6. Messaging uses an Emmiwood-authenticated Resend sender and a dedicated Emmiwood Twilio number. Delivery remains disabled until a controlled synthetic test passes.
 7. The GitHub organization will be upgraded so private-branch protection can require pull requests, the `verify` check, linear history, and blocks on force pushes and deletion.
+8. GitHub Code Security is deferred. Private-repository CodeQL remains disabled until a later explicit purchase decision; the existing CI security tests and root/client high-severity dependency-audit gates remain required.
 
-## Open consequential decision
+## Open consequential decisions
 
-GitHub Code Security is a separate paid entitlement from branch protection. Decide whether to purchase it now for private-repository CodeQL scanning or defer it while retaining the existing CI security tests and dependency-audit gates.
+None.
 
 ## Implementation details
 
