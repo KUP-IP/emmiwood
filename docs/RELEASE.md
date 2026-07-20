@@ -8,7 +8,16 @@
 - Keep notifications disabled until the controlled delivery gate.
 
 ## Decision gates
-Resolve private issues #1-#3 before production provisioning.
+The operating decisions are recorded in `docs/DECISIONS.md`.
+
+Production provisioning remains blocked until:
+- the final production domain is registered and verified;
+- the Emmiwood-owned Cloudflare account and recovery identity exist;
+- the Emmiwood owner mailbox exists;
+- the approved Twilio and Resend sender identities exist;
+- the GitHub plan upgrade and private-branch protection are complete.
+
+The temporary Pages `*.pages.dev` hostname is preview-only and must not become the canonical production origin.
 
 ## Preview
 1. Require green CI on main.
