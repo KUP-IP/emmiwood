@@ -1,31 +1,32 @@
 # Standalone Emmiwood Release Runbook
 
 ## Safety invariants
-- Repository: KUP-IP/emmiwood only.
-- Pages project: emmiwood only.
-- D1 database: emmiwood-db only.
-- Do not run standalone release commands against KUP production resources.
-- Keep notifications disabled until the controlled delivery gate.
+- Repository: `KUP-IP/emmiwood` only.
+- Preview Pages project: `emmiwood-barbers-preview` only.
+- Preview D1 database: `emmiwood-standalone-preview-db` only.
+- Production resources must use dedicated Emmiwood names even though KUP owns and administers the account.
+- Keep notification processing disabled until the controlled delivery gate.
 
 ## Decision gates
 The operating decisions are recorded in `docs/DECISIONS.md`.
 
 Production provisioning remains blocked until:
-- the final production domain is registered and verified;
-- the Emmiwood-owned Cloudflare account and recovery identity exist;
-- the Emmiwood owner mailbox exists;
-- the approved Twilio and Resend sender identities exist;
-- the GitHub plan upgrade and private-branch protection are complete.
+- the final production domain is purchased, registered, and verified;
+- a production D1 database and Pages target exist;
+- the production administrator authentication method is locked and implemented;
+- the dedicated Twilio account and sender identity exist;
+- public-repository branch protection is active.
 
+Customer email and Resend are out of scope for version one.
 The temporary Pages `*.pages.dev` hostname is preview-only and must not become the canonical production origin.
 
 ## Preview
-1. Require green CI on main.
-2. Create dedicated Pages and D1 resources.
-3. Bind the dedicated D1 ID in wrangler.toml.
-4. Set the approved public origin.
-5. Apply migrations 0001-0005.
-6. Deploy preview and run browser/accessibility verification.
+1. Require green CI on `main`.
+2. Use `wrangler.preview.toml` and the KUP-owned preview resources.
+3. Apply migrations `0001`–`0005` to `emmiwood-standalone-preview-db`.
+4. Deploy the standalone build to `emmiwood-barbers-preview`.
+5. Verify the project apex serves Emmiwood—not KUP—and that metadata, assets, and APIs are standalone.
+6. Keep all real notification delivery disabled.
 
 ## Production
 1. Record a D1 backup and rollback bookmark.
@@ -33,8 +34,8 @@ The temporary Pages `*.pages.dev` hostname is preview-only and must not become t
 3. Keep scheduled processing disabled.
 4. Deploy the approved commit.
 5. Run readiness checks without processing deliveries.
-6. Process exactly one approved synthetic notification.
-7. Verify the provider message ID and terminal database state.
+6. Process exactly one approved synthetic SMS.
+7. Verify the Twilio message ID and terminal database state.
 
 ## Rollback
 - Disable notification processing.

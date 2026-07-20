@@ -29,7 +29,6 @@ async function openBookingAtTime(page: Page) {
 async function fillGuest(page: Page, suffix: string) {
   await page.getByLabel('Name').fill(`Emmiwood QA ${suffix}`);
   await page.getByLabel('Mobile').fill(suffix === 'mobile' ? '6055550182' : '6055550181');
-  await page.getByLabel(/Email/).fill(`emmiwood-${suffix}@example.com`);
 }
 
 test('every Emmiwood route owns its static identity before JavaScript', async ({ request }) => {

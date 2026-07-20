@@ -16,7 +16,7 @@ const COPY: Record<InfoKind, { title: string; description: string; eyebrow: stri
     description: 'How Emmiwood Barbers uses booking and contact information.',
     eyebrow: 'Customer privacy',
     body: <>
-      <p>Emmiwood collects the information needed to schedule and manage an appointment: your name, mobile number, optional email address, appointment details, and any notes you choose to provide.</p>
+      <p>Emmiwood collects the information needed to schedule and manage an appointment: your name, mobile number, appointment details, and any notes you choose to provide.</p>
       <h2>How the information is used</h2><p>We use booking information to reserve chair time, contact you about the appointment, support cancellation or rescheduling, operate the shop calendar, prevent booking conflicts, and maintain an audit trail.</p>
       <h2>Appointment texts</h2><p>Texts are sent only when you opt in. Consent is not required to book. Reply STOP to opt out of applicable messages. Message and data rates may apply.</p>
       <h2>Access and retention</h2><p>Authorized Emmiwood staff and KUP support may access booking data only to operate or support the system. Data is retained for legitimate shop operations and support, then removed or minimized when it is no longer needed.</p>

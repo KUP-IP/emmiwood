@@ -16,8 +16,8 @@ const hasService = (catalog: Catalog, id?: string | null) => Boolean(id && catal
 const hasBarber = (catalog: Catalog, id?: string | null) => id === 'first' || Boolean(id && catalog.barbers.some((barber) => barber.id === id));
 
 type Stage = 'choose' | 'time' | 'details' | 'review' | 'confirmed';
-type Details = { name: string; phone: string; email: string; notes: string; smsConsent: boolean };
-const EMPTY_DETAILS: Details = { name: '', phone: '', email: '', notes: '', smsConsent: false };
+type Details = { name: string; phone: string; notes: string; smsConsent: boolean };
+const EMPTY_DETAILS: Details = { name: '', phone: '', notes: '', smsConsent: false };
 
 function track(event: string, detail: Record<string, unknown> = {}) {
   window.dispatchEvent(new CustomEvent('emmiwood:conversion', { detail: { event, ...detail } }));
@@ -97,7 +97,6 @@ export function BookingFlow({
         start: slot.start,
         name: details.name.trim(),
         phone: normalizeUsPhone(details.phone),
-        email: details.email.trim() || undefined,
         notes: details.notes.trim(),
         smsConsent: details.smsConsent,
         smsConsentVersion: details.smsConsent ? EMMIWOOD_CONSENT_VERSION : undefined,
@@ -209,7 +208,6 @@ export function BookingFlow({
           <div className="ew-field-grid">
             <label>Name<input autoComplete="name" value={details.name} onChange={(event) => setDetails({ ...details, name: event.target.value })} required /></label>
             <label>Mobile<input type="tel" inputMode="tel" autoComplete="tel" placeholder="(605) 555-0123" aria-describedby="ew-mobile-help" value={details.phone} onChange={(event) => setDetails({ ...details, phone: event.target.value })} onBlur={() => setDetails((current) => ({ ...current, phone: formatUsPhone(current.phone) }))} required /><small id="ew-mobile-help" className="ew-field-help">Required so the shop can contact you about this appointment. Marketing texts are not sent.</small></label>
-            <label>Email <small>optional</small><input type="email" inputMode="email" autoComplete="email" value={details.email} onChange={(event) => setDetails({ ...details, email: event.target.value })} /></label>
             <label className="wide">Notes <small>optional</small><textarea rows={3} value={details.notes} onChange={(event) => setDetails({ ...details, notes: event.target.value })} placeholder="Hair goals, accessibility needs, or anything the barber should know." /></label>
           </div>
           <label className="ew-consent"><input type="checkbox" checked={details.smsConsent} onChange={(event) => setDetails({ ...details, smsConsent: event.target.checked })} /><span><strong>Send me appointment texts.</strong> I agree to receive confirmation and reminder messages from Emmiwood. Message and data rates may apply. Reply STOP to opt out. <a href="/emmiwood/sms-terms" target="_blank">SMS terms</a> · <a href="/emmiwood/privacy" target="_blank">Privacy</a></span></label>
@@ -225,7 +223,7 @@ export function BookingFlow({
             <div><dt>Service</dt><dd>{service.name}<small>{service.duration_minutes} minutes · {money(service.price_cents)}</small></dd></div>
             <div><dt>Barber</dt><dd>{slot.barberName}</dd></div>
             <div><dt>When</dt><dd>{prettyDateTime(slot.start)}</dd></div>
-            <div><dt>Guest</dt><dd>{details.name}<small>{details.phone}{details.email ? ` · ${details.email}` : ''}</small></dd></div>
+            <div><dt>Guest</dt><dd>{details.name}<small>{details.phone}</small></dd></div>
             <div><dt>Texts</dt><dd>{details.smsConsent ? 'Appointment updates enabled' : 'Not requested'}</dd></div>
           </dl>
           <div className="ew-policy-note"><strong>Change policy</strong><p>Online cancellation and rescheduling close 12 hours before the appointment. Inside that window, call the shop.</p></div>
