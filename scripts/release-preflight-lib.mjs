@@ -6,11 +6,16 @@ export const REQUIRED_EMMIWOOD_MIGRATIONS = Object.freeze([
   '0005_pricing_and_copy.sql',
 ]);
 
+/** v1 required Page secrets — SMS-only; Resend deferred. */
 export const REQUIRED_PRODUCTION_SECRETS = Object.freeze([
   'EMMIWOOD_NOTIFICATION_SECRET',
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'TWILIO_FROM_NUMBER',
+]);
+
+/** Present for visibility only; not required for v1 release preflight. */
+export const DEFERRED_PRODUCTION_SECRETS = Object.freeze([
   'RESEND_API_KEY',
   'EMAIL_FROM',
 ]);
