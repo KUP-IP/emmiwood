@@ -3,8 +3,23 @@ import type { Catalog } from './types';
 export const EMMIWOOD_PHONE = '+16059006334';
 export const EMMIWOOD_PHONE_LABEL = '(605) 900-6334';
 export const EMMIWOOD_ADDRESS = '1118 S Minnesota Ave, Sioux Falls, SD 57105';
-export const EMMIWOOD_MAPS_URL = 'https://www.google.com/maps/dir/?api=1&destination=1118+S+Minnesota+Ave+Sioux+Falls+SD+57105';
+export const EMMIWOOD_PLACE_NAME = 'Emmiwood Barbers';
+/** Google Maps place listing for the shop (opens the listing card, not a bare directions form). */
+export const EMMIWOOD_MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${EMMIWOOD_PLACE_NAME}, ${EMMIWOOD_ADDRESS}`)}`;
+/** Geocoded pin for 1118 S Minnesota Ave, Sioux Falls, SD 57105 */
+export const EMMIWOOD_LAT = 43.5355407;
+export const EMMIWOOD_LNG = -96.7311599;
 export const EMMIWOOD_CONSENT_VERSION = 'appointment-texts-v1';
+
+/** Google Maps Embed API when `VITE_GOOGLE_MAPS_API_KEY` is set; otherwise a keyed-less Maps embed of the pin. */
+export function emmiwoodMapsEmbedSrc(): string {
+  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
+  const query = encodeURIComponent(`${EMMIWOOD_PLACE_NAME}, ${EMMIWOOD_ADDRESS}`);
+  if (key) {
+    return `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(key)}&q=${query}&zoom=16`;
+  }
+  return `https://www.google.com/maps?q=${EMMIWOOD_LAT},${EMMIWOOD_LNG}&z=16&hl=en&output=embed`;
+}
 
 export const FALLBACK_CATALOG: Catalog = {
   shop: {
