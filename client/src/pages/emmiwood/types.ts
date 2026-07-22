@@ -80,6 +80,7 @@ export interface CustomerSummary {
 export interface AdminUser {
   id: Id;
   email: string;
+  phone?: string;
   role: string;
 }
 

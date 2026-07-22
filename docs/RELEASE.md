@@ -23,7 +23,7 @@ The temporary Pages `*.pages.dev` hostname is preview-only and must not become t
 ## Preview
 1. Require green CI on `main`.
 2. Use `wrangler.preview.toml` and the KUP-owned preview resources.
-3. Apply migrations `0001`–`0005` to `emmiwood-standalone-preview-db`.
+3. Apply migrations `0001`–`0006` to `emmiwood-standalone-preview-db`.
 4. Deploy the standalone build to `emmiwood-barbers-preview`.
 5. Verify the project apex serves Emmiwood—not KUP—and that metadata, assets, and APIs are standalone.
 6. Keep all real notification delivery disabled.

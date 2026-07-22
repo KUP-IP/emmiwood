@@ -217,6 +217,7 @@ export async function deliverNotification(env, row) {
 export function renderSms(template, payload) {
   const optOut = payload.optOut ? ` ${payload.optOut}` : '';
   switch (template) {
+    case 'admin_login_code': return `Emmiwood Barbers: your sign-in code is ${payload.code}. It expires in ten minutes.`;
     case 'booking_confirmation': return `Emmiwood Barbers: your appointment is confirmed.${optOut}`;
     case 'appointment_reminder': return `Emmiwood Barbers reminder: your appointment is tomorrow.${optOut}`;
     case 'cancellation_confirmation': return `Emmiwood Barbers: your appointment has been cancelled.${optOut}`;

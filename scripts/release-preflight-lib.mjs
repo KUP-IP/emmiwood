@@ -4,6 +4,7 @@ export const REQUIRED_EMMIWOOD_MIGRATIONS = Object.freeze([
   '0003_production_hardening.sql',
   '0004_auth_source_limits.sql',
   '0005_pricing_and_copy.sql',
+  '0006_admin_phone.sql',
 ]);
 
 /** v1 required Page secrets — SMS-only; Resend deferred. */

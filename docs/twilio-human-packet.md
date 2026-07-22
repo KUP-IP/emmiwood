@@ -22,7 +22,7 @@ Fill these before KUP can finish account/sender provisioning. Do not put secrets
 | SMS use case summary | | “Appointment confirmations, reminders, and admin sign-in codes for Emmiwood Barbers” |
 | Sample message copy | | Use existing templates in `renderSms` |
 | Opt-out language | | Already: “Reply STOP to opt out.” |
-| Admin allowlist phones (E.164) | | Owner + any managers for SMS OTP |
+| Admin allowlist phones (E.164) | | Owner + any managers for SMS OTP. Preview seed uses `+16055550199` for `admin-isaiah` — replace via D1 before production. |
 
 ## KUP completes after inputs
 
