@@ -30,7 +30,21 @@ test('production readiness reports missing names without exposing values', () =>
   assert.equal(incomplete.ready, false);
   assert.deepEqual(incomplete.sms.missing, ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM_NUMBER']);
   assert.deepEqual(incomplete.email.missing, []);
+  assert.equal(incomplete.email.deferred, true);
   assert.equal(JSON.stringify(incomplete).includes('super-secret-sentinel'), false);
+
+  const smsOnly = notificationReadiness({
+    ENVIRONMENT: 'production',
+    EMMIWOOD_NOTIFICATION_SECRET: 'configured',
+    TWILIO_ACCOUNT_SID: 'configured',
+    TWILIO_AUTH_TOKEN: 'configured',
+    TWILIO_FROM_NUMBER: 'configured',
+  });
+  assert.equal(smsOnly.ready, true);
+  assert.equal(smsOnly.sms.provider, NOTIFICATION_PROVIDER_TWILIO);
+  assert.equal(smsOnly.email.ready, false);
+  assert.equal(smsOnly.email.deferred, true);
+  assert.deepEqual(smsOnly.email.missing, ['RESEND_API_KEY', 'EMAIL_FROM']);
 
   const complete = notificationReadiness({
     ENVIRONMENT: 'production',
@@ -44,6 +58,7 @@ test('production readiness reports missing names without exposing values', () =>
   assert.equal(complete.ready, true);
   assert.equal(complete.sms.provider, NOTIFICATION_PROVIDER_TWILIO);
   assert.equal(complete.email.provider, NOTIFICATION_PROVIDER_RESEND);
+  assert.equal(complete.email.deferred, true);
 });
 
 test('reminders are due exactly 24 hours before eligible appointments', () => {
@@ -61,13 +76,11 @@ test('notification processor readiness is authenticated and fails closed before 
   globalThis.fetch = async () => { fetchCalls += 1; return new Response('{}', { status: 200 }); };
   try {
     db.exec(`INSERT INTO emmiwood_notification_outbox(id,shop_id,channel,template,recipient,payload_json,provider,status,available_at)
-      VALUES('blocked-1','emmiwood','email','admin_login_code','owner@example.com','{}','resend','queued',0)`);
+      VALUES('blocked-1','emmiwood','sms','booking_confirmation','+16055550100','{}','twilio','queued',0)`);
     const env = {
       DB: db,
       ENVIRONMENT: 'production',
       EMMIWOOD_NOTIFICATION_SECRET: 'secret',
-      RESEND_API_KEY: 'configured',
-      EMAIL_FROM: 'configured',
     };
     const unauthorized = await onRequestGet({ env, request: new Request('https://example.com/api/emmiwood/internal/notifications') });
     assert.equal(unauthorized.status, 401);
@@ -89,6 +102,28 @@ test('notification processor readiness is authenticated and fails closed before 
     globalThis.fetch = originalFetch;
     db.close();
   }
+});
+
+test('SMS-only production credentials satisfy readiness without Resend', async () => {
+  const { onRequestGet } = await import('../api/emmiwood/internal/notifications.js');
+  const env = {
+    ENVIRONMENT: 'production',
+    EMMIWOOD_NOTIFICATION_SECRET: 'secret',
+    TWILIO_ACCOUNT_SID: 'sid',
+    TWILIO_AUTH_TOKEN: 'token',
+    TWILIO_FROM_NUMBER: '+16050000000',
+  };
+  const request = new Request('https://example.com/api/emmiwood/internal/notifications', {
+    headers: { authorization: 'Bearer secret' },
+  });
+  const readiness = await onRequestGet({ env, request });
+  assert.equal(readiness.status, 200);
+  const body = await readiness.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.data.ready, true);
+  assert.equal(body.data.sms.ready, true);
+  assert.equal(body.data.email.ready, false);
+  assert.equal(body.data.email.deferred, true);
 });
 test('complete production credentials activate Twilio', () => {
   assert.equal(notificationProvider({

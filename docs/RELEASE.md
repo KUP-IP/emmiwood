@@ -11,19 +11,19 @@
 The operating decisions are recorded in `docs/DECISIONS.md`.
 
 Production provisioning remains blocked until:
-- the final production domain is purchased, registered, and verified;
 - a production D1 database and Pages target exist;
-- the production administrator authentication method is locked and implemented;
-- the dedicated Twilio account and sender identity exist;
+- SMS administrator authentication (allowlisted phones) is implemented;
+- the KUP-managed Twilio account and dedicated Emmiwood sender exist;
 - public-repository branch protection is active.
 
 Customer email and Resend are out of scope for version one.
+`emmiwood.com` remains deferred and does not block preview or SMS-first production provisioning.
 The temporary Pages `*.pages.dev` hostname is preview-only and must not become the canonical production origin.
 
 ## Preview
 1. Require green CI on `main`.
 2. Use `wrangler.preview.toml` and the KUP-owned preview resources.
-3. Apply migrations `0001`–`0005` to `emmiwood-standalone-preview-db`.
+3. Apply migrations `0001`–`0006` to `emmiwood-standalone-preview-db`.
 4. Deploy the standalone build to `emmiwood-barbers-preview`.
 5. Verify the project apex serves Emmiwood—not KUP—and that metadata, assets, and APIs are standalone.
 6. Keep all real notification delivery disabled.
