@@ -1614,6 +1614,8 @@
 .ew-barber-card.barber-john .ew-barber-portrait { background:radial-gradient(circle at 24% 18%,rgba(198,164,92,.2),transparent 29%),linear-gradient(145deg,#4b4036,#211713); }
 .ew-barber-card.barber-john .ew-barber-portrait::after { content:""; position:absolute; width:120%; height:1px; left:-10%; top:48%; background:rgba(198,164,92,.65); transform:rotate(-36deg); }
 .ew-barber-photo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; }
+.ew-barber-photo[src*="barro-profile"],
+.ew-booking-barber-photo[src*="barro-profile"] { object-position:center 12%; }
 .ew-barber-portrait span { position:relative; z-index:1; color:var(--ew-ivory); font:400 4.6rem/.8 Georgia,"Times New Roman",serif; }
 .ew-barber-portrait small { position:absolute; z-index:2; right:.7rem; bottom:.65rem; padding:.28rem .38rem; border-radius:999px; background:rgba(27,20,17,.78); color:var(--ew-gold); font-size:.62rem; letter-spacing:.14em; }
 .ew-barber-grid .ew-barber-copy { justify-content:flex-start; padding:.25rem .25rem .25rem 0; }
@@ -1953,10 +1955,10 @@
   background:
     linear-gradient(112deg,rgba(27,20,17,.97) 0%,rgba(27,20,17,.9) 36%,rgba(27,20,17,.58) 58%,rgba(27,20,17,.86) 100%),
     radial-gradient(ellipse 70% 55% at 78% 32%,rgba(198,164,92,.14),transparent 52%),
-    url('/emmiwood/barro-profile.webp') 74% 18% / 155% auto no-repeat;
+    url('/emmiwood/barro-profile.webp') 62% 22% / 145% auto no-repeat;
   filter:saturate(.68) brightness(.74) contrast(1.06);
   transform:scale(1.12);
-  transform-origin:72% 22%;
+  transform-origin:62% 24%;
 }
 .ew-public-hero .ew-hero-main,
 .ew-public-hero .ew-hero-booking { position:relative; z-index:1; }
@@ -1965,11 +1967,11 @@
     inset:-10% -6% -4%;
     background:
       linear-gradient(180deg,rgba(27,20,17,.82) 0%,rgba(27,20,17,.62) 30%,rgba(27,20,17,.9) 64%,rgba(27,20,17,.98) 100%),
-      radial-gradient(ellipse 90% 50% at 80% 8%,rgba(198,164,92,.12),transparent 48%),
-      url('/emmiwood/barro-profile.webp') 78% 10% / 190% auto no-repeat;
+      radial-gradient(ellipse 90% 50% at 70% 10%,rgba(198,164,92,.12),transparent 48%),
+      url('/emmiwood/barro-profile.webp') 58% 14% / 170% auto no-repeat;
     filter:blur(.55px) saturate(.62) brightness(.7) contrast(1.08);
     transform:scale(1.16);
-    transform-origin:80% 12%;
+    transform-origin:60% 16%;
   }
 }
 @media (prefers-reduced-motion:reduce) {
@@ -3525,5 +3527,104 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 .emmiwood.ew-app-surface .ew-manage-panel,
 .emmiwood.ew-app-surface .ew-info-page article {
   color:var(--ew-black);
+}
+
+/* ===== Mobile scroll polish — unstick chrome, chin compact, hours + glitch ===== */
+@media (max-width:760px) {
+  /* Header + jump scroll away (no sticky top chrome). */
+  .ew-public .ew-site-header,
+  .ew-public .ew-mobile-jump {
+    position:relative;
+    top:auto;
+    z-index:5;
+  }
+  .emmiwood.ew-public { --ew-chrome-offset:12px; }
+
+  /* One clearance for the book chin — keep it stable so height changes don't reflow scroll. */
+  .emmiwood.ew-public {
+    padding-bottom:0;
+  }
+  .ew-site-footer {
+    padding-bottom:calc(1.25rem + var(--ew-sticky-book) + env(safe-area-inset-bottom,0px));
+  }
+
+  /* Kill scroll-driven card animations (stutter near section edges / final CTA). */
+  @supports (animation-timeline:view()) {
+    .ew-service-card,
+    .ew-barber-card {
+      animation:none!important;
+      animation-timeline:auto!important;
+      opacity:1;
+      transform:none;
+    }
+  }
+
+  /* Hours track: give “Appointments” room in the 9–noon cell. */
+  .ew-hours-track {
+    grid-template-columns:minmax(0,1.4fr) minmax(0,.85fr) minmax(0,1.4fr);
+    min-height:96px;
+    overflow:visible;
+  }
+  .ew-hours-track>div {
+    padding:.55rem .45rem;
+    justify-content:center;
+    overflow:visible;
+  }
+  .ew-hours-track strong {
+    font-size:.6rem;
+    letter-spacing:.03em;
+    line-height:1.15;
+    white-space:normal;
+    overflow-wrap:break-word;
+    hyphens:auto;
+  }
+  .ew-hours-track span {
+    font-size:.56rem;
+    line-height:1.15;
+    white-space:normal;
+  }
+
+  /* Book chin: shrink on scroll-down without changing page padding. */
+  .ew-mobile-book {
+    transition:box-shadow .22s ease;
+  }
+  .ew-mobile-book a {
+    min-height:64px;
+    transition:min-height .22s ease,padding .22s ease,gap .22s ease;
+  }
+  .ew-mobile-book a span {
+    transition:opacity .18s ease,max-width .22s ease,margin .22s ease;
+    max-width:12rem;
+    overflow:hidden;
+  }
+  .ew-chin-compact .ew-mobile-book a {
+    min-height:36px;
+    padding:.35rem 1rem;
+    justify-content:center;
+    gap:0;
+  }
+  .ew-chin-compact .ew-mobile-book a span {
+    opacity:0;
+    max-width:0;
+    margin:0;
+    pointer-events:none;
+  }
+  .ew-chin-compact .ew-mobile-book a strong {
+    font-size:1rem;
+  }
+
+  /* Final CTA: avoid compositor thrash against the fixed chin. */
+  .ew-final-cta {
+    transform:translateZ(0);
+    backface-visibility:hidden;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .ew-mobile-book,
+  .ew-mobile-book a,
+  .ew-mobile-book a span {
+    transition:none!important;
+  }
 }
 
