@@ -158,10 +158,43 @@ function VisitMap() {
 
 export default function EmmiwoodPage() {
   const [catalog, setCatalog] = useState<Catalog>(FALLBACK_CATALOG);
+  const [chinCompact, setChinCompact] = useState(false);
+
   useEffect(() => {
     let active = true;
     emmiwoodApi.catalog().then((value) => { if (active) setCatalog(value); }).catch(() => undefined);
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const mobile = window.matchMedia('(max-width: 760px)');
+    let lastY = window.scrollY;
+    let ticking = false;
+
+    const onScroll = () => {
+      if (!mobile.matches) {
+        setChinCompact(false);
+        return;
+      }
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const delta = y - lastY;
+        if (y < 20) setChinCompact(false);
+        else if (delta > 8) setChinCompact(true);
+        else if (delta < -8) setChinCompact(false);
+        lastY = y;
+        ticking = false;
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    mobile.addEventListener('change', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      mobile.removeEventListener('change', onScroll);
+    };
   }, []);
 
   const eligibility = useMemo(() => new Map(catalog.services.map((service) => [
@@ -169,7 +202,7 @@ export default function EmmiwoodPage() {
     catalog.eligibility.filter((item) => item.service_id === service.id).map((item) => catalog.barbers.find((barber) => barber.id === item.barber_id)?.name).filter(Boolean).join(' & '),
   ])), [catalog]);
 
-  return <div className="emmiwood ew-public">
+  return <div className={`emmiwood ew-public${chinCompact ? ' ew-chin-compact' : ''}`}>
     <EmmiwoodMeta
       title="Emmiwood Barbers | Haircuts & Beard Work in Sioux Falls"
       description="Tailored haircuts, beard work, transparent pricing, online booking, and noon–2 walk-ins at Emmiwood Barbers in Sioux Falls."
