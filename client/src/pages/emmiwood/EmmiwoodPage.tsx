@@ -188,7 +188,7 @@ export default function EmmiwoodPage() {
         <div className="ew-hero-atmosphere" aria-hidden="true" />
         <div className="ew-hero-main">
           <span className="ew-eyebrow">Emmiwood · Sioux Falls</span>
-          <h1>Look sharp. <em>Still look like yourself.</em></h1>
+          <h1>Look Sharp. <em>Stay Classy.</em></h1>
           <p>Haircuts, fades, and beard work shaped around how you wear your hair—clear prices, an unrushed consult, a finish that grows out clean.</p>
           <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book an appointment</a><a className="ew-link" href="#services">Choose a service</a></div>
         </div>
