@@ -5,6 +5,7 @@ import {
   EMMIWOOD_ADDRESS,
   EMMIWOOD_MAPS_URL,
   EMMIWOOD_PHONE_LABEL,
+  emmiwoodMapsEmbedSrc,
   FALLBACK_CATALOG,
   SERVICE_FIT,
   money,
@@ -141,14 +142,18 @@ function TodayAtEmmiwood({ catalog }: { catalog: Catalog }) {
   </aside>;
 }
 
-function MapIllustration() {
-  return <div className="ew-map-illustration" aria-hidden="true">
-    <span className="road road-one" />
-    <span className="road road-two" />
-    <span className="road road-three" />
-    <span className="map-pin"><i />Emmiwood</span>
-    <small>South Minnesota Avenue</small>
-  </div>;
+function VisitMap() {
+  return (
+    <div className="ew-map-embed">
+      <iframe
+        title="Emmiwood Barbers on Google Maps"
+        src={emmiwoodMapsEmbedSrc()}
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        allowFullScreen
+      />
+    </div>
+  );
 }
 
 export default function EmmiwoodPage() {
@@ -250,11 +255,14 @@ export default function EmmiwoodPage() {
       <section className="ew-visit-section" id="visit">
         <header><span className="ew-eyebrow">Visit Emmiwood</span><h2>Easy to find.</h2></header>
         <div className="ew-visit-feature">
-          <MapIllustration />
+          <VisitMap />
           <div className="ew-visit-copy">
             <h3>Emmiwood Barbers</h3>
             <address>{EMMIWOOD_ADDRESS}</address>
-            <div className="ew-visit-actions"><a className="ew-button" target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a><a className="ew-link" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a></div>
+            <div className="ew-visit-actions">
+              <a className="ew-button" target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a>
+              <a className="ew-link" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a>
+            </div>
           </div>
         </div>
       </section>
