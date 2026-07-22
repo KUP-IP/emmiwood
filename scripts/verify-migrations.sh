@@ -21,7 +21,7 @@ cp "$ROOT_DIR/wrangler.toml" "$REHEARSAL_DIR/wrangler.toml"
 cp -R "$ROOT_DIR/migrations" "$REHEARSAL_DIR/migrations"
 
 MIGRATION_LIST="$(find "$ROOT_DIR/migrations" -maxdepth 1 -type f -name '*.sql' -exec basename {} \; | sort | tr '\n' ' ' | sed 's/ $//')"
-EXPECTED_LIST="0001_booking.sql 0002_launch_copy.sql 0003_production_hardening.sql 0004_auth_source_limits.sql 0005_pricing_and_copy.sql"
+EXPECTED_LIST="0001_booking.sql 0002_launch_copy.sql 0003_production_hardening.sql 0004_auth_source_limits.sql 0005_pricing_and_copy.sql 0006_admin_phone.sql"
 [[ "$MIGRATION_LIST" == "$EXPECTED_LIST" ]] || {
   echo "migration_rehearsal=FAIL reason=migration_set_mismatch observed=$MIGRATION_LIST" >&2
   exit 1
@@ -49,15 +49,17 @@ INDEX_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM sqlite_master WHERE type
 SERVICE_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_services WHERE shop_id='emmiwood';")"
 BARBER_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_barbers WHERE shop_id='emmiwood';")"
 OWNER_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_admins WHERE shop_id='emmiwood' AND role='owner' AND active=1;")"
+OWNER_PHONE_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_admins WHERE shop_id='emmiwood' AND role='owner' AND phone IS NOT NULL AND TRIM(phone) != '';")"
 ELIGIBILITY_COUNT="$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM emmiwood_barber_services;')"
 AVAILABILITY_COUNT="$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM emmiwood_availability WHERE active=1;')"
 
-[[ "$MIGRATION_COUNT" -eq 5 ]]
+[[ "$MIGRATION_COUNT" -eq 6 ]]
 [[ "$TABLE_COUNT" -eq 15 ]]
 [[ "$INDEX_COUNT" -ge 5 ]]
 [[ "$SERVICE_COUNT" -eq 5 ]]
 [[ "$BARBER_COUNT" -eq 2 ]]
 [[ "$OWNER_COUNT" -eq 1 ]]
+[[ "$OWNER_PHONE_COUNT" -eq 1 ]]
 [[ "$ELIGIBILITY_COUNT" -eq 10 ]]
 [[ "$AVAILABILITY_COUNT" -eq 15 ]]
 
@@ -67,7 +69,7 @@ VERIFIED_HASH="$(hash_dump "$DB_FILE")"
 
 SECOND_OUTPUT="$(cd "$REHEARSAL_DIR" && "$WRANGLER" d1 migrations apply emmiwood-db --local --persist-to "$STATE_DIR" 2>&1)"
 grep -q "No migrations to apply" <<<"$SECOND_OUTPUT"
-[[ "$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM d1_migrations;')" -eq 5 ]]
+[[ "$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM d1_migrations;')" -eq 6 ]]
 
 sqlite3 "$DB_FILE" "UPDATE emmiwood_shops SET name='rollback-probe' WHERE id='emmiwood';"
 [[ "$(hash_dump "$DB_FILE")" != "$VERIFIED_HASH" ]]
