@@ -105,7 +105,7 @@ export function AvailabilityBrowser({
         if (firstUsable) selectDate(firstUsable.date);
         setMessage(`We could not check every bookable day. Retry the search or call the shop before assuming no appointments remain.`);
       } else {
-        setMessage(`No online openings through ${prettyDate(maxDate, true)}. Call the shop or use the noon–2 walk-in window.`);
+        setMessage(`No openings through ${prettyDate(maxDate, true)}. Call the shop or use the noon–2 walk-in window.`);
       }
     } catch (error) {
       if (currentRequest !== requestId.current) return;
@@ -129,8 +129,8 @@ export function AvailabilityBrowser({
       const chosen = batch.find((day) => day.date === date);
       const unavailableCount = batch.filter((day) => day.unavailable).length;
       if (chosen?.unavailable) setMessage(`${prettyDate(date, true)} could not be checked. Retry that date or compare the nearby days.`);
-      else if (chosen?.slots.length) setMessage(unavailableCount ? `Recommended openings are shown below. ${unavailableCount} nearby ${unavailableCount === 1 ? 'day needs' : 'days need'} a retry.` : `Recommended openings are shown below; expand a period to see more.`);
-      else setMessage(`No online openings on ${prettyDate(date, true)}. Compare the nearby days.`);
+      else if (chosen?.slots.length) setMessage(unavailableCount ? `Openings below. ${unavailableCount} nearby ${unavailableCount === 1 ? 'day needs' : 'days need'} a retry.` : `Openings below — expand a period for more.`);
+      else setMessage(`No openings on ${prettyDate(date, true)}. Compare nearby days.`);
     } catch (error) {
       if (currentRequest !== requestId.current) return;
       setDays([]);
@@ -153,15 +153,17 @@ export function AvailabilityBrowser({
   const groups = groupSlots(activeDay?.slots || []);
   const activeTimeCount = Object.values(groups).reduce((total, slots) => total + slots.length, 0);
 
-  return <section className="ew-availability-browser" aria-label="Appointment availability">
+  const hasDays = days.length > 0;
+
+  return <section className={`ew-availability-browser${hasDays ? ' has-days' : ''}${busy ? ' is-busy' : ''}`} aria-label="Appointment availability">
     <div className="ew-availability-controls">
       <div className="ew-selected-date">
         <span>Selected date</span>
         <strong>{prettyDate(selectedDate, true)}</strong>
-        <small>{activeDay?.unavailable ? 'Availability check failed · retry this date' : activeTimeCount ? `${activeTimeCount} recommended times · more available on request` : 'No online openings on this date'}</small>
+        <small>{activeDay?.unavailable ? "Couldn't check this date · retry" : activeTimeCount ? `${activeTimeCount} times shown` : "No openings this date"}</small>
       </div>
-      <label className="ew-date-picker">Choose another date<input type="date" min={today} max={maxDate} value={selectedDate} onChange={(event) => void loadFromDate(event.target.value)} /></label>
-      <button className="ew-button secondary" type="button" onClick={() => void findNext()} disabled={busy}>Find next available</button>
+      <label className="ew-date-picker">Jump to date<input type="date" min={today} max={maxDate} value={selectedDate} onChange={(event) => void loadFromDate(event.target.value)} /></label>
+      <button className={hasDays ? 'ew-find-next is-quiet' : 'ew-find-next ew-button secondary'} type="button" onClick={() => void findNext()} disabled={busy}>{busy ? 'Searching…' : 'Find next'}</button>
     </div>
 
     <div className="ew-slot-status" aria-live="polite">{busy ? <><span className="ew-spinner" aria-hidden="true" />{message}</> : notice || message}</div>
@@ -179,7 +181,7 @@ export function AvailabilityBrowser({
 
     {!busy && activeDay && <div className="ew-day-panel" role="tabpanel" aria-label={`Openings on ${prettyDate(activeDay.date, true)}`}>
       <header><div><span className="ew-eyebrow">Choose a start time</span><h3>{prettyDate(activeDay.date, true)}</h3></div><small>Times shown in Central Time</small></header>
-      {activeDay.unavailable ? <div className="ew-empty ew-availability-error"><strong>This day could not be checked.</strong><p>Retry the selected date or compare another day. Your current appointment and selections are unchanged.</p><button className="ew-button secondary" type="button" onClick={() => void loadFromDate(activeDay.date)}>Retry {prettyDate(activeDay.date)}</button></div> : activeDay.slots.length === 0 ? <div className="ew-empty"><strong>No online openings this day.</strong><p>Choose a nearby day or use Find next available.</p></div> : <div className="ew-period-list">
+      {activeDay.unavailable ? <div className="ew-empty ew-availability-error"><strong>Couldn't check this day.</strong><p>Retry this date or pick another. Your selections stay as they are.</p><button className="ew-button secondary" type="button" onClick={() => void loadFromDate(activeDay.date)}>Retry {prettyDate(activeDay.date)}</button></div> : activeDay.slots.length === 0 ? <div className="ew-empty"><strong>No openings this day.</strong><p>Pick a nearby day or jump to another date.</p></div> : <div className="ew-period-list">
         {(Object.entries(groups) as Array<[keyof typeof groups, Slot[]]>).filter(([, slots]) => slots.length).map(([period, periodSlots]) => {
           const key = `${activeDay.date}-${period}`;
           const isExpanded = Boolean(expanded[key]);
@@ -197,6 +199,6 @@ export function AvailabilityBrowser({
       </div>}
     </div>}
 
-    {selectedSlot && <div className="ew-selected-slot" role="status"><span>Selected appointment</span><strong>{prettyDate(selectedDate, true)} at {prettyTime(selectedSlot.start)}</strong><small>{selectedSlot.barberName}</small></div>}
+    {selectedSlot && <div className="ew-selected-slot ew-selected-slot-inline" role="status"><span>Selected appointment</span><strong>{prettyDate(selectedDate, true)} at {prettyTime(selectedSlot.start)}</strong><small>{selectedSlot.barberName}</small></div>}
   </section>;
 }

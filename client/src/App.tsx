@@ -22,5 +22,9 @@ export default function App() {
   else if (path === '/sms-terms' || path === '/emmiwood/sms-terms') surface = <EmmiwoodInfoPage kind="sms-terms" />;
   else if (path === '/chair-rental' || path === '/emmiwood/chair-rental') surface = <EmmiwoodInfoPage kind="chair-rental" />;
 
-  return <Suspense fallback={<div className="emmiwood-loading">Loading…</div>}>{surface}</Suspense>;
+  return (
+    <Suspense fallback={<div className="emmiwood-loading" role="status"><span className="ew-spinner" aria-hidden="true" /><span>Opening…</span></div>}>
+      {surface}
+    </Suspense>
+  );
 }

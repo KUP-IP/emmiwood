@@ -17,7 +17,10 @@
     "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "^1.58.2",
     "typescript": "5.9.3",
-    "wrangler": "^4.86.0"
+    "wrangler": "^4.113.0"
+  },
+  "overrides": {
+    "sharp": "^0.35.3"
   },
   "engines": {
     "node": ">=22",
