@@ -68,15 +68,25 @@ function Login({ onLogin }: { onLogin: () => void }) {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!sent) {
+      const trimmed = email.trim();
+      if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        setMessage('Enter a valid shop email address.');
+        return;
+      }
+    } else if (!/^\d{6}$/.test(code.trim())) {
+      setMessage('Enter the six-digit code from your inbox.');
+      return;
+    }
     setMessage('Working…');
     try {
       if (!sent) {
-        const result = await emmiwoodApi.requestCode(email);
+        const result = await emmiwoodApi.requestCode(email.trim());
         setPreview(result.previewCode || '');
         setSent(true);
         setMessage('If that address is authorized, a short-lived code is on the way.');
       } else {
-        await emmiwoodApi.verifyCode(email, code);
+        await emmiwoodApi.verifyCode(email.trim(), code.trim());
         onLogin();
       }
     } catch (error) {
@@ -90,13 +100,13 @@ function Login({ onLogin }: { onLogin: () => void }) {
       <a className="ew-brand" href="/emmiwood"><span>E</span><strong>Emmiwood</strong></a>
       <span className="ew-eyebrow">Private shop workspace</span>
       <h1>{sent ? 'Enter your code.' : 'Open the shop.'}</h1>
-      <p>{sent ? 'Use the six-digit code from the authorized inbox.' : 'No password to remember. Sign in with an approved shop email.'}</p>
-      <form onSubmit={submit}>
-        {!sent ? <label>Email address<input autoFocus type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label> : <label>Six-digit code<input autoFocus inputMode="numeric" pattern="[0-9]{6}" value={code} onChange={(event) => setCode(event.target.value)} autoComplete="one-time-code" required /></label>}
+      <p className="ewa-login-lead">{sent ? 'Check the authorized inbox for a six-digit code.' : 'Sign in with an approved shop email—no password to remember.'}</p>
+      <form className={message && message !== 'Working…' && !message.startsWith('If that address') ? 'has-error' : undefined} onSubmit={submit} noValidate>
+        {!sent ? <label>Email address<input autoFocus type="email" value={email} onChange={(event) => { setEmail(event.target.value); if (message) setMessage(''); }} autoComplete="email" aria-invalid={Boolean(message && message !== 'Working…' && !message.startsWith('If that address')) || undefined} required /></label> : <label>Six-digit code<input autoFocus inputMode="numeric" pattern="[0-9]{6}" value={code} onChange={(event) => { setCode(event.target.value); if (message) setMessage(''); }} autoComplete="one-time-code" aria-invalid={Boolean(message && message !== 'Working…' && !message.startsWith('If that address')) || undefined} required /></label>}
         {preview && <p className="ewa-preview" role="status">Preview code <strong>{preview}</strong></p>}
-        <button className="ew-button" type="submit">{sent ? 'Verify and enter' : 'Send sign-in code'}</button>
+        <button className="ew-button" type="submit">{sent ? 'Verify and enter' : 'Send code'}</button>
         {sent && <button className="ew-link-button" type="button" onClick={() => { setSent(false); setCode(''); setPreview(''); setMessage(''); }}>Use another email</button>}
-        <p className="ew-form-message" aria-live="polite">{message}</p>
+        <p className={`ew-form-message${message ? (message === 'Working…' || message.startsWith('If that address') ? ' is-info' : ' is-error') : ' is-empty'}`} role={message && message !== 'Working…' && !message.startsWith('If that address') ? 'alert' : undefined} aria-live="polite">{message}</p>
       </form>
     </div></main>
   </div>;

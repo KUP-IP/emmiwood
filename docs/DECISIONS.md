@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Locked decisions
 
@@ -12,6 +12,12 @@ Last updated: 2026-07-20
 6. SMS delivery will use a dedicated Emmiwood Twilio account and number. Delivery remains disabled until account setup, sender compliance, and one controlled synthetic test are complete.
 7. KUP receives permanent read-only `kup_support` access. That role must remain excluded from all mutation operations.
 8. GitHub CodeQL remains deferred by explicit decision. Existing CI security tests and root/client high-severity dependency-audit gates remain required.
+9. Canonical product home (identity consolidation, 2026-07-21):
+   - Local checkout: `/Users/keepup/Developer/emmiwood`
+   - GitHub: `KUP-IP/emmiwood` (do not rename the repo or local folder to include `.com` while the domain is unpurchased)
+   - The Vite-only husk `/Users/keepup/Developer/emmiwood-release-remediation` is retired and must not be treated as a second Emmiwood home
+   - `emmiwood.com` remains the deferred production domain target only — not a live owned origin and not a substitute for the repo/folder name until a separate domain cutover contract says otherwise
+   - Intentional alias residue (do not “fix” by renaming in this slice): npm `emmiwood` / `emmiwood-client`; Wrangler name `emmiwood`; Cloudflare preview `emmiwood-barbers-preview`; Notion FOCUS title “Emmiwood / OBK Website + Booking System”
 
 ## Open consequential decision
 

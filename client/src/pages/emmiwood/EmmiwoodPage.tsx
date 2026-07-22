@@ -31,8 +31,6 @@ const openingLabel = (slot: Slot) => new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 }).format(slot.start * 1000);
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
 function shopClock(date: Date) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
@@ -113,14 +111,12 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
 }
 
 function HoursTimeline() {
-  return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours">
-    <div className="ew-hours-scale" aria-hidden="true"><span>9:00 AM</span><span>Noon</span><span>2:00 PM</span><span>7:00 PM</span></div>
+  return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: appointments 9–noon and 2–7, walk-ins noon–2">
     <div className="ew-hours-track">
       <div className="appointment morning"><strong>Appointments</strong><span>9:00 AM–noon</span></div>
       <div className="walkin"><strong>Walk-ins</strong><span>Noon–2:00 PM</span></div>
       <div className="appointment afternoon"><strong>Appointments</strong><span>2:00–7:00 PM</span></div>
     </div>
-    <div className="ew-hours-key"><span className="appointment">Appointment hours</span><span className="walkin">Walk-in window</span></div>
   </div>;
 }
 
@@ -138,14 +134,9 @@ function TodayAtEmmiwood({ catalog }: { catalog: Catalog }) {
       <div><strong>{clock.status}</strong><small>{clock.today} · {clock.detail}</small></div>
     </header>
     <HoursTimeline />
-    <div className="ew-today-facts">
-      <div><span>Walk-ins</span><strong>Noon–2:00 PM</strong><small>First available chair. No reservation needed.</small></div>
-      <div><span>Find us</span><strong>1118 S Minnesota Ave</strong><small>Sioux Falls, South Dakota</small></div>
-    </div>
     <NextOpening catalog={catalog} />
     <div className="ew-today-actions">
-      <a className="ew-button" href="/emmiwood/book">Book an appointment</a>
-      <a className="ew-map-link" target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a>
+      <a className="ew-link" target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a>
     </div>
   </aside>;
 }
@@ -184,15 +175,21 @@ export default function EmmiwoodPage() {
     <header className="ew-site-header">
       <a className="ew-brand" href="#top" aria-label="Emmiwood home"><span>E</span><strong>Emmiwood</strong></a>
       <nav aria-label="Primary navigation"><a href="#services">Services</a><a href="#barbers">Barbers</a><a href="#visit">Visit</a></nav>
-      <a className="ew-button small" href="/emmiwood/book">Book an appointment</a>
+      <a className="ew-button small ew-header-book" href="/emmiwood/book">Book an appointment</a>
     </header>
+    <nav className="ew-mobile-jump" aria-label="Page sections">
+      <a href="#services">Services</a>
+      <a href="#barbers">Barbers</a>
+      <a href="#visit">Visit</a>
+    </nav>
 
     <main id="main">
       <section className="ew-public-hero" id="top">
+        <div className="ew-hero-atmosphere" aria-hidden="true" />
         <div className="ew-hero-main">
-          <span className="ew-eyebrow">Neighborhood barbering · Sioux Falls</span>
+          <span className="ew-eyebrow">Emmiwood · Sioux Falls</span>
           <h1>Look sharp. <em>Still look like yourself.</em></h1>
-          <p>Haircuts, fades, beard work, and cleanups shaped around how you actually wear your hair. Straightforward prices, an unrushed consultation, and a finish that grows out clean.</p>
+          <p>Haircuts, fades, and beard work shaped around how you wear your hair—clear prices, an unrushed consult, a finish that grows out clean.</p>
           <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book an appointment</a><a className="ew-link" href="#services">Choose a service</a></div>
         </div>
         <div className="ew-hero-booking"><TodayAtEmmiwood catalog={catalog} /></div>
@@ -200,20 +197,23 @@ export default function EmmiwoodPage() {
 
 
       <section className="ew-public-section" id="services">
-        <header className="ew-section-intro"><span className="ew-eyebrow">Services</span><h2>Choose the work you need.</h2><p>Every service starts with a quick consultation and ends with a clean finish. Price and chair time are clear before you book.</p></header>
+        <header className="ew-section-intro"><span className="ew-eyebrow">Services</span><h2>Choose the work you need.</h2><p className="ew-section-lead">Price and chair time stay clear before you book.</p></header>
         <div className="ew-service-grid">
           {catalog.services.map((service, index) => <article key={service.id} className="ew-service-card" data-reveal>
-            <header><span className="ew-card-index">0{index + 1}</span><strong className="ew-service-price">{money(service.price_cents)}</strong></header>
-            <div className="ew-service-copy"><h3>{service.name}</h3><p>{service.description}</p></div>
+            <header>
+              <div className="ew-service-title"><span className="ew-card-index">0{index + 1}</span><h3>{service.name}</h3></div>
+              <strong className="ew-service-price">{money(service.price_cents)}</strong>
+            </header>
+            <p className="ew-service-desc">{service.description}</p>
             <p className="ew-fit">{SERVICE_FIT[service.id]}</p>
-            <dl><div><dt>Chair time</dt><dd>{service.duration_minutes} min</dd></div><div><dt>Barbers</dt><dd>{eligibility.get(service.id)}</dd></div></dl>
-            <a className="ew-service-link" href={`/emmiwood/book?service=${service.id}`}>Book this service <span aria-hidden="true">→</span></a>
+            <p className="ew-service-meta"><span>{service.duration_minutes} min</span><span>{eligibility.get(service.id)}</span></p>
+            <a className="ew-service-link" href={`/emmiwood/book?service=${service.id}`}>Book <span aria-hidden="true">→</span></a>
           </article>)}
         </div>
       </section>
 
       <section className="ew-public-section ew-barber-section" id="barbers">
-        <header className="ew-section-intro light"><span className="ew-eyebrow">The barbers</span><h2>Choose your barber—or take the first opening.</h2><p>Barro and John bring different strengths to the chair. Pick the approach you prefer, or let the book show the earliest time.</p></header>
+        <header className="ew-section-intro light"><span className="ew-eyebrow">The barbers</span><h2>Meet the barbers.</h2><p className="ew-section-lead">Different chairs, same finish standard.</p></header>
         <div className="ew-barber-grid">
           {catalog.barbers.map((barber, index) => {
             const detail = BARBER_DETAILS[barber.id];
@@ -224,7 +224,7 @@ export default function EmmiwoodPage() {
                   : <span>{barber.name.slice(0, 1)}</span>}
                 <small aria-hidden="true">0{index + 1}</small>
               </div>
-              <div className="ew-barber-copy"><span className="ew-eyebrow">At the chair</span><h3>{barber.name}</h3><p>{barber.bio}</p><dl><div><dt>Known for</dt><dd>{detail?.specialty}</dd></div><div><dt>In the shop</dt><dd>{detail?.schedule}</dd></div></dl><p className="ew-fit">{detail?.fit}</p><a className="ew-button secondary" href={`/emmiwood/book?barber=${barber.id}`}>Book with {barber.name}</a></div>
+              <div className="ew-barber-copy"><span className="ew-eyebrow">At the chair</span><h3>{barber.name}</h3><p className="ew-barber-bio">{barber.bio}</p><dl><div><dt>Known for</dt><dd>{detail?.specialty}</dd></div><div><dt>In the shop</dt><dd>{detail?.schedule}</dd></div></dl><p className="ew-fit">{detail?.fit}</p><a className="ew-barber-book" href={`/emmiwood/book?barber=${barber.id}`}>Book with {barber.name} <span aria-hidden="true">→</span></a></div>
             </article>;
           })}
         </div>
@@ -232,26 +232,34 @@ export default function EmmiwoodPage() {
       </section>
 
       <section className="ew-shop-section" id="story">
-        <div className="ew-shop-statement"><span className="ew-eyebrow">The shop</span><h2>Good barbering starts with paying attention.</h2><p>Before the clippers start, we talk through what you want, how you style it, and what will work with your hair—not against it.</p><p>The shop stays relaxed and straightforward. Appointments keep the day moving; the noon–2 walk-in window leaves room for a clean-up when you need one today.</p></div>
-        <div className="ew-weekly-card"><span className="ew-eyebrow">Weekly hours</span><h3>Appointments and walk-ins, six days a week.</h3><ul>{WEEKDAYS.map((day) => <li key={day} className={day === 'Sunday' ? 'closed' : ''}><strong>{day}</strong><span>{day === 'Sunday' ? 'Closed' : '9:00 AM–7:00 PM'}{day !== 'Sunday' && <small>Walk-ins noon–2</small>}</span></li>)}</ul></div>
+        <div className="ew-shop-statement">
+          <span className="ew-eyebrow">The shop</span>
+          <h2>Good barbering starts with paying attention.</h2>
+          <p>We talk through what you want before the clippers start—then keep the day moving so the finish stays sharp.</p>
+        </div>
+        <div className="ew-weekly-card">
+          <span className="ew-eyebrow">Weekly hours</span>
+          <h3>Open six days a week.</h3>
+          <ul className="ew-hours-compact">
+            <li><strong>Mon–Sat</strong><span>9:00 AM–7:00 PM<small>Walk-ins noon–2</small></span></li>
+            <li className="closed"><strong>Sunday</strong><span>Closed</span></li>
+          </ul>
+        </div>
       </section>
 
       <section className="ew-visit-section" id="visit">
-        <header><span className="ew-eyebrow">Visit Emmiwood</span><h2>Easy to find. Easy to plan.</h2></header>
+        <header><span className="ew-eyebrow">Visit Emmiwood</span><h2>Easy to find.</h2></header>
         <div className="ew-visit-feature">
           <MapIllustration />
           <div className="ew-visit-copy">
-            <span className="ew-eyebrow">South Minnesota Avenue</span>
             <h3>Emmiwood Barbers</h3>
             <address>{EMMIWOOD_ADDRESS}</address>
-            <p>Appointments run 9:00 AM–noon and 2:00–7:00 PM, Monday through Saturday. Walk-ins are accepted from noon–2:00 PM.</p>
             <div className="ew-visit-actions"><a className="ew-button" target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a><a className="ew-link" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a></div>
-            <small>Google Maps opens with Emmiwood’s street address as the destination. The exact Business Profile share URL remains a public-launch verification item.</small>
           </div>
         </div>
       </section>
 
-      <section className="ew-final-cta"><span className="ew-eyebrow">Ready when you are</span><h2>Find a chair time that works.</h2><a className="ew-button inverse" href="/emmiwood/book">Book an appointment</a></section>
+      <section className="ew-final-cta"><span className="ew-eyebrow">Emmiwood · Book</span><h2>Find a chair time that works.</h2><a className="ew-button inverse" href="/emmiwood/book">Book an appointment</a></section>
     </main>
 
     <footer className="ew-site-footer">
@@ -259,6 +267,6 @@ export default function EmmiwoodPage() {
       <div><a href="/emmiwood/privacy">Privacy</a><a href="/emmiwood/sms-terms">SMS terms</a><a href="/emmiwood/chair-rental">Chair rental</a><a href="/emmiwood/admin">Staff sign in</a></div>
       <p>© {new Date().getFullYear()} Emmiwood Barbers · Sioux Falls, South Dakota</p>
     </footer>
-    <nav className="ew-mobile-book" aria-label="Mobile booking"><a href="/emmiwood/book"><span>Live appointment book</span><strong>Book now →</strong></a></nav>
+    <nav className="ew-mobile-book" aria-label="Mobile booking"><a href="/emmiwood/book"><span>Appointments</span><strong>Book now →</strong></a></nav>
   </div>;
 }

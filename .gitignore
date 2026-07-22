@@ -11,3 +11,8 @@ test-results/
 client/tsconfig.tsbuildinfo
 
 *.tsbuildinfo
+
+# UI-ITER capture artifacts (do not commit)
+tmp-r*.png
+tmp-*-audit.mjs
+tmp-*-verify.mjs
