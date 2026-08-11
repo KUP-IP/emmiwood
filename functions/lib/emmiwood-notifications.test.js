@@ -6,6 +6,7 @@ import {
   NOTIFICATION_PROVIDER_TWILIO,
   NOTIFICATION_PROVIDER_RESEND,
   deliverNotification,
+  manageAppointmentUrl,
   notificationProvider,
   notificationReadiness,
   reminderAvailableAt,
@@ -16,6 +17,25 @@ test('preview uses mock delivery while incomplete production credentials fail cl
   assert.equal(notificationProvider({ ENVIRONMENT: 'preview' }), NOTIFICATION_PROVIDER_MOCK);
   assert.equal(notificationProvider({ ENVIRONMENT: 'production', TWILIO_ACCOUNT_SID: 'sid' }), NOTIFICATION_PROVIDER_UNCONFIGURED);
   assert.equal(notificationProvider({ ENVIRONMENT: 'production' }, 'email'), NOTIFICATION_PROVIDER_UNCONFIGURED);
+});
+
+test('complete Twilio credentials activate live SMS on preview for controlled smoke', () => {
+  assert.equal(notificationProvider({
+    ENVIRONMENT: 'preview',
+    TWILIO_ACCOUNT_SID: 'sid',
+    TWILIO_AUTH_TOKEN: 'token',
+    TWILIO_FROM_NUMBER: '+16050000000',
+  }), NOTIFICATION_PROVIDER_TWILIO);
+  const readiness = notificationReadiness({
+    ENVIRONMENT: 'preview',
+    EMMIWOOD_NOTIFICATION_SECRET: 'secret',
+    TWILIO_ACCOUNT_SID: 'sid',
+    TWILIO_AUTH_TOKEN: 'token',
+    TWILIO_FROM_NUMBER: '+16050000000',
+  });
+  assert.equal(readiness.ready, true);
+  assert.equal(readiness.exactIdOnly, true);
+  assert.equal(readiness.sms.provider, NOTIFICATION_PROVIDER_TWILIO);
 });
 
 
@@ -104,6 +124,29 @@ test('notification processor readiness is authenticated and fails closed before 
   }
 });
 
+test('preview processor rejects bulk processing without exact notification id', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const { onRequestPost } = await import('../api/emmiwood/internal/notifications.js');
+  const db = setupEmmiwoodTestD1();
+  const env = {
+    DB: db,
+    ENVIRONMENT: 'preview',
+    EMMIWOOD_NOTIFICATION_SECRET: 'secret',
+    TWILIO_ACCOUNT_SID: 'sid',
+    TWILIO_AUTH_TOKEN: 'token',
+    TWILIO_FROM_NUMBER: '+16050000000',
+  };
+  const bulk = await onRequestPost({
+    env,
+    request: new Request('https://example.com/api/emmiwood/internal/notifications', {
+      method: 'POST',
+      headers: { authorization: 'Bearer secret' },
+    }),
+  });
+  assert.equal(bulk.status, 422);
+  assert.match((await bulk.json()).error, /exact notification id/i);
+});
+
 test('SMS-only production credentials satisfy readiness without Resend', async () => {
   const { onRequestGet } = await import('../api/emmiwood/internal/notifications.js');
   const env = {
@@ -138,6 +181,24 @@ test('mock delivery never performs an external send and copy carries opt-out lan
   const result = await deliverNotification({}, { provider: 'mock', channel: 'sms' });
   assert.deepEqual(result, { provider: NOTIFICATION_PROVIDER_MOCK, status: 'queued' });
   assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /Reply STOP/);
+});
+
+test('booking confirmation SMS includes absolute manage link and appointment detail', () => {
+  const manageUrl = manageAppointmentUrl(
+    { EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood-barbers-preview.pages.dev' },
+    'tok_abc',
+  );
+  assert.equal(manageUrl, 'https://emmiwood-barbers-preview.pages.dev/emmiwood/manage#token=tok_abc');
+  const body = renderSms('booking_confirmation', {
+    serviceName: 'Signature Haircut',
+    barberName: 'Barro',
+    when: 'Wed, Aug 12, 9:00 AM',
+    manageUrl,
+    optOut: 'Reply STOP to opt out.',
+  });
+  assert.match(body, /Signature Haircut with Barro/);
+  assert.match(body, /Manage\/cancel: https:\/\/emmiwood-barbers-preview\.pages\.dev\/emmiwood\/manage#token=tok_abc/);
+  assert.match(body, /Reply STOP/);
 });
 
 
@@ -181,8 +242,17 @@ test('notification worker retries transient failures, then records terminal fail
   try {
     db.exec(`INSERT INTO emmiwood_notification_outbox(id,shop_id,channel,template,recipient,payload_json,provider,status,available_at)
       VALUES('retry-1','emmiwood','email','admin_login_code','owner@example.com','{"code":"123456"}','resend','queued',0)`);
-    const env = { DB: db, EMMIWOOD_NOTIFICATION_SECRET: 'secret', RESEND_API_KEY: 're_test', EMAIL_FROM: 'shop@example.com' };
-    const request = new Request('https://example.com/api/emmiwood/internal/notifications', { method: 'POST', headers: { authorization: 'Bearer secret' } });
+    const env = {
+      DB: db,
+      ENVIRONMENT: 'production',
+      EMMIWOOD_NOTIFICATION_SECRET: 'secret',
+      TWILIO_ACCOUNT_SID: 'sid',
+      TWILIO_AUTH_TOKEN: 'token',
+      TWILIO_FROM_NUMBER: '+16050000000',
+      RESEND_API_KEY: 're_test',
+      EMAIL_FROM: 'shop@example.com',
+    };
+    const request = new Request('https://example.com/api/emmiwood/internal/notifications?id=retry-1', { method: 'POST', headers: { authorization: 'Bearer secret' } });
     let response = await onRequestPost({ env, request });
     assert.equal(response.status, 200);
     assert.deepEqual(db.query("SELECT status,attempt_count,error LIKE '%failed%' failed FROM emmiwood_notification_outbox WHERE id='retry-1'"), [{ status: 'queued', attempt_count: 1, failed: 1 }]);
@@ -238,7 +308,16 @@ test('notification worker persists provider delivery identifiers', async () => {
     db.exec(`INSERT INTO emmiwood_notification_outbox(id,shop_id,channel,template,recipient,payload_json,provider,status,available_at)
       VALUES('sent-1','emmiwood','email','admin_login_code','owner@example.com','{"code":"123456"}','resend','queued',0),
              ('untouched-1','emmiwood','email','admin_login_code','other@example.com','{"code":"654321"}','resend','queued',0)`);
-    const env = { DB: db, EMMIWOOD_NOTIFICATION_SECRET: 'secret', RESEND_API_KEY: 're_test', EMAIL_FROM: 'shop@example.com' };
+    const env = {
+      DB: db,
+      ENVIRONMENT: 'production',
+      EMMIWOOD_NOTIFICATION_SECRET: 'secret',
+      TWILIO_ACCOUNT_SID: 'sid',
+      TWILIO_AUTH_TOKEN: 'token',
+      TWILIO_FROM_NUMBER: '+16050000000',
+      RESEND_API_KEY: 're_test',
+      EMAIL_FROM: 'shop@example.com',
+    };
     const request = new Request('https://example.com/api/emmiwood/internal/notifications?id=sent-1', { method: 'POST', headers: { authorization: 'Bearer secret' } });
     const response = await onRequestPost({ env, request });
     const body = await response.json();

@@ -262,6 +262,7 @@ export async function book(env, input, adminId = null) {
       startAt: chosen.start,
       serviceName: service.name,
       barberName: chosen.barberName,
+      manageToken,
       now: notificationNow,
     }),
   ];
@@ -350,6 +351,7 @@ export async function rescheduleAppointment(env, manageToken, input, adminId = n
         previousStartAt: appointment.start_at,
         serviceName: service.name,
         barberName: chosen.barberName,
+        manageToken,
         now,
       }),
     ],

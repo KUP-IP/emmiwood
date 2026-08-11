@@ -28,6 +28,12 @@ Last updated: 2026-08-11
     - Customer cancel-via-text for launch means a **manage link in SMS** (absolute origin URL), not inbound keyword CANCEL.
     - Google Calendar sync remains **out of launch scope** until a separate decision.
     - Preview D1 already applied `0007`–`0009` on 2026-07-24; git must keep those migrations so new environments reproduce.
+13. **SMS Wave 2 (2026-08-11):**
+    - Confirmation/reminder/reschedule SMS include **when + service + barber** and absolute **Manage/cancel** URL from `EMMIWOOD_PUBLIC_ORIGIN`.
+    - Twilio is selected whenever all three Twilio secrets are present (including preview for controlled smoke). Without secrets, non-production stays mock; production fails closed.
+    - Non-production notification **processor requires exact `?id=`** — bulk process is production-only.
+    - Scheduler `EMMIWOOD_NOTIFICATIONS_ENABLED` remains **false** until an approved exact-ID synthetic smoke is recorded.
+    - Admin OTP allowlist phones must be real E.164 values (replace `+16055550199` seed before claiming admin SMS works).
 
 ## Deferred
 

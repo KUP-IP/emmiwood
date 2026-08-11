@@ -123,7 +123,10 @@ test('consented lifecycle queues eligible reminders and supersedes them on resch
   const env = { DB: db, ENVIRONMENT: 'preview' };
 
   try {
-    const booking = await book(env, {
+    const booking = await book({
+      ...env,
+      EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood-barbers-preview.pages.dev',
+    }, {
       serviceId: 'signature', barberId: 'barro', date, start, now,
       name: 'Lifecycle Guest', phone: '6055550177', smsConsent: true,
       smsConsentVersion: 'appointment-texts-v1',
@@ -135,6 +138,10 @@ test('consented lifecycle queues eligible reminders and supersedes them on resch
         { template: 'booking_confirmation', status: 'queued', count: 1 },
       ],
     );
+    const confirmPayload = JSON.parse(db.query("SELECT payload_json FROM emmiwood_notification_outbox WHERE template='booking_confirmation' AND status='queued'")[0].payload_json);
+    assert.match(confirmPayload.manageUrl, /#token=/);
+    assert.equal(confirmPayload.manageUrl.includes(booking.manageToken), true);
+    assert.equal(confirmPayload.serviceName, 'Signature Haircut');
     assert.deepEqual(db.query("SELECT available_at FROM emmiwood_notification_outbox WHERE template='appointment_reminder'"), [
       { available_at: start - 24 * 3600 },
     ]);
