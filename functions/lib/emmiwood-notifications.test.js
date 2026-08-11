@@ -233,6 +233,30 @@ test('provider responses expose stable delivery identifiers', async () => {
   }
 });
 
+test('Twilio API key auth uses SK user with AC path', async () => {
+  const originalFetch = globalThis.fetch;
+  let seenAuth = '';
+  let seenUrl = '';
+  try {
+    globalThis.fetch = async (url, init) => {
+      seenUrl = String(url);
+      seenAuth = String(init?.headers?.authorization || '');
+      return new Response(JSON.stringify({ sid: 'SM-api-key' }), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    const result = await deliverNotification({
+      TWILIO_ACCOUNT_SID: 'ACaccount',
+      TWILIO_API_KEY_SID: 'SKkey',
+      TWILIO_AUTH_TOKEN: 'api-secret',
+      TWILIO_FROM_NUMBER: '+16050000000',
+    }, { provider: NOTIFICATION_PROVIDER_TWILIO, channel: 'sms', template: 'booking_confirmation', recipient: '+16055550100', payload_json: '{}' });
+    assert.equal(result.providerMessageId, 'SM-api-key');
+    assert.match(seenUrl, /Accounts\/ACaccount\/Messages\.json/);
+    assert.equal(seenAuth, `Basic ${btoa('SKkey:api-secret')}`);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('notification worker retries transient failures, then records terminal failure', async () => {
   const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
   const { onRequestPost } = await import('../api/emmiwood/internal/notifications.js');

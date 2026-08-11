@@ -260,8 +260,11 @@ export async function deliverNotification(env, row) {
   if (row.provider === NOTIFICATION_PROVIDER_TWILIO) {
     if (row.channel !== 'sms') throw new Error(`Unsupported Twilio channel: ${row.channel}`);
     const body = payload.body || renderSms(row.template, payload);
-    const credentials = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
-    const response = await fetchWithTimeout(env, 'SMS', `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+    // URL Account SID is always AC…. Basic auth may use API Key SID (SK…) + secret, or classic Account SID + Auth Token.
+    const accountSid = env.TWILIO_ACCOUNT_SID;
+    const authUser = env.TWILIO_API_KEY_SID || accountSid;
+    const credentials = btoa(`${authUser}:${env.TWILIO_AUTH_TOKEN}`);
+    const response = await fetchWithTimeout(env, 'SMS', `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
       method: 'POST',
       headers: { authorization: `Basic ${credentials}`, 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ To: row.recipient, From: env.TWILIO_FROM_NUMBER, Body: body }),
