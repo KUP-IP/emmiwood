@@ -26,41 +26,109 @@ function missingNames(env, names) {
   return names.filter((name) => !env?.[name]);
 }
 
+function hasSmsSecrets(env) {
+  return Boolean(env?.TWILIO_ACCOUNT_SID && env?.TWILIO_AUTH_TOKEN && env?.TWILIO_FROM_NUMBER);
+}
+
+function hasEmailSecrets(env) {
+  return Boolean(env?.RESEND_API_KEY && env?.EMAIL_FROM);
+}
+
+/**
+ * SMS: Twilio when all three credentials are present (preview smoke or production).
+ * Without credentials: mock in non-production, unconfigured in production.
+ * Email: Resend only when configured; never required for v1 SMS readiness.
+ */
 export function notificationProvider(env, channel = 'sms') {
-  if (env?.ENVIRONMENT !== 'production') return NOTIFICATION_PROVIDER_MOCK;
-  if (channel === 'sms' && env?.TWILIO_ACCOUNT_SID && env?.TWILIO_AUTH_TOKEN && env?.TWILIO_FROM_NUMBER) return NOTIFICATION_PROVIDER_TWILIO;
-  if (channel === 'email' && env?.RESEND_API_KEY && env?.EMAIL_FROM) return NOTIFICATION_PROVIDER_RESEND;
+  if (channel === 'sms') {
+    if (hasSmsSecrets(env)) return NOTIFICATION_PROVIDER_TWILIO;
+    if (env?.ENVIRONMENT !== 'production') return NOTIFICATION_PROVIDER_MOCK;
+    return NOTIFICATION_PROVIDER_UNCONFIGURED;
+  }
+  if (channel === 'email') {
+    if (hasEmailSecrets(env)) return NOTIFICATION_PROVIDER_RESEND;
+    if (env?.ENVIRONMENT !== 'production') return NOTIFICATION_PROVIDER_MOCK;
+    return NOTIFICATION_PROVIDER_UNCONFIGURED;
+  }
   return NOTIFICATION_PROVIDER_UNCONFIGURED;
 }
 
 export function notificationReadiness(env) {
   const production = env?.ENVIRONMENT === 'production';
-  if (!production) {
-    return {
-      ready: true,
-      environment: String(env?.ENVIRONMENT || 'development'),
-      processor: { ready: true, missing: [] },
-      sms: { ready: true, provider: NOTIFICATION_PROVIDER_MOCK, missing: [] },
-      email: { ready: true, provider: NOTIFICATION_PROVIDER_MOCK, missing: [] },
-    };
-  }
-
   const processorMissing = missingNames(env, PROCESSOR_SECRET_NAMES);
   const smsMissing = missingNames(env, SMS_SECRET_NAMES);
   const emailMissing = missingNames(env, EMAIL_SECRET_NAMES);
+  const smsProvider = notificationProvider(env, 'sms');
+  const emailProvider = notificationProvider(env, 'email');
+
+  if (!production) {
+    // Preview may run exact-ID Twilio smoke once secrets are bound; without secrets, mock is ready.
+    const liveSms = smsProvider === NOTIFICATION_PROVIDER_TWILIO;
+    return {
+      ready: liveSms ? processorMissing.length === 0 && smsMissing.length === 0 : true,
+      environment: String(env?.ENVIRONMENT || 'development'),
+      exactIdOnly: true,
+      processor: { ready: liveSms ? processorMissing.length === 0 : true, missing: liveSms ? processorMissing : [] },
+      sms: {
+        ready: liveSms ? smsMissing.length === 0 : true,
+        provider: smsProvider,
+        missing: liveSms ? smsMissing : [],
+      },
+      email: {
+        ready: true,
+        provider: emailProvider,
+        missing: [],
+        deferred: true,
+      },
+    };
+  }
+
   return {
     // SMS-only v1: email secrets must not block customer SMS or admin SMS OTP.
     ready: processorMissing.length === 0 && smsMissing.length === 0,
     environment: 'production',
+    exactIdOnly: false,
     processor: { ready: processorMissing.length === 0, missing: processorMissing },
-    sms: { ready: smsMissing.length === 0, provider: notificationProvider(env, 'sms'), missing: smsMissing },
+    sms: { ready: smsMissing.length === 0, provider: smsProvider, missing: smsMissing },
     email: {
       ready: emailMissing.length === 0,
-      provider: notificationProvider(env, 'email'),
+      provider: emailProvider,
       missing: emailMissing,
       deferred: true,
     },
   };
+}
+
+/** Public site origin for absolute manage links in SMS (no trailing slash). */
+export function publicOrigin(env) {
+  const raw = env?.EMMIWOOD_PUBLIC_ORIGIN || env?.CORS_ORIGIN || '';
+  return String(raw).trim().replace(/\/$/, '');
+}
+
+/** Absolute manage URL for a raw manage token; null if origin or token missing. */
+export function manageAppointmentUrl(env, manageToken) {
+  const origin = publicOrigin(env);
+  const token = String(manageToken || '').trim();
+  if (!origin || !token) return null;
+  return `${origin}/emmiwood/manage#token=${encodeURIComponent(token)}`;
+}
+
+/** Short America/Chicago time for SMS bodies. */
+export function formatSmsWhen(startAt, timeZone = 'America/Chicago') {
+  const start = Number(startAt);
+  if (!Number.isFinite(start)) return '';
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(start * 1000));
+  } catch {
+    return '';
+  }
 }
 
 export function reminderAvailableAt(startAt, now = Math.floor(Date.now() / 1000)) {
@@ -97,6 +165,7 @@ export function appointmentSmsStatements(env, {
   previousStartAt = null,
   serviceName,
   barberName,
+  manageToken = null,
   now = Math.floor(Date.now() / 1000),
 }) {
   if (!smsConsent) return [];
@@ -120,20 +189,26 @@ export function appointmentSmsStatements(env, {
   const template = templateByEvent[event];
   if (!template) throw new Error(`Unsupported appointment notification event: ${event}`);
 
+  const manageUrl = manageAppointmentUrl(env, manageToken);
+  const when = formatSmsWhen(startAt);
+  const basePayload = {
+    appointmentId,
+    start: startAt,
+    previousStart: previousStartAt,
+    serviceName,
+    barberName,
+    when,
+    manageUrl,
+    optOut: 'Reply STOP to opt out.',
+  };
+
   statements.push(notificationStatement(env, {
     shopId,
     appointmentId,
     channel: 'sms',
     template,
     recipient,
-    payload: {
-      appointmentId,
-      start: startAt,
-      previousStart: previousStartAt,
-      serviceName,
-      barberName,
-      optOut: 'Reply STOP to opt out.',
-    },
+    payload: basePayload,
   }));
 
   const reminderAt = (event === 'booked' || event === 'rescheduled')
@@ -152,6 +227,8 @@ export function appointmentSmsStatements(env, {
         start: startAt,
         serviceName,
         barberName,
+        when,
+        manageUrl,
         optOut: 'Reply STOP to opt out.',
       },
     }));
@@ -216,12 +293,18 @@ export async function deliverNotification(env, row) {
 
 export function renderSms(template, payload) {
   const optOut = payload.optOut ? ` ${payload.optOut}` : '';
+  let detail = '';
+  if (payload.serviceName && payload.barberName) detail = ` ${payload.serviceName} with ${payload.barberName}`;
+  else if (payload.serviceName) detail = ` ${payload.serviceName}`;
+  else if (payload.barberName) detail = ` with ${payload.barberName}`;
+  if (payload.when) detail += detail ? ` · ${payload.when}` : ` ${payload.when}`;
+  const manage = payload.manageUrl ? ` Manage/cancel: ${payload.manageUrl}` : '';
   switch (template) {
     case 'admin_login_code': return `Emmiwood Barbers: your sign-in code is ${payload.code}. It expires in ten minutes.`;
-    case 'booking_confirmation': return `Emmiwood Barbers: your appointment is confirmed.${optOut}`;
-    case 'appointment_reminder': return `Emmiwood Barbers reminder: your appointment is tomorrow.${optOut}`;
-    case 'cancellation_confirmation': return `Emmiwood Barbers: your appointment has been cancelled.${optOut}`;
-    case 'reschedule_confirmation': return `Emmiwood Barbers: your appointment has been rescheduled.${optOut}`;
+    case 'booking_confirmation': return `Emmiwood Barbers: appointment confirmed.${detail}.${manage}${optOut}`;
+    case 'appointment_reminder': return `Emmiwood Barbers reminder:${detail || ' tomorrow'}.${manage}${optOut}`;
+    case 'cancellation_confirmation': return `Emmiwood Barbers: appointment cancelled.${detail}.${optOut}`;
+    case 'reschedule_confirmation': return `Emmiwood Barbers: appointment rescheduled.${detail}.${manage}${optOut}`;
     default: return `Emmiwood Barbers appointment update.${optOut}`;
   }
 }
