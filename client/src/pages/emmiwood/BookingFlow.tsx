@@ -9,7 +9,7 @@ import {
   prettyTime,
   slotDate,
 } from './availability';
-import { EMMIWOOD_CONSENT_VERSION, EMMIWOOD_PHONE_LABEL, money } from './content';
+import { BARBER_DETAILS, EMMIWOOD_CONSENT_VERSION, EMMIWOOD_PHONE_LABEL, money } from './content';
 import type { Appointment, Catalog, Slot } from './types';
 
 const hasService = (catalog: Catalog, id?: string | null) => Boolean(id && catalog.services.some((service) => service.id === id));
@@ -184,7 +184,7 @@ export function BookingFlow({
 
       {stage === 'choose' && (
         <div className="ew-book-stage" data-stage="choose">
-          <div className="ew-stage-heading"><span>01</span><div><h2 ref={stageHeadingRef} tabIndex={-1}>Start with the work.</h2><p>Pick a service—barber is optional.</p></div></div>
+          <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">01</span> How can we help?</h2><p>Pick a service—barber is optional.</p></div>
           <fieldset className="ew-choice-grid">
             <legend>Choose a service</legend>
             {catalog.services.map((item) => <label key={item.id} className={serviceId === item.id ? 'selected' : ''}>
@@ -195,16 +195,34 @@ export function BookingFlow({
           {barberStepOpen && (
             <fieldset className="ew-barber-choice">
               <legend>Choose a barber</legend>
-              <label className={barberId === 'first' ? 'selected' : ''}><input type="radio" name="barber" value="first" checked={barberId === 'first'} onChange={() => { setBarberId('first'); setSlot(undefined); }} /><span><strong>First available</strong><small>Barro or John may be assigned to get you in sooner.</small></span></label>
-              {eligibleBarbers.map((barber) => <label key={barber.id} className={barberId === barber.id ? 'selected' : ''}>
-                <input type="radio" name="barber" value={barber.id} checked={barberId === barber.id} onChange={() => { setBarberId(barber.id); setSlot(undefined); }} />
+              <label className={`ew-barber-choice-first${barberId === 'first' ? ' selected' : ''}`}>
+                <input type="radio" name="barber" value="first" checked={barberId === 'first'} onChange={() => { setBarberId('first'); setSlot(undefined); }} />
                 <span className="ew-booking-barber-option">
-                  {barber.id === 'barro'
-                    ? <img className="ew-booking-barber-photo" src="/emmiwood/barro-profile.webp" width="64" height="64" loading="lazy" decoding="async" alt="" />
-                    : <i className="ew-booking-barber-initial" aria-hidden="true">{barber.name.slice(0, 1)}</i>}
-                  <span className="ew-booking-barber-copy"><strong>{barber.name}</strong><small>{barber.bio}</small></span>
+                  <i className="ew-booking-barber-initial ew-booking-barber-any" aria-hidden="true">Any</i>
+                  <span className="ew-booking-barber-copy">
+                    <strong>First available</strong>
+                    <small>Soonest open chair — Barro or John</small>
+                  </span>
                 </span>
-              </label>)}
+              </label>
+              {eligibleBarbers.map((barber) => {
+                const detail = BARBER_DETAILS[barber.id];
+                return (
+                  <label key={barber.id} className={barberId === barber.id ? 'selected' : ''}>
+                    <input type="radio" name="barber" value={barber.id} checked={barberId === barber.id} onChange={() => { setBarberId(barber.id); setSlot(undefined); }} />
+                    <span className="ew-booking-barber-option">
+                      {barber.id === 'barro'
+                        ? <img className="ew-booking-barber-photo" src="/emmiwood/barro-profile.webp" width="64" height="64" loading="lazy" decoding="async" alt="" />
+                        : <i className="ew-booking-barber-initial" aria-hidden="true">{barber.name.slice(0, 1)}</i>}
+                      <span className="ew-booking-barber-copy">
+                        <strong>{barber.name}</strong>
+                        <small className="ew-barber-meta">{detail?.schedule || 'Available for this service'}</small>
+                        <small className="ew-barber-bio">{detail?.specialty || barber.bio}</small>
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
             </fieldset>
           )}
           {!barberStepOpen && (
@@ -221,7 +239,7 @@ export function BookingFlow({
 
       {stage === 'time' && service && (
         <div className="ew-book-stage" data-stage="time">
-          <div className="ew-stage-heading"><span>02</span><div><h2 ref={stageHeadingRef} tabIndex={-1}>Choose the time.</h2><p>Compare labeled days, then choose a morning, afternoon, or evening opening.</p></div></div>
+          <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">02</span> Choose the time.</h2><p>Compare labeled days, then choose a morning, afternoon, or evening opening.</p></div>
           <div className="ew-booking-context ew-booking-context-sticky" aria-label="Current booking selection"><span><small>Service</small><strong>{service.name}</strong></span><span><small>Barber</small><strong>{barberName}</strong></span><span><small>Total</small><strong>{service.duration_minutes} min · {money(service.price_cents)}</strong></span></div>
           <AvailabilityBrowser
             serviceId={serviceId}
@@ -234,14 +252,19 @@ export function BookingFlow({
           />
           <div className="ew-time-dock">
             {slot && <div className="ew-selected-slot ew-selected-slot-dock" role="status"><span>Selected</span><strong>{prettyTime(slot.start)}</strong><small>{slot.barberName}</small></div>}
-            <div className="ew-stage-actions ew-time-actions"><button className="ew-link-button" type="button" onClick={() => setStage('choose')}>Back</button><button className="ew-button" disabled={!slot} type="button" onClick={() => setStage('details')}>Continue with {slot ? prettyTime(slot.start) : 'a time'}</button></div>
+            <div className="ew-stage-actions ew-time-actions">
+              <button className="ew-link-button" type="button" onClick={() => setStage('choose')}>Back</button>
+              <button className="ew-button" disabled={!slot} type="button" onClick={() => setStage('details')}>
+                {slot ? `Confirm ${prettyTime(slot.start)}` : 'Confirm a time'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {stage === 'details' && slot && (
         <form className="ew-book-stage" data-stage="details" noValidate onSubmit={continueFromDetails}>
-          <div className="ew-stage-heading"><span>03</span><div><h2 ref={stageHeadingRef} tabIndex={-1}>Who should we expect?</h2><p>{prettyDateTime(slot.start)} with {slot.barberName}.</p></div></div>
+          <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">03</span> Who should we expect?</h2><p>{prettyDateTime(slot.start)} with {slot.barberName}.</p></div>
           <div className="ew-booking-context ew-details-context" aria-label="Selected appointment"><span><small>When</small><strong>{prettyDateTime(slot.start)}</strong></span><span><small>Barber</small><strong>{slot.barberName}</strong></span><span><small>Service</small><strong>{service?.name}</strong></span></div>
           <div className="ew-field-grid">
             <label>Name<input id="ew-guest-name" ref={nameInputRef} autoComplete="name" value={details.name} onChange={(event) => { setDetails({ ...details, name: event.target.value }); if (message) setMessage(''); }} aria-invalid={message === 'Enter your name.' ? true : undefined} aria-describedby={message === 'Enter your name.' ? 'ew-details-message' : undefined} required /></label>
@@ -256,7 +279,7 @@ export function BookingFlow({
 
       {stage === 'review' && slot && service && (
         <div className="ew-book-stage" data-stage="review">
-          <div className="ew-stage-heading"><span>04</span><div><h2 ref={stageHeadingRef} tabIndex={-1}>Review before we reserve it.</h2><p>The opening is not held until you confirm.</p></div></div>
+          <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">04</span> Review before we reserve it.</h2><p>The opening is not held until you confirm.</p></div>
           <div className="ew-review-summary" aria-label="Appointment summary">
             <span className="ew-eyebrow">When</span>
             <strong>{prettyDateTime(slot.start)}</strong>
@@ -268,7 +291,7 @@ export function BookingFlow({
             <div><dt>Guest</dt><dd>{details.name}<small>{details.phone}</small></dd></div>
             <div><dt>Texts</dt><dd>{details.smsConsent ? 'Appointment updates enabled' : 'Not requested'}</dd></div>
           </dl>
-          <div className="ew-policy-note"><strong>Change policy</strong><p>Online cancellation and rescheduling close 12 hours before the appointment. Inside that window, call the shop.</p></div>
+          <div className="ew-policy-note"><strong>Change policy</strong><p>Book any open slot on the schedule—including the next one while you wait. Cancel or reschedule online any time before your appointment starts.</p></div>
           <p className={`ew-form-message${message ? (busy || message.startsWith('Securing') ? '' : ' is-error') : ' is-empty'}`} role={message && !busy ? 'alert' : undefined} aria-live="polite">{message}</p>
           <div className="ew-review-dock">
             <div className="ew-stage-actions"><button className="ew-link-button" type="button" onClick={() => setStage('details')}>Edit details</button><button className="ew-button" type="button" disabled={busy} onClick={() => void confirmBooking()}>{busy ? 'Securing appointment…' : `Confirm · ${money(service.price_cents)}`}</button></div>
@@ -327,7 +350,7 @@ export function ManagePanel({ initialAppointment, horizonDays = 30 }: { initialA
         </div>
         {appointment.status === 'booked' && <div className="ew-manage-grid">
           <section><span className="ew-eyebrow">Reschedule</span><h3>Find another time.</h3><p className="ew-reschedule-copy">Compare nearby openings without giving up your current time—it stays reserved until a move succeeds.</p>{!showAvailability ? <button className="ew-button secondary" type="button" onClick={() => setShowAvailability(true)}>Find another time</button> : <><AvailabilityBrowser serviceId={appointment.service_id} barberId={appointment.barber_id} horizonDays={horizonDays} selectedSlot={slot} onSelect={(nextSlot) => setSlot(nextSlot)} /><div className="ew-stage-actions"><button className="ew-link-button" type="button" onClick={() => { setShowAvailability(false); setSlot(undefined); }}>Keep current time</button><button className="ew-button" type="button" disabled={!slot || busy} onClick={() => void reschedule()}>{slot ? `Move to ${prettyDateTime(slot.start)}` : 'Choose a new time'}</button></div></>}</section>
-          <section className="ew-cancel-zone"><span className="ew-eyebrow">Cancel</span><h3>Release this chair time.</h3><p>Online changes close 12 hours before the start. Inside that window, call the shop.</p><button className="ew-danger-button" type="button" onClick={() => void cancel()}>Cancel appointment</button></section>
+          <section className="ew-cancel-zone"><span className="ew-eyebrow">Cancel</span><h3>Release this chair time.</h3><p>Cancel anytime before your appointment starts so the chair frees up for the shop.</p><button className="ew-danger-button" type="button" onClick={() => void cancel()}>Cancel appointment</button></section>
         </div>}
         {appointment.status === 'cancelled' && <div className="ew-manage-cancelled" role="status">
           <p>This appointment is cancelled. The chair time is open again.</p>

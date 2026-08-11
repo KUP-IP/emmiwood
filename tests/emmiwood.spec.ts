@@ -90,7 +90,7 @@ test('public site is booking-first, specific, responsive, and accessible', async
   expect(palette.lime).toBe('');
   await expect(page.getByRole('heading', { name: 'Choose the work you need.' })).toBeVisible();
   await expect(page.getByText('$35', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('40 min', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('35 min', { exact: true }).first()).toBeVisible();
   await expect(page.locator('.ew-proof-row')).toHaveCount(0);
   await expect(page.locator('.ew-manifesto')).toHaveCount(0);
   await expect(hours).not.toContainText('Closed');
@@ -243,7 +243,7 @@ test('booking uses explicit stages, next availability, consent, and review', asy
   await page.getByRole('button', { name: 'Review appointment' }).click();
   await expect(page.getByRole('heading', { name: 'Review before we reserve it.' })).toBeVisible();
   await expect(page.locator('.ew-review-list')).toContainText('Signature Haircut');
-  await expect(page.locator('.ew-review-list')).toContainText('40 minutes · $35');
+  await expect(page.locator('.ew-review-list')).toContainText('35 minutes · $35');
   await expect(page.locator('.ew-review-list')).toContainText('Appointment updates enabled');
   await expect(page.getByRole('button', { name: 'Confirm · $35' })).toBeVisible();
   await expectNoPageOverflow(page);

@@ -9,7 +9,8 @@ import { appointmentSmsStatements } from './emmiwood-notifications.js';
 
 export const SHOP_ID = 'emmiwood';
 export const SHOP_TIME_ZONE = 'America/Chicago';
-export const APPOINTMENT_WINDOWS = [[540, 720], [840, 1140]];
+// Appointments 9–noon and 5–7; walk-ins noon–5 (gap 720–1020).
+export const APPOINTMENT_WINDOWS = [[540, 720], [1020, 1140]];
 export const FIVE_MINUTES = 300;
 const MANAGE_COOKIE = 'emmiwood_manage_session';
 
@@ -126,17 +127,18 @@ function shiftDate(date, days) {
 function rows(result) { return result?.results || []; }
 
 const SEED = {
-  shop: ['emmiwood', 'Emmiwood Barbers', '1118 S Minnesota Ave, Sioux Falls, SD 57105', '+16059006334', SHOP_TIME_ZONE, 240, 30, 720],
+  // min_notice 0 (book any open future slot) · horizon 30d · change_cutoff 0 (cancel until start)
+  shop: ['emmiwood', 'Emmiwood Barbers', '1118 S Minnesota Ave, Sioux Falls, SD 57105', '+16059006334', SHOP_TIME_ZONE, 0, 30, 0],
   barbers: [
     ['barro', 'Barro', 'Craft-led cuts, calm consultation, and a finish designed for the way your hair actually moves.', 1],
     ['john', 'John', 'Focused morning appointments with clean structure and understated detail.', 2],
   ],
   services: [
-    ['signature', 'Signature Haircut', 'A tailored cut or fade, neckline cleanup, and finished style.', 3500, 40, 10, 1],
-    ['hair-beard', 'Haircut + Beard Detail', 'A full haircut with beard shaping, clean lines, and one balanced finish.', 5000, 55, 10, 2],
-    ['beard', 'Beard Sculpt', 'Shape, weight control, clean lines, and a conditioning finish.', 2500, 25, 5, 3],
-    ['lineup', 'Lineup & Cleanup', 'A precise edge-up and neckline cleanup between full cuts.', 1500, 15, 5, 4],
-    ['young', 'Young Gentleman’s Cut', 'A patient, polished cut for younger clients.', 3000, 30, 10, 5],
+    ['signature', 'Signature Haircut', 'A tailored cut or fade, neckline cleanup, and finished style.', 3500, 35, 5, 1],
+    ['hair-beard', 'Haircut + Beard Detail', 'A full haircut with beard shaping, clean lines, and one balanced finish. Hot towel available as a $5 add-on.', 4000, 55, 5, 2],
+    ['beard', 'Beard Sculpt', 'Shape, weight control, clean lines, and a conditioning finish.', 2000, 20, 5, 3],
+    ['lineup', 'Lineup & Cleanup', 'A precise edge-up and neckline cleanup between full cuts.', 2000, 20, 5, 4],
+    ['young', 'Kids Cut', 'A patient, polished cut for guests age twelve and under.', 2800, 25, 5, 5],
   ],
 };
 
@@ -294,7 +296,7 @@ export async function cancelAppointment(env, manageToken, adminId = null, now = 
   const appointment = await managedAppointment(env, manageToken);
   if (appointment.status !== 'booked') throw new EmmiwoodError('not_changeable', 'This appointment is no longer active.', 409);
   const policy = await shopPolicy(env);
-  if (!adminId && appointment.start_at - now < policy.change_cutoff_minutes * 60) throw new EmmiwoodError('change_cutoff', 'Online changes close 12 hours before your appointment. Call the shop for help.', 422);
+  // Dual check removed — cancelBooking/enforceChangeCutoff owns the policy (V1: until start).
   const extraStatements = [
     env.DB.prepare("INSERT INTO emmiwood_events(id,shop_id,appointment_id,admin_id,event_type) VALUES(?,?,?,?, 'cancelled')").bind(crypto.randomUUID(), SHOP_ID, appointment.id, adminId),
     ...appointmentSmsStatements(env, {
@@ -309,7 +311,14 @@ export async function cancelAppointment(env, manageToken, adminId = null, now = 
       now,
     }),
   ];
-  await cancelBooking(env.DB, { appointmentId: appointment.id, startAt: appointment.start_at, now, changeCutoffMinutes: policy.change_cutoff_minutes, isAdmin: Boolean(adminId), extraStatements });
+  try {
+    await cancelBooking(env.DB, { appointmentId: appointment.id, startAt: appointment.start_at, now, changeCutoffMinutes: policy.change_cutoff_minutes, isAdmin: Boolean(adminId), extraStatements });
+  } catch (error) {
+    if (error?.code === 'change_cutoff') {
+      throw new EmmiwoodError('change_cutoff', error.message || 'This appointment can no longer be changed online.', 422);
+    }
+    throw error;
+  }
   return { ok: true };
 }
 
@@ -317,7 +326,7 @@ export async function rescheduleAppointment(env, manageToken, input, adminId = n
   const appointment = await managedAppointment(env, manageToken);
   if (appointment.status !== 'booked') throw new EmmiwoodError('not_changeable', 'This appointment is no longer active.', 409);
   const policy = await shopPolicy(env);
-  if (!adminId && appointment.start_at - now < policy.change_cutoff_minutes * 60) throw new EmmiwoodError('change_cutoff', 'Online changes close 12 hours before your appointment. Call the shop for help.', 422);
+  // New slot still must satisfy min_notice via slots(); change_cutoff only gates editing the original.
   const serviceId = input.serviceId || appointment.service_id;
   const available = await slots(env, { serviceId, date: input.date, barberId: input.barberId || appointment.barber_id, now, excludeAppointmentId: appointment.id });
   const chosen = available.find((slot) => slot.start === Number(input.start));

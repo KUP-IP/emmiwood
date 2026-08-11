@@ -99,6 +99,11 @@ test('migration 0018 fails closed', () => expectFailure({ committedMigrations: [
 test('different production pending set fails closed', () => expectFailure({ pendingMigrations: REQUIRED_EMMIWOOD_MIGRATIONS.slice(0, 2) }, /pending migrations must be exactly/i));
 test('missing Twilio binding fails closed', () => expectFailure({ secretNames: REQUIRED_PRODUCTION_SECRETS.filter((name) => name !== 'TWILIO_AUTH_TOKEN') }, /TWILIO_AUTH_TOKEN/i));
 test('missing processor Page binding fails closed', () => expectFailure({ secretNames: REQUIRED_PRODUCTION_SECRETS.filter((name) => name !== 'EMMIWOOD_NOTIFICATION_SECRET') }, /EMMIWOOD_NOTIFICATION_SECRET/i));
+test('Resend secrets are not required for SMS-only v1 preflight', () => {
+  assert.equal(REQUIRED_PRODUCTION_SECRETS.includes('RESEND_API_KEY'), false);
+  assert.equal(REQUIRED_PRODUCTION_SECRETS.includes('EMAIL_FROM'), false);
+  assert.deepEqual(validateReleaseState(READY).errors, []);
+});
 test('missing Actions processor secret fails closed', () => expectFailure({ actionSecretNames: [] }, /GitHub Actions secret/i));
 test('missing scheduler variable fails closed', () => expectFailure({ actionVariables: {} }, /variable missing/i));
 test('malformed scheduler workflow fails closed', () => expectFailure({ notificationWorkflow: 'name: incomplete' }, /workflow missing/i));

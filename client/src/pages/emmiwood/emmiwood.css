@@ -639,15 +639,17 @@
   text-transform:uppercase;
 }
 .ew-brand>span {
-  width:38px;
+  width:auto;
+  min-width:38px;
   height:38px;
+  padding:0 .45rem;
   display:grid;
   place-items:center;
   border:1px solid currentColor;
   background:var(--ew-signal);
   color:#fff;
-  font:700 1.1rem/1 "Space Grotesk",sans-serif;
-  letter-spacing:-.06em;
+  font:700 .72rem/1 "Space Grotesk",sans-serif;
+  letter-spacing:.06em;
 }
 .ew-public .ew-button,.ew-app-surface .ew-button {
   min-height:52px;
@@ -859,7 +861,8 @@
 .ew-booking-header h1 { margin:.55rem 0 0; font-size:clamp(2.7rem,5vw,5.7rem); }
 .ew-live { display:inline-flex; align-items:center; gap:.55rem; font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
 .ew-live i { width:9px; height:9px; border-radius:50%; background:#1d9f5d; box-shadow:0 0 0 5px rgba(29,159,93,.12); }
-.ew-progress { display:grid; grid-template-columns:repeat(4,1fr); margin:1.25rem 0 2rem; padding:0; border-top:1px solid var(--ew-line); border-bottom:1px solid var(--ew-line); list-style:none; }
+/* Single divider: header already has border-bottom — do not double with border-top here */
+.ew-progress { display:grid; grid-template-columns:repeat(4,1fr); margin:1.25rem 0 2rem; padding:0; border-top:0; border-bottom:1px solid var(--ew-line); list-style:none; }
 .ew-progress li { display:flex; align-items:center; gap:.55rem; padding:.8rem .25rem; color:#767a79; font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
 .ew-progress li span { width:25px; height:25px; display:grid; place-items:center; border:1px solid #a7aaa7; border-radius:50%; }
 .ew-progress li.current { color:var(--ew-signal); }
@@ -867,9 +870,22 @@
 .ew-progress li.complete { color:var(--ew-black); }
 .ew-progress li.complete span { border-color:var(--ew-black); background:var(--ew-black); color:#fff; }
 .ew-book-stage { animation:ew-rise .38s cubic-bezier(.22,1,.36,1) both; }
-.ew-stage-heading { display:grid; grid-template-columns:auto 1fr; gap:1rem; align-items:start; margin-bottom:2rem; }
-.ew-stage-heading>span { color:var(--ew-signal); font-size:.72rem; font-weight:700; letter-spacing:.14em; }
-.ew-stage-heading h2 { margin:0 0 .5rem; font-size:clamp(2rem,3.6vw,4rem); }
+.ew-stage-heading { display:grid; gap:.45rem; margin-bottom:2rem; }
+.ew-stage-heading h2 {
+  margin:0;
+  display:flex;
+  align-items:baseline;
+  gap:.65rem;
+  font-size:clamp(2rem,3.6vw,4rem);
+}
+.ew-stage-num {
+  flex-shrink:0;
+  color:var(--ew-signal);
+  font-family:"Space Grotesk",system-ui,sans-serif;
+  font-size:.78em;
+  font-weight:700;
+  letter-spacing:.08em;
+}
 .ew-stage-heading p { margin:0; color:#666b69; }
 .ew-choice-grid,.ew-barber-choice { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; margin:0 0 2rem; padding:0; border:0; }
 .ew-choice-grid legend,.ew-barber-choice legend { grid-column:1/-1; margin-bottom:.25rem; font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
@@ -881,12 +897,98 @@
 .ew-choice-grid strong,.ew-barber-choice strong { font:700 1.15rem/1.1 "Space Grotesk",sans-serif; letter-spacing:-.03em; }
 .ew-choice-grid small,.ew-barber-choice small { color:var(--ew-signal); font-weight:700; }
 .ew-choice-grid em { color:#666b69; font-style:normal; }
-.ew-barber-choice label>span.ew-booking-barber-option { grid-template-columns:64px minmax(0,1fr); align-items:center; }
-.ew-booking-barber-photo,.ew-booking-barber-initial { width:64px; height:64px; border-radius:14px; }
-.ew-booking-barber-photo { display:block; object-fit:cover; object-position:center; }
-.ew-booking-barber-initial { display:grid; place-items:center; margin:0; background:var(--ew-black-2); color:var(--ew-gold); font:700 1.65rem/1 "Space Grotesk",sans-serif; font-style:normal; }
-.ew-booking-barber-copy { min-width:0; display:grid; gap:.35rem; }
-.ew-booking-barber-copy small { color:#666b69; font-weight:500; line-height:1.45; }
+/* Barber pickers: fixed avatar | copy row; Selected is a badge, never a grid item */
+.ew-barber-choice label>span.ew-booking-barber-option {
+  position:relative;
+  display:grid;
+  grid-template-columns:56px minmax(0,1fr);
+  align-items:center;
+  gap:.85rem;
+  min-height:76px;
+}
+.ew-barber-choice label.selected>span.ew-booking-barber-option,
+.ew-barber-choice label.selected>span {
+  border-color:var(--ew-black);
+  box-shadow:inset 0 0 0 2px var(--ew-black);
+}
+/* Kill the shared service-style "Selected" flow for barbers — it broke the avatar grid */
+.ew-barber-choice label.selected>span::before {
+  content:"Selected";
+  position:absolute;
+  top:.55rem;
+  right:.6rem;
+  z-index:2;
+  width:auto;
+  margin:0;
+  padding:.18rem .4rem;
+  border-radius:999px;
+  background:var(--ew-signal);
+  color:#fff;
+  font-size:.58rem;
+  font-weight:700;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  line-height:1.2;
+  pointer-events:none;
+}
+.ew-barber-choice-first { grid-column:1 / -1; }
+.ew-booking-barber-photo,
+.ew-booking-barber-initial {
+  width:56px;
+  height:56px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+.ew-booking-barber-photo {
+  display:block;
+  object-fit:cover;
+  object-position:center 28%;
+  background:#e8e0d4;
+}
+.ew-booking-barber-initial {
+  display:grid;
+  place-items:center;
+  margin:0;
+  background:var(--ew-black-2);
+  color:var(--ew-gold);
+  font:700 1.35rem/1 "Space Grotesk",sans-serif;
+  font-style:normal;
+}
+.ew-booking-barber-initial.ew-booking-barber-any {
+  font-size:.68rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ew-ivory);
+  background:var(--ew-signal);
+}
+.ew-booking-barber-copy {
+  min-width:0;
+  display:grid;
+  gap:.2rem;
+  padding-right:4.25rem; /* room for Selected pill */
+}
+.ew-booking-barber-copy strong {
+  font:700 1.05rem/1.15 "Space Grotesk",sans-serif;
+  letter-spacing:-.02em;
+}
+.ew-booking-barber-copy small {
+  color:#666b69;
+  font-weight:500;
+  line-height:1.4;
+}
+.ew-booking-barber-copy .ew-barber-meta {
+  color:var(--ew-signal);
+  font-size:.72rem;
+  font-weight:700;
+  letter-spacing:.02em;
+}
+.ew-booking-barber-copy .ew-barber-bio {
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  font-size:.82rem;
+}
 .ew-stage-actions { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-top:2rem; padding-top:1.25rem; border-top:1px solid var(--ew-line); }
 .ew-date-row { display:flex; align-items:end; justify-content:space-between; gap:1rem; }
 .ew-date-row label { width:min(310px,100%); }
@@ -1053,12 +1155,16 @@
   .ew-progress li { flex-direction:column; gap:.25rem; font-size:.58rem; text-align:center; }
   .ew-choice-grid,.ew-barber-choice,.ew-field-grid { grid-template-columns:1fr; }
   .ew-field-grid .wide { grid-column:auto; }
-  .ew-stage-heading { grid-template-columns:1fr; }
   .ew-date-row { align-items:stretch; flex-direction:column; }
   .ew-date-row label { width:100%; }
   .ew-book-stage>.ew-slot-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .ew-stage-actions { align-items:stretch; flex-direction:column-reverse; }
-  .ew-stage-actions>* { width:100%; }
+  .ew-stage-actions:not(.ew-time-actions) { align-items:stretch; flex-direction:column-reverse; }
+  .ew-stage-actions:not(.ew-time-actions)>* { width:100%; }
+  .ew-time-actions {
+    flex-direction:row !important;
+    grid-template-columns:2fr 3fr !important;
+  }
+  .ew-time-actions>* { width:100%; }
   .ew-review-list>div,.ew-receipt>div { grid-template-columns:86px 1fr; }
   .ew-app-footer { align-items:flex-start; flex-direction:column; padding:1rem; }
   .ew-appointment-card { align-items:flex-start; flex-direction:column; }
@@ -1310,7 +1416,7 @@
 .ew-today-card>header small { color:#6f665f; }
 .ew-today-card .ew-eyebrow { color:var(--ew-crimson); }
 .ew-hours-visual { padding:1.4rem; border-bottom:1px solid rgba(59,40,31,.16); }
-.ew-hours-track { min-height:76px; display:grid; grid-template-columns:3fr 2fr 5fr; gap:2px; background:#d8d0c5; }
+.ew-hours-track { min-height:76px; display:grid; grid-template-columns:3fr 5fr 2fr; gap:2px; background:#d8d0c5; }
 .ew-hours-track>div { min-width:0; display:flex; flex-direction:column; justify-content:center; padding:.75rem; }
 .ew-hours-track .appointment { background:var(--ew-brown); color:var(--ew-ivory); }
 .ew-hours-track .walkin { background:var(--ew-crimson); color:#fff; }
@@ -1712,14 +1818,32 @@
 .ew-booking-context small { color:#737775; font-size:.62rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
 .ew-booking-context strong { overflow:hidden; color:var(--ew-black); font:700 .95rem/1.15 "Space Grotesk",sans-serif; text-overflow:ellipsis; white-space:nowrap; }
 .ew-availability-browser { min-width:0; display:grid; gap:1rem; }
-.ew-availability-controls { display:grid; grid-template-columns:minmax(250px,1fr) minmax(220px,310px) auto; align-items:end; gap:.85rem; padding:1rem; border:1px solid var(--ew-line); border-radius:18px; background:#f2ece3; box-shadow:0 14px 34px rgba(17,16,14,.07); }
+.ew-availability-controls { display:grid; grid-template-columns:minmax(220px,1fr) minmax(280px,1.2fr); align-items:end; gap:.85rem; padding:1rem; border:1px solid var(--ew-line); border-radius:18px; background:#f2ece3; box-shadow:0 14px 34px rgba(17,16,14,.07); }
 .ew-selected-date { min-height:78px; display:grid; align-content:center; gap:.2rem; padding:.65rem .8rem; border-left:4px solid var(--ew-signal); background:#fff; }
 .ew-selected-date span,.ew-selected-date small { color:#6c706e; font-size:.64rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
 .ew-selected-date strong { font:700 1.2rem/1.1 "Space Grotesk",sans-serif; }
-.ew-date-picker { display:grid!important; gap:.35rem!important; }
-.ew-date-picker input,.ew-availability-controls>.ew-button,.ew-availability-controls>.ew-find-next.ew-button { height:52px; min-height:52px; border-radius:10px; }
-.ew-availability-controls>.ew-button,.ew-availability-controls>.ew-find-next.ew-button { align-self:end; white-space:nowrap; }
-.ew-availability-controls>.ew-find-next.is-quiet { align-self:center; white-space:nowrap; }
+.ew-date-find-row {
+  display:grid;
+  grid-template-columns:3fr 2fr; /* 60% Jump to date · 40% Find next */
+  gap:.65rem;
+  align-items:end;
+  min-width:0;
+}
+.ew-date-picker { display:grid!important; gap:.35rem!important; min-width:0; }
+.ew-date-picker input,
+.ew-date-find-row>.ew-button,
+.ew-date-find-row>.ew-find-next.ew-button,
+.ew-date-find-row>.ew-find-next { height:52px; min-height:52px; border-radius:10px; }
+.ew-date-find-row>.ew-button,
+.ew-date-find-row>.ew-find-next.ew-button { width:100%; white-space:nowrap; }
+.ew-date-find-row>.ew-find-next.is-quiet {
+  width:100%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  font-weight:700;
+}
 .ew-availability-browser .ew-slot-status { min-height:32px; margin:0; padding:0 .2rem; }
 .ew-day-tabs { display:grid; grid-template-columns:repeat(7,minmax(105px,1fr)); gap:.5rem; overflow-x:auto; padding:.15rem .05rem .45rem; scrollbar-width:thin; }
 .ew-day-tabs button { min-height:72px; display:grid; gap:.25rem; place-content:center; padding:.65rem .7rem; border:1px solid #aaa49a; border-radius:13px; background:#fff; color:var(--ew-black); text-align:center; cursor:pointer; box-shadow:0 7px 16px rgba(17,16,14,.04); }
@@ -1751,15 +1875,50 @@
 .ew-selected-slot strong { font:700 1.05rem/1.15 "Space Grotesk",sans-serif; }
 .ew-selected-slot small { color:#6d6555; }
 .ew-field-help { display:block; margin-top:.4rem; color:#686d6a; font-size:.72rem; font-weight:400; letter-spacing:0; line-height:1.4; text-transform:none; }
-.ew-time-actions { position:sticky; z-index:6; bottom:.75rem; margin-top:1.2rem; padding:1rem; border:1px solid var(--ew-line); border-radius:16px; background:rgba(247,242,234,.96); box-shadow:0 15px 35px rgba(17,16,14,.12); backdrop-filter:blur(10px); }
+.ew-time-actions {
+  position:sticky;
+  z-index:6;
+  bottom:.75rem;
+  display:grid !important;
+  grid-template-columns:2fr 3fr; /* 40% Back · 60% Confirm {time} */
+  align-items:stretch;
+  gap:.65rem;
+  margin-top:1.2rem;
+  padding:1rem;
+  border:1px solid var(--ew-line);
+  border-radius:16px;
+  background:rgba(247,242,234,.96);
+  box-shadow:0 15px 35px rgba(17,16,14,.12);
+  backdrop-filter:blur(10px);
+  flex-direction:unset;
+}
+.ew-time-actions > * { width:100%; min-width:0; }
+.ew-time-actions .ew-link-button {
+  min-height:52px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid var(--ew-line);
+  border-radius:10px;
+  background:#fff;
+  padding:.65rem .75rem;
+}
+.ew-time-actions .ew-button {
+  min-height:52px;
+  white-space:nowrap;
+  padding-inline:.75rem;
+  font-size:clamp(.78rem,2.8vw,.95rem);
+}
 .ew-reschedule-copy { color:#626765; }
 .ew-manage-grid .ew-availability-browser { margin-top:1.25rem; }
 .ew-manage-grid .ew-availability-controls { grid-template-columns:1fr; align-items:stretch; }
-.ew-manage-grid .ew-availability-controls>.ew-button { width:100%; }
+.ew-manage-grid .ew-date-find-row { grid-template-columns:3fr 2fr; }
+.ew-manage-grid .ew-availability-controls .ew-find-next { width:100%; }
 .ew-manage-grid .ew-day-tabs { grid-template-columns:repeat(7,minmax(100px,1fr)); }
 .ew-manage-grid .ew-availability-browser .ew-slot-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .ewa-appointment-edit .ew-availability-browser { grid-column:1/-1; padding:1rem; border:1px solid #c9cac4; border-radius:16px; background:#f4f1e9; }
-.ewa-appointment-edit .ew-availability-controls { grid-template-columns:minmax(220px,1fr) minmax(210px,280px) auto; }
+.ewa-appointment-edit .ew-availability-controls { grid-template-columns:1fr; }
+.ewa-appointment-edit .ew-date-find-row { grid-template-columns:3fr 2fr; }
 
 @media (max-width:760px) {
   .ew-booking-context { grid-template-columns:1fr 1fr; }
@@ -1768,14 +1927,27 @@
   .ew-booking-context>span:nth-child(2) { border-right:1px solid var(--ew-line); }
   .ew-booking-context>span:last-child { border-right:0; }
   .ew-booking-context-sticky { position:sticky; z-index:8; top:72px; box-shadow:0 12px 28px rgba(17,16,14,.15); }
-  .ew-availability-controls,.ewa-appointment-edit .ew-availability-controls { grid-template-columns:1fr; align-items:stretch; }
-  .ew-availability-controls>.ew-button { width:100%; }
+  .ew-availability-controls,
+  .ewa-appointment-edit .ew-availability-controls {
+    grid-template-columns:1fr;
+    align-items:stretch;
+  }
+  .ew-date-find-row {
+    grid-template-columns:3fr 2fr;
+    width:100%;
+  }
+  .ew-date-find-row > .ew-find-next,
+  .ew-date-find-row > .ew-button { width:100%; }
   .ew-day-tabs { display:flex; margin-right:-1rem; padding-right:1rem; }
   .ew-day-tabs button { min-width:116px; }
   .ew-day-panel>header { align-items:flex-start; flex-direction:column; }
   .ew-availability-browser .ew-slot-grid,.ew-manage-grid .ew-availability-browser .ew-slot-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .ew-selected-slot { grid-template-columns:1fr; gap:.25rem; }
-  .ew-time-actions { bottom:.5rem; flex-direction:column-reverse; }
+  .ew-time-actions {
+    bottom:.5rem;
+    flex-direction:row !important;
+    grid-template-columns:2fr 3fr !important;
+  }
   .ew-manage-grid .ew-day-tabs { display:flex; }
 }
 
@@ -1829,9 +2001,41 @@
   letter-spacing:.18em;
 }
 .ew-public .ew-site-header .ew-brand>span {
-  width:42px;
+  width:auto;
+  min-width:42px;
   height:42px;
-  font-size:1.3rem;
+  padding:0 .5rem;
+  font-size:.78rem;
+  letter-spacing:.08em;
+}
+.ew-addon-row {
+  margin-top:1.5rem;
+  display:grid;
+  gap:1rem;
+}
+.ew-addon-card {
+  position:relative;
+  z-index:5;
+  padding:1.25rem 1.4rem;
+  border:1px dashed rgba(74,48,36,.35);
+  background:rgba(244,234,220,.55);
+}
+.ew-addon-card header {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:.75rem 1rem;
+  margin-bottom:.5rem;
+}
+.ew-addon-card h3 {
+  margin:0;
+  font-size:1.35rem;
+  flex:1;
+}
+.ew-addon-card p {
+  margin:0;
+  color:var(--ink-soft);
+  font-size:.92rem;
 }
 .ew-public-hero .ew-eyebrow {
   color:var(--ew-gold);
@@ -2027,27 +2231,34 @@
     grid-row:3;
   }
   .emmiwood.ew-app-surface .ew-barber-choice label>span {
-    padding:.72rem .85rem;
+    padding:.7rem .8rem;
   }
   .emmiwood.ew-app-surface .ew-barber-choice label>span.ew-booking-barber-option {
-    grid-template-columns:44px minmax(0,1fr);
-    gap:.75rem;
+    grid-template-columns:52px minmax(0,1fr);
+    gap:.7rem;
+    min-height:68px;
   }
   .ew-booking-barber-photo,
   .ew-booking-barber-initial {
-    width:44px;
-    height:44px;
-    border-radius:11px;
+    width:52px;
+    height:52px;
   }
-  .ew-booking-barber-initial { font-size:1.25rem; }
-  .ew-booking-barber-copy small {
-    display:-webkit-box;
-    -webkit-line-clamp:1;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
+  .ew-booking-barber-initial { font-size:1.15rem; }
+  .ew-booking-barber-initial.ew-booking-barber-any { font-size:.62rem; }
+  .ew-booking-barber-copy { padding-right:3.6rem; gap:.15rem; }
+  .ew-booking-barber-copy strong { font-size:.98rem; }
+  .ew-booking-barber-copy .ew-barber-meta {
+    font-size:.68rem;
   }
-  .ew-barber-choice label.selected .ew-booking-barber-copy small {
-    -webkit-line-clamp:3;
+  .ew-booking-barber-copy .ew-barber-bio {
+    -webkit-line-clamp:2;
+    font-size:.78rem;
+  }
+  .ew-barber-choice label.selected>span::before {
+    top:.45rem;
+    right:.5rem;
+    font-size:.54rem;
+    padding:.15rem .35rem;
   }
   .ew-choice-grid,
   .ew-barber-choice { gap:.5rem; margin-bottom:1.15rem; }
@@ -2209,7 +2420,7 @@ html:has(.emmiwood.ew-public) { scroll-padding-top:74px; }
     overflow:hidden;
   }
   .ew-book-page .ew-booking-shell { padding:1rem .95rem 1.15rem; }
-  .ew-book-stage .ew-stage-heading>span { font-size:1.35rem; }
+  .ew-book-stage .ew-stage-num { font-size:.85em; }
 }
 
 /* Info / manage: drop viewport-filling main so paper sits tight above footer */
@@ -2481,9 +2692,9 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   .ew-booking-context-sticky strong { font-size:.72rem; }
   .ew-booking-context-sticky small { font-size:.58rem; }
 
-  /* Availability controls: cut ~285px stack → denser toolbar */
+  /* Availability controls: selected date (when shown) + 60/40 date|find row */
   .ew-availability-controls {
-    grid-template-columns:1fr 1fr;
+    grid-template-columns:1fr;
     gap:.55rem;
     padding:.7rem;
     border-radius:14px;
@@ -2498,15 +2709,21 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   }
   .ew-selected-date strong { font-size:1.02rem; }
   .ew-selected-date small { display:none; }
+  .ew-date-find-row {
+    grid-template-columns:3fr 2fr;
+    gap:.5rem;
+  }
   .ew-date-picker { gap:.25rem!important; font-size:.72rem; }
   .ew-date-picker input,
-  .ew-availability-controls>.ew-button {
+  .ew-date-find-row>.ew-button,
+  .ew-date-find-row>.ew-find-next {
     height:44px;
     min-height:44px;
     border-radius:9px;
   }
-  .ew-availability-controls>.ew-button {
-    padding:.5rem .65rem;
+  .ew-date-find-row>.ew-button,
+  .ew-date-find-row>.ew-find-next {
+    padding:.5rem .45rem;
     font-size:.78rem;
   }
   .ew-availability-browser .ew-slot-status {
@@ -2555,6 +2772,10 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
     position:static;
     margin:0;
     bottom:auto;
+    display:grid !important;
+    grid-template-columns:2fr 3fr !important;
+    flex-direction:row !important;
+    gap:.55rem;
     box-shadow:0 12px 28px rgba(17,16,14,.12);
   }
   .ew-selected-slot-dock {
@@ -2647,25 +2868,19 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   font-weight:700;
   letter-spacing:.02em;
 }
-/* Day tabs own date selection once loaded — all viewports */
+/* Day tabs own the “selected date” summary once loaded */
 .ew-availability-browser.has-days .ew-selected-date { display:none; }
-@media (min-width:761px) {
-  .ew-availability-browser.has-days .ew-availability-controls {
-    grid-template-columns:minmax(220px,280px);
-    justify-content:start;
-    gap:.55rem;
-    padding:.85rem 1rem;
-  }
-  .ew-availability-browser.has-days .ew-find-next.is-quiet { display:none; }
-  .ew-availability-browser.has-days .ew-date-picker { width:100%; }
+.ew-availability-browser.has-days .ew-availability-controls {
+  grid-template-columns:1fr;
+  gap:.55rem;
+  padding:.85rem 1rem;
 }
-.ew-find-next.is-quiet:hover,
-.ew-find-next.is-quiet:focus-visible {
-  color:var(--ew-black);
-  border-bottom-color:var(--ew-black);
+.ew-availability-browser.has-days .ew-date-find-row {
+  grid-template-columns:3fr 2fr;
+  width:100%;
 }
 .ew-find-next:disabled { opacity:.55; cursor:wait; }
-.ew-availability-controls>.ew-find-next.ew-button { height:52px; min-height:52px; border-radius:10px; }
+.ew-date-find-row>.ew-find-next.ew-button { height:52px; min-height:52px; border-radius:10px; }
 .ew-availability-browser .ew-slot-grid button:focus-visible {
   outline:3px solid var(--ew-clay, #b86f48);
   outline-offset:2px;
@@ -2762,18 +2977,15 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 }
 
 @media (max-width:760px) {
-  /* After day tabs load: demote Find next; selected-date already hidden globally */
   .ew-availability-browser.has-days .ew-availability-controls {
     grid-template-columns:1fr;
     gap:.45rem;
     padding:.65rem .7rem;
   }
-  .ew-availability-browser.has-days .ew-date-picker { width:100%; }
-  .ew-availability-browser.has-days .ew-find-next.is-quiet {
-    justify-content:flex-start;
-    min-height:44px;
+  .ew-availability-browser.has-days .ew-date-find-row {
+    grid-template-columns:3fr 2fr;
   }
-  .ew-availability-controls>.ew-find-next.ew-button {
+  .ew-date-find-row>.ew-find-next.ew-button {
     height:44px;
     min-height:44px;
   }

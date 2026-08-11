@@ -1,4 +1,4 @@
-import { EmmiwoodError, SHOP_ID, book, bootstrap, hash, requireSameOrigin, slots, token, validateDate } from './emmiwood-core.js';
+import { EmmiwoodError, SHOP_ID, book, bootstrap, hash, normalizePhone, requireSameOrigin, slots, token, validateDate } from './emmiwood-core.js';
 import { cancelAppointment as cancelBooking, rescheduleAppointment as rescheduleBooking } from './emmiwood-booking.js';
 import {
   NOTIFICATION_PROVIDER_MOCK,
@@ -19,7 +19,6 @@ const RESOURCE = {
 
 const rows = (result) => result?.results || [];
 const now = () => Math.floor(Date.now() / 1000);
-const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
 export function authRequestLimit(env = {}) {
   const configured = Number(env.EMMIWOOD_AUTH_REQUEST_LIMIT);
@@ -79,16 +78,16 @@ async function enforceAuthResponseFloor(env, startedAt) {
   if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
 }
 
-async function deliverAdminCode(env, admin, normalized, notificationId, payload, provider) {
+async function deliverAdminCode(env, admin, phone, notificationId, payload, provider) {
   try {
     if (env.ENVIRONMENT === 'production' && provider === NOTIFICATION_PROVIDER_MOCK) {
-      throw new Error('Email delivery is not configured.');
+      throw new Error('SMS delivery is not configured.');
     }
     const delivery = await deliverNotification(env, {
       id: notificationId,
-      channel: 'email',
+      channel: 'sms',
       template: 'admin_login_code',
-      recipient: normalized,
+      recipient: phone,
       payload_json: JSON.stringify(payload),
       provider,
     });
@@ -111,43 +110,49 @@ async function deliverAdminCode(env, admin, normalized, notificationId, payload,
   }
 }
 
-export async function requestCode(env, email, { defer, source } = {}) {
+export async function requestCode(env, phone, { defer, source } = {}) {
   const startedAt = Date.now();
   await bootstrap(env);
-  const normalized = normalizeEmail(email);
-  if (!normalized) throw new EmmiwoodError('email_required', 'Email is required.', 422);
+  let normalized;
+  try {
+    normalized = normalizePhone(phone);
+  } catch {
+    await enforceAuthResponseFloor(env, startedAt);
+    // Indistinguishable response for invalid / unknown numbers (no account enumeration).
+    return { ok: true };
+  }
   if (!await consumeAuthSource(env, source)) {
     await enforceAuthResponseFloor(env, startedAt);
     return { ok: true };
   }
-  const admin = await env.DB.prepare('SELECT * FROM emmiwood_admins WHERE shop_id=? AND email=? COLLATE NOCASE AND active=1').bind(SHOP_ID, normalized).first();
+  const admin = await env.DB.prepare('SELECT * FROM emmiwood_admins WHERE shop_id=? AND phone=? AND active=1').bind(SHOP_ID, normalized).first();
   if (!admin) {
     await enforceAuthResponseFloor(env, startedAt);
     return { ok: true };
   }
   const recentChallenges = await env.DB.prepare('SELECT COUNT(*) count FROM emmiwood_login_challenges WHERE admin_id=? AND created_at>?').bind(admin.id, now() - 600).first();
   if (Number(recentChallenges?.count || 0) >= authRequestLimit(env)) {
-    await env.DB.batch([audit(env, admin.id, 'admin_code_rate_limited', { email: normalized })]);
+    await env.DB.batch([audit(env, admin.id, 'admin_code_rate_limited', { phone: normalized })]);
     await enforceAuthResponseFloor(env, startedAt);
     return { ok: true };
   }
 
   const code = String((Number.parseInt((await hash(`${normalized}:${Date.now()}:${token(8)}`)).slice(0, 8), 16) % 900000) + 100000);
   const notificationId = crypto.randomUUID();
-  const payload = { code, subject: 'Your Emmiwood Barbers sign-in code' };
-  const provider = notificationProvider(env, 'email');
+  const payload = { code };
+  const provider = notificationProvider(env, 'sms');
   await env.DB.batch([
     env.DB.prepare('UPDATE emmiwood_login_challenges SET consumed_at=? WHERE admin_id=? AND consumed_at IS NULL').bind(now(), admin.id),
     env.DB.prepare('INSERT INTO emmiwood_login_challenges(id,admin_id,code_hash,expires_at) VALUES(?,?,?,?)').bind(crypto.randomUUID(), admin.id, await hash(code), now() + 600),
     notificationStatement(env, {
       id: notificationId,
       shopId: SHOP_ID,
-      channel: 'email',
+      channel: 'sms',
       template: 'admin_login_code',
       recipient: normalized,
       payload,
     }),
-    audit(env, admin.id, 'admin_code_requested', { email: normalized }),
+    audit(env, admin.id, 'admin_code_requested', { phone: normalized }),
   ]);
 
   const deliveryTask = deliverAdminCode(env, admin, normalized, notificationId, payload, provider);
@@ -157,9 +162,14 @@ export async function requestCode(env, email, { defer, source } = {}) {
   return { ok: true, ...(env.ENVIRONMENT !== 'production' ? { previewCode: code } : {}) };
 }
 
-export async function verifyCode(env, email, code) {
-  const normalized = normalizeEmail(email);
-  const row = await env.DB.prepare('SELECT c.*,a.email,a.role FROM emmiwood_login_challenges c JOIN emmiwood_admins a ON a.id=c.admin_id WHERE a.email=? COLLATE NOCASE AND c.consumed_at IS NULL AND c.locked_at IS NULL AND c.expires_at>? ORDER BY c.created_at DESC LIMIT 1').bind(normalized, now()).first();
+export async function verifyCode(env, phone, code) {
+  let normalized;
+  try {
+    normalized = normalizePhone(phone);
+  } catch {
+    throw new EmmiwoodError('invalid_code', 'That code is invalid or expired.', 401);
+  }
+  const row = await env.DB.prepare('SELECT c.*,a.email,a.phone,a.role FROM emmiwood_login_challenges c JOIN emmiwood_admins a ON a.id=c.admin_id WHERE a.phone=? AND c.consumed_at IS NULL AND c.locked_at IS NULL AND c.expires_at>? ORDER BY c.created_at DESC LIMIT 1').bind(normalized, now()).first();
   if (!row) throw new EmmiwoodError('invalid_code', 'That code is invalid or expired.', 401);
   if (await hash(String(code || '')) !== row.code_hash) {
     const failedAttempts = Number(row.failed_attempts || 0) + 1;
@@ -175,7 +185,7 @@ export async function verifyCode(env, email, code) {
     env.DB.prepare('INSERT INTO emmiwood_sessions(id,admin_id,token_hash,expires_at) VALUES(?,?,?,?)').bind(crypto.randomUUID(), row.admin_id, await hash(raw), now() + 28800),
     audit(env, row.admin_id, 'admin_signed_in'),
   ]);
-  return { token: raw, admin: { id: row.admin_id, email: row.email, role: row.role } };
+  return { token: raw, admin: { id: row.admin_id, email: row.email, phone: row.phone, role: row.role } };
 }
 
 export async function requireAdmin(env, request, roles = ['owner', 'manager', 'staff', 'kup_support']) {

@@ -4,18 +4,23 @@ export const NOTIFICATION_PROVIDER_RESEND = 'resend';
 export const NOTIFICATION_PROVIDER_UNCONFIGURED = 'unconfigured';
 export const REMINDER_LEAD_SECONDS = 24 * 60 * 60;
 
+/** v1 production gate: processor + SMS only. Resend/email secrets are deferred. */
 export const PRODUCTION_NOTIFICATION_SECRET_NAMES = Object.freeze([
   'EMMIWOOD_NOTIFICATION_SECRET',
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'TWILIO_FROM_NUMBER',
+]);
+
+/** Deferred until a later product version reintroduces email delivery. */
+export const DEFERRED_EMAIL_SECRET_NAMES = Object.freeze([
   'RESEND_API_KEY',
   'EMAIL_FROM',
 ]);
 
 const PROCESSOR_SECRET_NAMES = Object.freeze(['EMMIWOOD_NOTIFICATION_SECRET']);
 const SMS_SECRET_NAMES = Object.freeze(['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM_NUMBER']);
-const EMAIL_SECRET_NAMES = Object.freeze(['RESEND_API_KEY', 'EMAIL_FROM']);
+const EMAIL_SECRET_NAMES = DEFERRED_EMAIL_SECRET_NAMES;
 
 function missingNames(env, names) {
   return names.filter((name) => !env?.[name]);
@@ -44,11 +49,17 @@ export function notificationReadiness(env) {
   const smsMissing = missingNames(env, SMS_SECRET_NAMES);
   const emailMissing = missingNames(env, EMAIL_SECRET_NAMES);
   return {
-    ready: processorMissing.length === 0 && smsMissing.length === 0 && emailMissing.length === 0,
+    // SMS-only v1: email secrets must not block customer SMS or admin SMS OTP.
+    ready: processorMissing.length === 0 && smsMissing.length === 0,
     environment: 'production',
     processor: { ready: processorMissing.length === 0, missing: processorMissing },
     sms: { ready: smsMissing.length === 0, provider: notificationProvider(env, 'sms'), missing: smsMissing },
-    email: { ready: emailMissing.length === 0, provider: notificationProvider(env, 'email'), missing: emailMissing },
+    email: {
+      ready: emailMissing.length === 0,
+      provider: notificationProvider(env, 'email'),
+      missing: emailMissing,
+      deferred: true,
+    },
   };
 }
 
@@ -206,6 +217,7 @@ export async function deliverNotification(env, row) {
 export function renderSms(template, payload) {
   const optOut = payload.optOut ? ` ${payload.optOut}` : '';
   switch (template) {
+    case 'admin_login_code': return `Emmiwood Barbers: your sign-in code is ${payload.code}. It expires in ten minutes.`;
     case 'booking_confirmation': return `Emmiwood Barbers: your appointment is confirmed.${optOut}`;
     case 'appointment_reminder': return `Emmiwood Barbers reminder: your appointment is tomorrow.${optOut}`;
     case 'cancellation_confirmation': return `Emmiwood Barbers: your appointment has been cancelled.${optOut}`;

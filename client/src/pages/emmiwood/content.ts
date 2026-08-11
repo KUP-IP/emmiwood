@@ -28,16 +28,16 @@ export const FALLBACK_CATALOG: Catalog = {
     address: EMMIWOOD_ADDRESS,
     phone: EMMIWOOD_PHONE,
     timezone: 'America/Chicago',
-    min_notice_minutes: 240,
+    min_notice_minutes: 0,
     horizon_days: 30,
-    change_cutoff_minutes: 720,
+    change_cutoff_minutes: 0,
   },
   services: [
-    { id: 'signature', name: 'Signature Haircut', description: 'A tailored cut or fade, neckline cleanup, and finished style.', price_cents: 3500, duration_minutes: 40, buffer_minutes: 10, active: 1, sort_order: 1 },
-    { id: 'hair-beard', name: 'Haircut + Beard Detail', description: 'A full haircut with beard shaping, clean lines, and one balanced finish.', price_cents: 5000, duration_minutes: 55, buffer_minutes: 10, active: 1, sort_order: 2 },
-    { id: 'beard', name: 'Beard Sculpt', description: 'Shape, weight control, clean lines, and a conditioning finish.', price_cents: 2500, duration_minutes: 25, buffer_minutes: 5, active: 1, sort_order: 3 },
-    { id: 'lineup', name: 'Lineup & Cleanup', description: 'A precise edge-up and neckline cleanup between full cuts.', price_cents: 1500, duration_minutes: 15, buffer_minutes: 5, active: 1, sort_order: 4 },
-    { id: 'young', name: 'Young Gentleman’s Cut', description: 'A patient, polished cut for guests age twelve and under.', price_cents: 3000, duration_minutes: 30, buffer_minutes: 10, active: 1, sort_order: 5 },
+    { id: 'signature', name: 'Signature Haircut', description: 'A tailored cut or fade, neckline cleanup, and finished style.', price_cents: 3500, duration_minutes: 35, buffer_minutes: 5, active: 1, sort_order: 1 },
+    { id: 'hair-beard', name: 'Haircut + Beard Detail', description: 'A full haircut with beard shaping, clean lines, and one balanced finish. Hot towel available as a $5 add-on.', price_cents: 4000, duration_minutes: 55, buffer_minutes: 5, active: 1, sort_order: 2 },
+    { id: 'beard', name: 'Beard Sculpt', description: 'Shape, weight control, clean lines, and a conditioning finish.', price_cents: 2000, duration_minutes: 20, buffer_minutes: 5, active: 1, sort_order: 3 },
+    { id: 'lineup', name: 'Lineup & Cleanup', description: 'A precise edge-up and neckline cleanup between full cuts.', price_cents: 2000, duration_minutes: 20, buffer_minutes: 5, active: 1, sort_order: 4 },
+    { id: 'young', name: 'Kids Cut', description: 'A patient, polished cut for guests age twelve and under.', price_cents: 2800, duration_minutes: 25, buffer_minutes: 5, active: 1, sort_order: 5 },
   ],
   barbers: [
     { id: 'barro', name: 'Barro', bio: 'Craft-led cuts, calm consultation, and a finish designed for the way your hair actually moves.', active: 1, sort_order: 1 },
@@ -53,6 +53,11 @@ export const SERVICE_FIT: Record<string, string> = {
   lineup: 'Best for extending a cut between full appointments.',
   young: 'Best for younger guests who need a patient, considered appointment.',
 };
+
+/** Shop-floor add-ons that are not standalone bookable services. */
+export const SERVICE_ADD_ONS = [
+  { id: 'hot-towel', name: 'Hot towel', price_cents: 500, note: 'Add-on with a haircut or beard service — request at the chair or when you book.' },
+] as const;
 
 export const BARBER_DETAILS: Record<string, { schedule: string; specialty: string; fit: string }> = {
   barro: {

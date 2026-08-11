@@ -7,6 +7,7 @@ import {
   EMMIWOOD_PHONE_LABEL,
   emmiwoodMapsEmbedSrc,
   FALLBACK_CATALOG,
+  SERVICE_ADD_ONS,
   SERVICE_FIT,
   money,
 } from './content';
@@ -49,9 +50,9 @@ function shopClock(date: Date) {
   } else if (openDay && minutes < 720) {
     status = 'Open now';
     detail = 'Appointments until noon';
-  } else if (openDay && minutes < 840) {
+  } else if (openDay && minutes < 1020) {
     status = 'Open now';
-    detail = 'Walk-ins until 2:00 PM';
+    detail = 'Walk-ins until 5:00 PM';
   } else if (openDay && minutes < 1140) {
     status = 'Open now';
     detail = 'Appointments until 7:00 PM';
@@ -105,18 +106,18 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
     </>}
     {checked && !opening && <>
       <strong>Call for today’s options.</strong>
-      <small>Walk-ins run noon–2, Monday through Saturday.</small>
+      <small>Walk-ins run noon–5, Monday through Saturday.</small>
       <a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a>
     </>}
   </div>;
 }
 
 function HoursTimeline() {
-  return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: appointments 9–noon and 2–7, walk-ins noon–2">
+  return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: appointments 9–noon and 5–7, walk-ins noon–5">
     <div className="ew-hours-track">
       <div className="appointment morning"><strong>Appointments</strong><span>9:00 AM–noon</span></div>
-      <div className="walkin"><strong>Walk-ins</strong><span>Noon–2:00 PM</span></div>
-      <div className="appointment afternoon"><strong>Appointments</strong><span>2:00–7:00 PM</span></div>
+      <div className="walkin"><strong>Walk-ins</strong><span>Noon–5:00 PM</span></div>
+      <div className="appointment afternoon"><strong>Appointments</strong><span>5:00–7:00 PM</span></div>
     </div>
   </div>;
 }
@@ -204,14 +205,14 @@ export default function EmmiwoodPage() {
 
   return <div className={`emmiwood ew-public${chinCompact ? ' ew-chin-compact' : ''}`}>
     <EmmiwoodMeta
-      title="Emmiwood Barbers | Haircuts & Beard Work in Sioux Falls"
-      description="Tailored haircuts, beard work, transparent pricing, online booking, and noon–2 walk-ins at Emmiwood Barbers in Sioux Falls."
+      title="Emmiwood Barbers | Get the Best for Less in Sioux Falls"
+      description="Best fades in town, beard work, and customer service off the charts—gentlemen and kids welcome. Online booking and noon–5 walk-ins at Emmiwood Barbers in Sioux Falls."
       path="/emmiwood"
       structured
     />
     <a className="ew-skip" href="#main">Skip to content</a>
     <header className="ew-site-header">
-      <a className="ew-brand" href="#top" aria-label="Emmiwood home"><span>E</span><strong>Emmiwood</strong></a>
+      <a className="ew-brand" href="#top" aria-label="Emmiwood home"><span>EWB</span><strong>Emmiwood</strong></a>
       <nav aria-label="Primary navigation"><a href="#services">Services</a><a href="#barbers">Barbers</a><a href="#visit">Visit</a></nav>
       <a className="ew-button small ew-header-book" href="/emmiwood/book">Book an appointment</a>
     </header>
@@ -226,8 +227,8 @@ export default function EmmiwoodPage() {
         <div className="ew-hero-atmosphere" aria-hidden="true" />
         <div className="ew-hero-main">
           <span className="ew-eyebrow">Emmiwood · Sioux Falls</span>
-          <h1>Look Sharp. <em>Stay Classy.</em></h1>
-          <p>Haircuts, fades, and beard work shaped around how you wear your hair—clear prices, an unrushed consult, a finish that grows out clean.</p>
+          <h1>Get the best <em>for less.</em></h1>
+          <p>One of the best fades in town—plus beard work, customer service off the charts, and a shop built for gentlemen and kids. Clear prices. An unrushed consult. A finish that grows out clean.</p>
           <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book an appointment</a><a className="ew-link" href="#services">Choose a service</a></div>
         </div>
         <div className="ew-hero-booking"><TodayAtEmmiwood catalog={catalog} /></div>
@@ -247,6 +248,18 @@ export default function EmmiwoodPage() {
             <p className="ew-service-meta"><span>{service.duration_minutes} min</span><span>{eligibility.get(service.id)}</span></p>
             <a className="ew-service-link" href={`/emmiwood/book?service=${service.id}`}>Book <span aria-hidden="true">→</span></a>
           </article>)}
+        </div>
+        <div className="ew-addon-row" aria-label="Add-ons">
+          {SERVICE_ADD_ONS.map((addon) => (
+            <article key={addon.id} className="ew-addon-card">
+              <header>
+                <span className="ew-eyebrow">Add-on</span>
+                <h3>{addon.name}</h3>
+                <strong className="ew-service-price">{money(addon.price_cents)}</strong>
+              </header>
+              <p>{addon.note}</p>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -279,7 +292,7 @@ export default function EmmiwoodPage() {
           <span className="ew-eyebrow">Weekly hours</span>
           <h3>Open six days a week.</h3>
           <ul className="ew-hours-compact">
-            <li><strong>Mon–Sat</strong><span>9:00 AM–7:00 PM<small>Walk-ins noon–2</small></span></li>
+            <li><strong>Mon–Sat</strong><span>9:00 AM–7:00 PM<small>Walk-ins noon–5 · evening appointments 5–7</small></span></li>
             <li className="closed"><strong>Sunday</strong><span>Closed</span></li>
           </ul>
         </div>
@@ -304,7 +317,7 @@ export default function EmmiwoodPage() {
     </main>
 
     <footer className="ew-site-footer">
-      <a className="ew-brand" href="#top"><span>E</span><strong>Emmiwood</strong></a>
+      <a className="ew-brand" href="#top"><span>EWB</span><strong>Emmiwood</strong></a>
       <div><a href="/emmiwood/privacy">Privacy</a><a href="/emmiwood/sms-terms">SMS terms</a><a href="/emmiwood/chair-rental">Chair rental</a><a href="/emmiwood/admin">Staff sign in</a></div>
       <p>© {new Date().getFullYear()} Emmiwood Barbers · Sioux Falls, South Dakota</p>
     </footer>

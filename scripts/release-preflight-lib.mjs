@@ -4,13 +4,22 @@ export const REQUIRED_EMMIWOOD_MIGRATIONS = Object.freeze([
   '0003_production_hardening.sql',
   '0004_auth_source_limits.sql',
   '0005_pricing_and_copy.sql',
+  '0006_admin_phone.sql',
+  '0007_barro_review_2026_07_23.sql',
+  '0008_cancel_until_start.sql',
+  '0009_no_min_booking_notice.sql',
 ]);
 
+/** v1 required Page secrets — SMS-only; Resend deferred. */
 export const REQUIRED_PRODUCTION_SECRETS = Object.freeze([
   'EMMIWOOD_NOTIFICATION_SECRET',
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'TWILIO_FROM_NUMBER',
+]);
+
+/** Present for visibility only; not required for v1 release preflight. */
+export const DEFERRED_PRODUCTION_SECRETS = Object.freeze([
   'RESEND_API_KEY',
   'EMAIL_FROM',
 ]);

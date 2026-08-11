@@ -105,7 +105,7 @@ export function AvailabilityBrowser({
         if (firstUsable) selectDate(firstUsable.date);
         setMessage(`We could not check every bookable day. Retry the search or call the shop before assuming no appointments remain.`);
       } else {
-        setMessage(`No openings through ${prettyDate(maxDate, true)}. Call the shop or use the noon–2 walk-in window.`);
+        setMessage(`No openings through ${prettyDate(maxDate, true)}. Call the shop or use the noon–5 walk-in window.`);
       }
     } catch (error) {
       if (currentRequest !== requestId.current) return;
@@ -162,8 +162,10 @@ export function AvailabilityBrowser({
         <strong>{prettyDate(selectedDate, true)}</strong>
         <small>{activeDay?.unavailable ? "Couldn't check this date · retry" : activeTimeCount ? `${activeTimeCount} times shown` : "No openings this date"}</small>
       </div>
-      <label className="ew-date-picker">Jump to date<input type="date" min={today} max={maxDate} value={selectedDate} onChange={(event) => void loadFromDate(event.target.value)} /></label>
-      <button className={hasDays ? 'ew-find-next is-quiet' : 'ew-find-next ew-button secondary'} type="button" onClick={() => void findNext()} disabled={busy}>{busy ? 'Searching…' : 'Find next'}</button>
+      <div className="ew-date-find-row">
+        <label className="ew-date-picker">Jump to date<input type="date" min={today} max={maxDate} value={selectedDate} onChange={(event) => void loadFromDate(event.target.value)} /></label>
+        <button className="ew-find-next ew-button secondary" type="button" onClick={() => void findNext()} disabled={busy}>{busy ? 'Searching…' : 'Find next'}</button>
+      </div>
     </div>
 
     <div className="ew-slot-status" aria-live="polite">{busy ? <><span className="ew-spinner" aria-hidden="true" />{message}</> : notice || message}</div>

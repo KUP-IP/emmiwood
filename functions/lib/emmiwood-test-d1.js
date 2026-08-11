@@ -93,5 +93,6 @@ export function setupEmmiwoodTestD1() {
   db.exec(readFileSync(`${ROOT}migrations/0003_production_hardening.sql`, 'utf8'));
   db.exec(readFileSync(`${ROOT}migrations/0004_auth_source_limits.sql`, 'utf8'));
   db.exec(readFileSync(`${ROOT}migrations/0005_pricing_and_copy.sql`, 'utf8'));
+  db.exec(readFileSync(`${ROOT}migrations/0006_admin_phone.sql`, 'utf8'));
   return db;
 }
