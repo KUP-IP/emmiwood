@@ -6,9 +6,10 @@
 
 1. Pages secrets on `emmiwood-barbers-preview` (names only; set via `wrangler pages secret put`):
    - `EMMIWOOD_NOTIFICATION_SECRET`
-   - `TWILIO_ACCOUNT_SID`
-   - `TWILIO_AUTH_TOKEN`
-   - `TWILIO_FROM_NUMBER`
+   - `TWILIO_ACCOUNT_SID` — Account SID (`AC…`) for the API path
+   - `TWILIO_AUTH_TOKEN` — classic Auth Token **or** API Key secret
+   - `TWILIO_FROM_NUMBER` — E.164 sender
+   - Optional: `TWILIO_API_KEY_SID` — when set (`SK…`), basic auth uses API Key SID + `TWILIO_AUTH_TOKEN` secret (recommended for vaulted API keys)
 2. Admin allowlist phone is a real E.164 (not `+16055550199`).
 3. Deployed code includes manage-link SMS + exact-ID processor gate.
 
