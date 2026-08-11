@@ -32,20 +32,47 @@ export function claimEndAt(startAt, service) {
   return Number(startAt) + (duration + buffer) * 60;
 }
 
-export function enforceBookingPolicy({ startAt, now, minNoticeMinutes = 240, horizonDays = 30 }) {
+/**
+ * New-booking gate.
+ * V1: min_notice_minutes defaults to 0 — any open future slot is bookable (walk-in → book next chair).
+ * Past starts are still rejected. Horizon still caps how far ahead.
+ */
+export function enforceBookingPolicy({ startAt, now, minNoticeMinutes = 0, horizonDays = 30 }) {
   const start = Number(startAt);
   const current = Number(now);
-  if (start < current + minNoticeMinutes * 60) {
-    throw new BookingError('minimum_notice', `Bookings require at least ${minNoticeMinutes / 60} hours notice.`);
+  const noticeSeconds = Math.max(0, Number(minNoticeMinutes) || 0) * 60;
+  if (start < current + noticeSeconds) {
+    if (noticeSeconds <= 0) {
+      throw new BookingError('minimum_notice', 'That start time is already in the past. Choose a later opening.');
+    }
+    const hours = noticeSeconds / 3600;
+    throw new BookingError(
+      'minimum_notice',
+      `Bookings require at least ${hours % 1 === 0 ? hours : hours.toFixed(1)} hours notice.`,
+    );
   }
   if (start > current + horizonDays * 86400) {
     throw new BookingError('outside_horizon', `Bookings open ${horizonDays} days ahead.`);
   }
 }
 
-export function enforceChangeCutoff({ startAt, now, changeCutoffMinutes = 720, isAdmin = false }) {
-  if (!isAdmin && Number(startAt) - Number(now) < changeCutoffMinutes * 60) {
-    throw new BookingError('change_cutoff', 'Online changes close 12 hours before the appointment.');
+/**
+ * Customer cancel/reschedule gate.
+ * V1: change_cutoff_minutes defaults to 0 — cancel/reschedule allowed until the appointment start.
+ */
+export function enforceChangeCutoff({ startAt, now, changeCutoffMinutes = 0, isAdmin = false }) {
+  if (isAdmin) return;
+  const remainingSeconds = Number(startAt) - Number(now);
+  const cutoffSeconds = Math.max(0, Number(changeCutoffMinutes) || 0) * 60;
+  if (remainingSeconds < cutoffSeconds) {
+    if (cutoffSeconds <= 0) {
+      throw new BookingError('change_cutoff', 'This appointment has already started and can no longer be changed online.');
+    }
+    const hours = cutoffSeconds / 3600;
+    throw new BookingError(
+      'change_cutoff',
+      `Online changes close ${hours % 1 === 0 ? hours : hours.toFixed(1)} hours before the appointment.`,
+    );
   }
 }
 
@@ -98,7 +125,7 @@ export async function reserveAppointment(db, appointment) {
   return { id: appointment.id, startAt: appointment.startAt, endAt, claimEndAt: claimEnd };
 }
 
-export async function cancelAppointment(db, { appointmentId, now, startAt, changeCutoffMinutes = 720, isAdmin = false, extraStatements = [] }) {
+export async function cancelAppointment(db, { appointmentId, now, startAt, changeCutoffMinutes = 0, isAdmin = false, extraStatements = [] }) {
   enforceChangeCutoff({ startAt, now, changeCutoffMinutes, isAdmin });
   await db.batch([
     statement(db, 'DELETE FROM emmiwood_time_claims WHERE appointment_id=?', [appointmentId]),

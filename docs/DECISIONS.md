@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-07-22
+Last updated: 2026-08-11
 
 ## Locked decisions
 
@@ -20,12 +20,22 @@ Last updated: 2026-07-22
    - Intentional alias residue (do not “fix” by renaming in this slice): npm `emmiwood` / `emmiwood-client`; Wrangler name `emmiwood`; Cloudflare preview `emmiwood-barbers-preview`; Notion FOCUS title “Emmiwood / OBK Website + Booking System”
 10. Production administrator authentication for v1 is **SMS one-time codes to allowlisted administrator phone numbers** (E.164). Email OTP / Resend is not used for admin sign-in in v1.
 11. Production notification readiness for v1 requires only the processor secret and Twilio SMS credentials. Resend / `EMAIL_FROM` remain deferred and must not block SMS readiness.
+12. **Barro review / v1 shop policy (2026-07-23 walkthrough; codified 2026-08-11):**
+    - Minimum booking notice: **0** (any open future slot; past starts rejected).
+    - Customer cancel/reschedule: allowed **until appointment start** (`change_cutoff_minutes = 0`).
+    - Appointment windows: **9:00–12:00** and **17:00–19:00**; walk-in / no online booking **12:00–17:00**.
+    - Menu/durations/prices per migrations `0007`–`0009` and seed defaults (Kids Cut, hot-towel $5 add-on copy).
+    - Customer cancel-via-text for launch means a **manage link in SMS** (absolute origin URL), not inbound keyword CANCEL.
+    - Google Calendar sync remains **out of launch scope** until a separate decision.
+    - Preview D1 already applied `0007`–`0009` on 2026-07-24; git must keep those migrations so new environments reproduce.
 
 ## Deferred
 
 - Purchase and configure `emmiwood.com` after verification.
 - Resend and customer-facing email support until a later product version.
 - GitHub CodeQL until a later explicit decision.
+- Google Calendar synchronization with bookings.
+- Inbound SMS keyword cancel (reply CANCEL).
 
 ## Implementation details
 
@@ -35,3 +45,4 @@ Last updated: 2026-07-22
 - Make the GitHub repository public and apply enforceable branch protections.
 - Replace production admin email OTP with SMS OTP to allowlisted phones (Issue #17).
 - Decouple Resend from `notificationReadiness` / release preflight for SMS-only v1.
+- Launch gates (hardened): **Preview-GO** (code+policy on preview, SMS smoke with exact outbox ID) is separate from **Prod-GO** (dedicated prod Pages/D1, secrets, origin, domain) and **Commercial-GO**.

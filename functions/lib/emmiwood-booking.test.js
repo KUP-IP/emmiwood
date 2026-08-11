@@ -56,6 +56,8 @@ function setup() {
   db.exec(readFileSync(`${ROOT}migrations/0001_booking.sql`, 'utf8'));
   db.exec(readFileSync(`${ROOT}migrations/0002_launch_copy.sql`, 'utf8'));
   db.exec(readFileSync(`${ROOT}migrations/0003_production_hardening.sql`, 'utf8'));
+  db.exec(readFileSync(`${ROOT}migrations/0008_cancel_until_start.sql`, 'utf8'));
+  db.exec(readFileSync(`${ROOT}migrations/0009_no_min_booking_notice.sql`, 'utf8'));
   return db;
 }
 
@@ -76,9 +78,9 @@ test('migration seeds the exact launch catalog and appointment availability', ()
   const db = setup();
   const shop = db.query('SELECT * FROM emmiwood_shops')[0];
   assert.equal(shop.timezone, 'America/Chicago');
-  assert.equal(shop.min_notice_minutes, 240);
+  assert.equal(shop.min_notice_minutes, 0);
   assert.equal(shop.horizon_days, 30);
-  assert.equal(shop.change_cutoff_minutes, 720);
+  assert.equal(shop.change_cutoff_minutes, 0);
   assert.equal(db.query('SELECT count(*) count FROM emmiwood_services')[0].count, 5);
   assert.equal(db.query('SELECT count(*) count FROM emmiwood_barber_services')[0].count, 10);
   assert.deepEqual(
@@ -91,16 +93,19 @@ test('migration seeds the exact launch catalog and appointment availability', ()
 
 test('claim buckets cover variable duration plus buffer and exclude walk-in hours', () => {
   assert.equal(claimBuckets(1_800, 4_800).length, 10);
-  const windows = [{ start_minute: 540, end_minute: 720 }, { start_minute: 840, end_minute: 1140 }];
+  const windows = [{ start_minute: 540, end_minute: 720 }, { start_minute: 1020, end_minute: 1140 }];
   assert.equal(slotFitsAvailability(670, 50, windows), true);
   assert.equal(slotFitsAvailability(680, 50, windows), false);
-  assert.equal(slotFitsAvailability(840, 50, windows), true);
+  assert.equal(slotFitsAvailability(840, 50, windows), false); // walk-in window
+  assert.equal(slotFitsAvailability(1020, 50, windows), true);
 });
 
-test('booking policy enforces notice and horizon', () => {
-  assert.throws(() => enforceBookingPolicy({ now: 1_000, startAt: 1_000 + 239 * 60 }), { code: 'minimum_notice' });
-  assert.throws(() => enforceBookingPolicy({ now: 1_000, startAt: 1_000 + 31 * 86400 }), { code: 'outside_horizon' });
-  assert.doesNotThrow(() => enforceBookingPolicy({ now: 1_000, startAt: 1_000 + 4 * 3600 }));
+test('booking policy allows near-term slots; blocks past and far horizon', () => {
+  // V1: no min notice — 45 minutes out is fine (walk-in → book next chair)
+  assert.doesNotThrow(() => enforceBookingPolicy({ now: 1_000, startAt: 1_000 + 45 * 60, minNoticeMinutes: 0 }));
+  assert.doesNotThrow(() => enforceBookingPolicy({ now: 1_000, startAt: 1_000 + 60, minNoticeMinutes: 0 }));
+  assert.throws(() => enforceBookingPolicy({ now: 1_000, startAt: 999, minNoticeMinutes: 0 }), { code: 'minimum_notice' });
+  assert.throws(() => enforceBookingPolicy({ now: 1_000, startAt: 1_000 + 31 * 86400, minNoticeMinutes: 0 }), { code: 'outside_horizon' });
 });
 
 test('overlapping variable-duration reservations are rejected atomically', async () => {
@@ -112,14 +117,20 @@ test('overlapping variable-duration reservations are rejected atomically', async
   db.close();
 });
 
-test('cancellation releases claims and observes the customer cutoff', async () => {
+test('cancellation allowed until start; blocked after start', async () => {
   const db = setup();
   const startAt = 100_000;
   await reserveAppointment(db, booking('one', startAt));
-  await assert.rejects(cancelAppointment(db, { appointmentId: 'one', startAt, now: startAt - 11 * 3600 }), { code: 'change_cutoff' });
-  await cancelAppointment(db, { appointmentId: 'one', startAt, now: startAt - 13 * 3600 });
+  // V1: last-minute cancel is allowed (11h before would have been blocked under the old 12h rule)
+  await cancelAppointment(db, { appointmentId: 'one', startAt, now: startAt - 11 * 3600, changeCutoffMinutes: 0 });
   assert.equal(db.query("SELECT count(*) count FROM emmiwood_time_claims WHERE appointment_id='one'")[0].count, 0);
   assert.equal(db.query("SELECT status FROM emmiwood_appointments WHERE id='one'")[0].status, 'cancelled');
+
+  await reserveAppointment(db, booking('two', startAt + 50_000));
+  await assert.rejects(
+    cancelAppointment(db, { appointmentId: 'two', startAt: startAt + 50_000, now: startAt + 50_000 + 1, changeCutoffMinutes: 0 }),
+    { code: 'change_cutoff' },
+  );
   db.close();
 });
 
