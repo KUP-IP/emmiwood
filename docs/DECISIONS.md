@@ -34,6 +34,11 @@ Last updated: 2026-08-11
     - Non-production notification **processor requires exact `?id=`** — bulk process is production-only.
     - Scheduler `EMMIWOOD_NOTIFICATIONS_ENABLED` remains **false** until an approved exact-ID synthetic smoke is recorded.
     - Admin OTP allowlist phones must be real E.164 values (replace `+16055550199` seed before claiming admin SMS works).
+14. **Twilio number split + A2P (2026-08-12):**
+    - Emmiwood appointment/OTP From is **`+16052503489`** only (Messaging Service `MG89702f…`).
+    - 605 Good Dog holds **`+16058004499`** as an **internal** business line; public NAP remains **no `tel:`** on 605good.dog / GBP.
+    - A2P Sole Prop brand **APPROVED**; campaign `QE2c6890…` resubmitted **IN_PROGRESS** after static privacy/sms-terms for TCR **30908**.
+    - Live SMS retest only after campaign **VERIFIED**.
 
 ## Deferred
 
