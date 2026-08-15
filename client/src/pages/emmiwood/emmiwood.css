@@ -1018,7 +1018,7 @@
 .ew-confirmation { text-align:left; }
 .ew-confirmation h1 { margin:.8rem 0 1.25rem; font-size:clamp(3rem,6vw,6rem); }
 .ew-confirmation .ew-actions { margin-top:1.5rem; }
-.ew-app-footer { display:flex; justify-content:space-between; gap:1rem; padding:1.2rem clamp(1rem,4vw,4rem); border-top:1px solid var(--ew-line-dark); background:var(--ew-black); color:#9da09b; font-size:.74rem; }
+.ew-app-footer { display:flex; justify-content:space-between; gap:1rem; margin-top:auto; padding:1.2rem clamp(1rem,4vw,4rem); border-top:1px solid var(--ew-line-dark); background:var(--ew-black); color:#9da09b; font-size:.74rem; }
 .ew-manage-page { display:grid; align-items:start; background:linear-gradient(135deg,#151a1c,#0d1011); }
 .ew-manage-panel h1,.ew-info-page h1 { margin:.8rem 0 1.5rem; font-size:clamp(3rem,6vw,6rem); }
 .ew-appointment-card { display:flex; align-items:start; justify-content:space-between; gap:1.5rem; padding:1.35rem 1.5rem; border-radius:0; background:var(--ew-black); color:var(--ew-ivory); }
@@ -1184,6 +1184,7 @@
 .ewa-auth .ewa-login-card form { display:grid; gap:1rem; margin-top:2rem; }
 .ewa-auth .ewa-preview { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem; background:var(--ew-gold); color:var(--ew-black); }
 .ewa-auth .ewa-preview strong { font:700 1.5rem/1 "Space Grotesk",sans-serif; letter-spacing:.16em; }
+.emmiwood.ew-app-surface.ewa-workspace { background:#e9e7e0; color:var(--ew-black); }
 .ewa-workspace .ewa-top { min-height:72px; padding:.75rem clamp(1rem,3vw,2.5rem); border-bottom:1px solid var(--ew-line-dark); background:var(--ew-black); color:var(--ew-ivory); }
 .ewa-workspace .ewa-top>div { display:flex; align-items:center; gap:1.25rem; }
 .ewa-workspace .ewa-top>div span { color:#9fa29e; font-size:.72rem; }
@@ -1194,8 +1195,15 @@
 .ewa-workspace .ewa-nav button.active { border-left-color:var(--ew-signal); background:var(--ew-black); color:var(--ew-ivory); }
 .ewa-workspace .ewa-main { min-width:0; padding:clamp(1rem,4vw,4rem); background:#e9e7e0; }
 .ewa-workspace .ewa-heading,.ewa-workspace .ewa-panel-head { align-items:flex-end; margin-bottom:2rem; }
-.ewa-workspace .ewa-heading h1,.ewa-workspace .ewa-panel h1 { margin:.65rem 0 0; font-size:clamp(3.2rem,6vw,6.4rem); }
-.ewa-workspace .ewa-panel h2 { margin:.55rem 0 0; font-size:clamp(2rem,3.5vw,3.8rem); }
+.ewa-workspace .ewa-heading h1,.ewa-workspace .ewa-panel h1 { margin:.35rem 0 0; color:var(--ew-black); font-size:clamp(1.4rem,2.4vw,1.75rem); letter-spacing:-.02em; line-height:1.15; }
+.ewa-workspace .ewa-panel h2 { margin:.35rem 0 0; color:var(--ew-black); font-size:clamp(1.15rem,2vw,1.4rem); letter-spacing:-.02em; line-height:1.2; }
+.ewa-shop-nav { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 1.25rem; }
+.ewa-shop-nav button { min-height:40px; padding:.45rem .85rem; border:1px solid #c6c6c0; background:#fff; color:#343938; font-size:.78rem; font-weight:700; cursor:pointer; }
+.ewa-shop-nav button.active { border-color:var(--ew-black); background:var(--ew-black); color:var(--ew-ivory); }
+.ewa-hours-groups { display:grid; gap:1.25rem; }
+.ewa-hours-group h2 { margin:0 0 .55rem; color:var(--ew-black); font-size:1.15rem; }
+.ewa-resource-list article strong,.ewa-customer-list article strong,.ewa-appointment-list article strong,.ewa-agenda strong { color:var(--ew-black); }
+.ewa-attention-action { cursor:pointer; }
 .ewa-workspace .ewa-panel { min-width:0; margin-bottom:1.25rem; padding:clamp(1rem,3vw,2.5rem); border:1px solid #c9cac4; background:var(--ew-paper); box-shadow:0 12px 40px rgba(16,20,23,.04); }
 .ewa-attention-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; margin-bottom:1.25rem; background:#c9cac4; }
 .ewa-attention-grid article { min-width:0; padding:1.5rem; background:var(--ew-black); color:var(--ew-ivory); }
@@ -1245,7 +1253,7 @@
 .ewa-customer-list article span { overflow-wrap:anywhere; color:#666b68; font-size:.8rem; }
 .ewa-customer-list dl { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; }
 .ewa-customer-list dl div { padding:.4rem .8rem; border-left:1px solid #dedfd9; }
-.ewa-customer-list dt { color:#747976; font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.ewa-customer-list dt { color:#4a4f4c; font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
 .ewa-customer-list dd { margin:.25rem 0 0; font-weight:700; }
 .ewa-message-columns { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr); gap:1.25rem; }
 .ewa-message-list article { padding:1rem; border-left:4px solid #6a706c; background:#fff; }
@@ -1257,7 +1265,7 @@
 .ewa-message-list article>div:first-child span { color:#666b68; font-size:.75rem; }
 .ewa-message-list dl { display:grid; grid-template-columns:repeat(3,1fr); margin:1rem 0 0; }
 .ewa-message-list dl div { border-right:1px solid #e0e1dc; }
-.ewa-message-list dt { color:#747976; font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.ewa-message-list dt { color:#4a4f4c; font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
 .ewa-message-list dd { margin:.2rem 0 0; text-transform:capitalize; }
 .ewa-message-list p { margin:.8rem 0 0; color:#9d2e21; font-size:.78rem; }
 .ewa-activity-list article { display:grid; gap:.15rem; padding:.8rem 0; border-bottom:1px solid #d9dad5; }
@@ -1265,7 +1273,8 @@
 
 @media (max-width:1000px) {
   .ewa-workspace .ewa-shell { grid-template-columns:1fr; }
-  .ewa-workspace .ewa-nav { position:sticky; top:72px; z-index:20; flex-direction:row; overflow-x:auto; padding:.55rem; border-right:0; border-bottom:1px solid #c6c6c0; }
+  .ewa-workspace .ewa-nav { position:sticky; top:72px; z-index:20; flex-direction:row; overflow-x:visible; padding:.55rem; border-right:0; border-bottom:1px solid #c6c6c0; }
+  .ewa-workspace .ewa-nav button { flex:1 1 0; }
   .ewa-workspace .ewa-nav button { flex:0 0 auto; border-left:0; border-bottom:3px solid transparent; white-space:nowrap; }
   .ewa-workspace .ewa-nav button.active { border-bottom-color:var(--ew-signal); }
   .ewa-message-columns { grid-template-columns:1fr; }
@@ -1274,7 +1283,7 @@
   .ewa-workspace .ewa-top>div span { display:none; }
   .ewa-workspace .ewa-main { padding:.6rem; }
   .ewa-workspace .ewa-heading,.ewa-workspace .ewa-panel-head { align-items:flex-start; flex-direction:column; gap:.8rem; }
-  .ewa-workspace .ewa-heading h1,.ewa-workspace .ewa-panel h1 { font-size:3.2rem; }
+  .ewa-workspace .ewa-heading h1,.ewa-workspace .ewa-panel h1 { font-size:1.45rem; }
   .ewa-attention-grid { grid-template-columns:1fr; }
   .ewa-attention-grid article { padding:1.1rem; }
   .ewa-agenda button { grid-template-columns:70px minmax(0,1fr); }
@@ -1415,8 +1424,8 @@
 .ew-today-card>header strong { color:var(--ew-crimson); font:400 1.75rem/1 Georgia,"Times New Roman",serif; }
 .ew-today-card>header small { color:#6f665f; }
 .ew-today-card .ew-eyebrow { color:var(--ew-crimson); }
-.ew-hours-visual { padding:1.4rem; border-bottom:1px solid rgba(59,40,31,.16); }
-.ew-hours-track { min-height:76px; display:grid; grid-template-columns:3fr 5fr 2fr; gap:2px; background:#d8d0c5; }
+.ew-hours-visual { padding:0; border-bottom:1px solid rgba(59,40,31,.16); }
+.ew-hours-track { min-height:76px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; background:rgba(59,40,31,.16); }
 .ew-hours-track>div { min-width:0; display:flex; flex-direction:column; justify-content:center; padding:.75rem; }
 .ew-hours-track .appointment { background:var(--ew-brown); color:var(--ew-ivory); }
 .ew-hours-track .walkin { background:var(--ew-crimson); color:#fff; }
@@ -1426,7 +1435,6 @@
   gap:.3rem;
   padding:1.15rem 1.4rem;
   border:0;
-  border-bottom:1px solid rgba(59,40,31,.16);
   background:#efe6d8;
   color:var(--ew-brown-deep);
 }
@@ -1621,8 +1629,8 @@
   box-shadow:0 34px 90px rgba(18,10,7,.34),0 2px 0 rgba(255,255,255,.4) inset;
 }
 .ew-today-card>header { padding:1.1rem 1.25rem; }
-.ew-hours-visual { padding:1.05rem 1.25rem; }
-.ew-hours-track { min-height:62px; border-radius:10px; overflow:hidden; }
+.ew-hours-visual { padding:0; }
+.ew-hours-track { min-height:62px; border-radius:0; overflow:hidden; }
 .ew-today-card .ew-next-opening { padding:.9rem 1.25rem; background:#f1e9dc; }
 .ew-today-actions { padding:.9rem 1.25rem 1.1rem; }
 .ew-map-link { border-radius:10px; }
@@ -2044,11 +2052,45 @@
   opacity:1;
 }
 
-/* Today card: status + day band + next opening; directions as text link */
-.ew-today-card>header { padding:1.35rem 1.45rem 1.2rem; }
-.ew-hours-visual { padding:1.35rem 1.45rem; }
-.ew-today-card .ew-next-opening { padding:1.15rem 1.45rem; }
-.ew-today-actions { padding:1rem 1.45rem 1.25rem; }
+/* Today card: one hairline, full-bleed hours, directions in next-opening */
+.ew-today-card {
+  --ew-today-line:rgba(59,40,31,.16);
+  --ew-today-pad:1.25rem 1.45rem;
+}
+.ew-today-card>header {
+  padding:var(--ew-today-pad);
+  border-bottom:1px solid var(--ew-today-line);
+}
+.ew-today-card>header .ew-eyebrow { white-space:nowrap; color:var(--ew-crimson); }
+.ew-today-card>header>div { flex:1; min-width:0; }
+.ew-today-card>header small { white-space:nowrap; }
+.ew-hours-visual {
+  padding:0;
+  border-bottom:1px solid var(--ew-today-line);
+}
+.ew-hours-track {
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1px;
+  background:var(--ew-today-line);
+  min-height:76px;
+  border-radius:0;
+}
+.ew-today-card .ew-next-opening {
+  padding:var(--ew-today-pad);
+  border:0;
+  background:#f1e9dc;
+}
+.ew-next-opening-links {
+  display:flex;
+  flex-wrap:wrap;
+  gap:.65rem 1.2rem;
+  margin-top:.2rem;
+}
+.ew-today-card .ew-next-opening-links a {
+  color:var(--ew-crimson);
+  border-bottom:1px solid currentColor;
+  font-weight:700;
+}
 
 /* Admin sign-in: tighten empty brand gap (R4 1.25rem wins over earlier 2rem) */
 .ewa-auth .ewa-login {
@@ -2095,9 +2137,12 @@
     min-height:40px;
   }
   .ew-site-header .ew-brand>span {
-    width:36px;
+    width:auto;
+    min-width:36px;
     height:36px;
-    font-size:1.15rem;
+    padding:0 .4rem;
+    font-size:.7rem;
+    letter-spacing:.06em;
   }
   .ew-site-header .ew-brand { font-size:.82rem; }
   .ew-app-header .ew-link {
@@ -2108,9 +2153,7 @@
     font-size:.8rem;
   }
   .ew-today-card>header,
-  .ew-hours-visual,
-  .ew-today-card .ew-next-opening,
-  .ew-today-actions { padding-left:1.15rem; padding-right:1.15rem; }
+  .ew-today-card .ew-next-opening { padding-left:1.15rem; padding-right:1.15rem; }
   .ew-book-page,
   .ew-manage-page,
   .ew-info-page { padding:.65rem .65rem 1.5rem; }
@@ -2294,35 +2337,27 @@
   min-height:0;
   align-self:start;
 }
-/* Only pin footer on long booking shells — short info/manage stay paper-tight */
-.ew-app-surface:has(.ew-book-page) .ew-app-footer {
-  margin-top:auto;
-}
 .ew-app-header .ew-back-link {
   display:inline-flex;
   align-items:center;
-  justify-content:center;
   min-height:44px;
-  padding:.45rem .85rem;
-  border:1px solid rgba(244,239,230,.28);
+  padding:.45rem 0;
+  border:0;
+  border-bottom:1px solid currentColor;
   color:var(--ew-ivory);
-  font-size:.72rem;
+  font-size:.82rem;
   font-weight:700;
-  letter-spacing:.06em;
-  text-transform:uppercase;
+  letter-spacing:0;
+  text-transform:none;
 }
 .ew-app-header .ew-back-link:hover,
 .ew-app-header .ew-back-link:focus-visible {
-  border-color:var(--ew-gold);
   color:var(--ew-gold);
 }
 @media (max-width:760px) {
   .ew-app-header .ew-back-link {
     max-width:46vw;
-    padding:.45rem .7rem;
-    font-size:.64rem;
-    letter-spacing:.05em;
-    text-align:center;
+    font-size:.78rem;
     line-height:1.2;
   }
 }
@@ -2450,6 +2485,13 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   max-width:720px;
   margin-bottom:clamp(1.65rem,3.2vw,2.75rem);
 }
+.ew-public #services .ew-section-intro {
+  max-width:none;
+}
+.ew-public #services .ew-section-intro h2 {
+  white-space:nowrap;
+  font-size:clamp(1.5rem,5.2vw,4.6rem);
+}
 .ew-public .ew-section-lead {
   max-width:42ch;
   margin:0;
@@ -2570,28 +2612,6 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 @media (min-width:761px) {
   .ew-selected-slot-dock { display:none; }
   .ew-time-dock { gap:0; }
-}
-
-/* Desktop: soften header Book so hero owns the solid CTA */
-@media (min-width:761px) {
-  .ew-site-header .ew-header-book {
-    min-height:0;
-    padding:.4rem 0;
-    border:0;
-    border-bottom:1px solid rgba(244,239,230,.45);
-    border-radius:0;
-    background:transparent;
-    color:var(--ew-ivory);
-    box-shadow:none;
-    font-size:.78rem;
-    letter-spacing:.04em;
-  }
-  .ew-site-header .ew-header-book:hover,
-  .ew-site-header .ew-header-book:focus-visible {
-    border-bottom-color:var(--ew-gold);
-    background:transparent;
-    color:var(--ew-gold);
-  }
 }
 
 /* Services / barbers: text CTAs — sticky/hero/final keep solid Book */
@@ -3443,17 +3463,20 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   font-size:.9rem;
   letter-spacing:.18em;
 }
-.ew-app-header .ew-brand>span {
-  width:42px;
+.ew-public .ew-site-header .ew-brand>span,
+.ew-public .ew-site-footer .ew-brand>span,
+.ew-app-header .ew-brand>span,
+.ewa-auth .ewa-login-card .ew-brand>span,
+.ewa-workspace .ewa-top .ew-brand>span {
+  width:auto;
+  min-width:42px;
   height:42px;
-  font-size:1.3rem;
-}
-.ewa-auth .ewa-login-card .ew-brand>span {
-  width:42px;
-  height:42px;
-  font-size:1.3rem;
+  padding:0 .5rem;
+  border-color:currentColor;
   background:var(--ew-signal);
   color:#fff;
+  font:700 .78rem/1 "Space Grotesk",sans-serif;
+  letter-spacing:.08em;
 }
 
 @media (max-width:760px) {
@@ -3468,11 +3491,16 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   .ew-visit-copy { padding:1rem 1.1rem 1.2rem; }
   .ew-visit-actions { margin-top:.85rem; }
   .ew-public .ew-site-header .ew-brand>span,
+  .ew-public .ew-site-footer .ew-brand>span,
   .ew-app-header .ew-brand>span,
-  .ewa-auth .ewa-login-card .ew-brand>span {
-    width:36px;
+  .ewa-auth .ewa-login-card .ew-brand>span,
+  .ewa-workspace .ewa-top .ew-brand>span {
+    width:auto;
+    min-width:36px;
     height:36px;
-    font-size:1.15rem;
+    padding:0 .4rem;
+    font-size:.7rem;
+    letter-spacing:.06em;
   }
   .ew-public .ew-site-header .ew-brand,
   .ew-app-header .ew-brand { font-size:.82rem; }
@@ -3774,11 +3802,9 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
     }
   }
 
-  /* Hours track: give “Appointments” room in the 9–noon cell. */
   .ew-hours-track {
-    grid-template-columns:minmax(0,1.4fr) minmax(0,.85fr) minmax(0,1.4fr);
-    min-height:96px;
-    overflow:visible;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    min-height:88px;
   }
   .ew-hours-track>div {
     padding:.55rem .45rem;

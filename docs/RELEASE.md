@@ -17,8 +17,8 @@ Production provisioning remains blocked until:
 - public-repository branch protection is active.
 
 Customer email and Resend are out of scope for version one.
-`emmiwood.com` remains deferred and does not block preview or SMS-first production provisioning.
-The temporary Pages `*.pages.dev` hostname is preview-only and must not become the canonical production origin.
+`www.emmiwood.com` is attached to Pages project `emmiwood-barbers-preview` for A2P/policy hosting (apex cutover still open).
+`*.pages.dev` remains a non-canonical alias; prefer www for customer-facing and compliance URLs once live.
 
 ## Preview
 1. Require green CI on `main`.

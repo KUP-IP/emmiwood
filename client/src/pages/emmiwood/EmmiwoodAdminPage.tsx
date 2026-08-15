@@ -12,18 +12,27 @@ import '@fontsource/space-grotesk/600.css';
 import '@fontsource/space-grotesk/700.css';
 import './emmiwood.css';
 
-type AdminTab = 'today' | 'appointments' | 'customers' | 'team' | 'services' | 'hours' | 'closures' | 'messages';
+type ShopTab = 'hours' | 'closures' | 'team' | 'services' | 'customers' | 'messages';
+type AdminTab = 'today' | 'book' | ShopTab;
 
-const NAV: Array<{ id: AdminTab; label: string }> = [
+const PRIMARY_NAV: Array<{ id: 'today' | 'book' | 'shop'; label: string }> = [
   { id: 'today', label: 'Today' },
-  { id: 'appointments', label: 'Appointments' },
-  { id: 'customers', label: 'Customers' },
+  { id: 'book', label: 'Book' },
+  { id: 'shop', label: 'Shop' },
+];
+
+const SHOP_NAV: Array<{ id: ShopTab; label: string }> = [
+  { id: 'hours', label: 'Hours' },
+  { id: 'closures', label: 'Closures' },
   { id: 'team', label: 'Team' },
   { id: 'services', label: 'Services' },
-  { id: 'hours', label: 'Working hours' },
-  { id: 'closures', label: 'Closures & time off' },
-  { id: 'messages', label: 'Messages & activity' },
+  { id: 'customers', label: 'Customers' },
+  { id: 'messages', label: 'Texts' },
 ];
+
+function isShopTab(tab: AdminTab): tab is ShopTab {
+  return SHOP_NAV.some((item) => item.id === tab);
+}
 
 const FIELDS: Record<Exclude<AdminResource, 'eligibility'>, string[]> = {
   services: ['name', 'description', 'price_cents', 'duration_minutes', 'buffer_minutes', 'active'],
@@ -100,7 +109,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
   return <div className="emmiwood ew-app-surface ewa ewa-auth">
     <EmmiwoodMeta title="Staff Sign In | Emmiwood Barbers" description="Private Emmiwood shop workspace." path="/emmiwood/admin" noindex />
     <main className="ewa-login"><div className="ewa-login-card">
-      <a className="ew-brand" href="/emmiwood"><span>E</span><strong>Emmiwood</strong></a>
+      <a className="ew-brand" href="/emmiwood"><span>EWB</span><strong>Emmiwood</strong></a>
       <span className="ew-eyebrow">Private shop workspace</span>
       <h1>{sent ? 'Enter your code.' : 'Open the shop.'}</h1>
       <p className="ewa-login-lead">{sent ? 'Check your phone for a six-digit text.' : 'Sign in with an approved shop mobile number—no password to remember.'}</p>
@@ -142,9 +151,65 @@ function normalizeResourceForm(form: HTMLFormElement) {
 function resourceSummary(resource: Exclude<AdminResource, 'eligibility'>, row: AdminRow, data: Dashboard) {
   if (resource === 'services') return `${money(Number(row.price_cents || 0))} · ${row.duration_minutes} min · ${Number(row.active) ? 'Active' : 'Inactive'}`;
   if (resource === 'barbers') return `${Number(row.active) ? 'Active' : 'Inactive'} · ${String(row.bio || 'No profile note')}`;
-  if (resource === 'availability') return `${WEEKDAYS[Number(row.weekday)]} · ${minuteLabel(row.start_minute)}–${minuteLabel(row.end_minute)}`;
+  if (resource === 'availability') {
+    const barber = data.barbers.find((item) => item.id === row.barber_id)?.name || 'Entire shop';
+    return `${barber} · ${WEEKDAYS[Number(row.weekday)]} ${minuteLabel(row.start_minute)}–${minuteLabel(row.end_minute)}`;
+  }
   const barber = data.barbers.find((item) => item.id === row.barber_id)?.name || 'Entire shop';
   return `${row.date} · ${barber} · ${row.start_minute != null ? `${minuteLabel(row.start_minute)}–${minuteLabel(row.end_minute)}` : 'All day'}`;
+}
+
+function hoursTitle(row: AdminRow) {
+  return `${WEEKDAYS[Number(row.weekday)]} · ${minuteLabel(row.start_minute)}–${minuteLabel(row.end_minute)}`;
+}
+
+function HoursEditor({ rows, data, refresh }: { rows: AdminRow[]; data: Dashboard; refresh: () => void }) {
+  const [editing, setEditing] = useState<AdminRow | null>(null);
+  const [message, setMessage] = useState('');
+  const groups = useMemo(() => {
+    const byBarber = new Map<string, { id: string; name: string; rows: AdminRow[] }>();
+    for (const barber of data.barbers) byBarber.set(barber.id, { id: barber.id, name: barber.name, rows: [] });
+    byBarber.set('', { id: '', name: 'Entire shop', rows: [] });
+    for (const row of rows) {
+      const id = String(row.barber_id || '');
+      if (!byBarber.has(id)) byBarber.set(id, { id, name: id || 'Entire shop', rows: [] });
+      byBarber.get(id)!.rows.push(row);
+    }
+    for (const group of byBarber.values()) {
+      group.rows.sort((left, right) => Number(left.weekday) - Number(right.weekday) || Number(left.start_minute) - Number(right.start_minute));
+    }
+    return [...byBarber.values()].filter((group) => group.rows.length);
+  }, [rows, data.barbers]);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    try {
+      const input = normalizeResourceForm(event.currentTarget);
+      if (editing?.id) await emmiwoodApi.updateResource('availability', editing.id, input);
+      else await emmiwoodApi.createResource('availability', input);
+      setEditing(null);
+      setMessage('Saved.');
+      refresh();
+    } catch (error) { setMessage((error as Error).message); }
+  }
+
+  async function remove(row: AdminRow) {
+    if (!confirm('Delete this schedule item?')) return;
+    try {
+      await emmiwoodApi.deleteResource('availability', row.id);
+      refresh();
+    } catch (error) { setMessage((error as Error).message); }
+  }
+
+  return <section className="ewa-panel">
+    <div className="ewa-panel-head"><div><span className="ew-eyebrow">Recurring schedule</span><h1>Hours</h1></div><button className="ew-button small" onClick={() => setEditing({ id: '' })}>Add new</button></div>
+    {editing && <form className="ewa-edit" onSubmit={save}>{FIELDS.availability.map((field) => <label key={field}>{LABELS[field]}<ResourceField resource="availability" field={field} value={editing[field]} data={data} /></label>)}<div className="ewa-form-actions"><button className="ew-button small">Save</button><button className="ew-link-button" type="button" onClick={() => setEditing(null)}>Close</button></div></form>}
+    <div className="ewa-hours-groups">{groups.map((group) => <section className="ewa-hours-group" key={group.id || 'shop'}>
+      <h2>{group.name}</h2>
+      <div className="ewa-resource-list">{group.rows.map((row) => <article key={row.id}><div><strong>{hoursTitle(row)}</strong></div><div><button onClick={() => setEditing(row)}>Edit</button><button className="danger" onClick={() => void remove(row)}>Delete</button></div></article>)}</div>
+    </section>)}</div>
+    <p className="ew-form-message" aria-live="polite">{message}</p>
+  </section>;
 }
 
 function ResourceEditor({ resource, title, eyebrow, rows, data, refresh }: { resource: Exclude<AdminResource, 'eligibility'>; title: string; eyebrow: string; rows: AdminRow[]; data: Dashboard; refresh: () => void }) {
@@ -234,14 +299,14 @@ function AppointmentCards({ rows, onEdit, onCancel }: { rows: Appointment[]; onE
   return <div className="ewa-appointment-list">{rows.map((appointment) => <article key={appointment.id}><time>{when(appointment.start_at)}</time><div><strong>{appointment.customer_name}</strong><span>{appointment.service_name} · {appointment.barber_name}</span><small>{appointment.phone}</small></div><span className={`ewa-state ${appointment.status}`}>{appointment.status}</span><div className="ewa-card-actions"><button onClick={() => onEdit(appointment)}>Reschedule</button>{appointment.status === 'booked' && <button className="danger" onClick={() => onCancel(appointment.id)}>Cancel</button>}</div></article>)}</div>;
 }
 
-function TodayView({ data, create, edit }: { data: Dashboard; create: () => void; edit: (appointment: Appointment) => void }) {
+function TodayView({ data, create, edit, openTexts }: { data: Dashboard; create: () => void; edit: (appointment: Appointment) => void; openTexts: () => void }) {
   const todays = data.appointments.filter((appointment) => appointment.status === 'booked' && dayKey(appointment.start_at) === today);
   const failed = data.outbox.filter((row) => row.status === 'failed').length;
   const next = todays.find((appointment) => appointment.start_at * 1000 >= Date.now());
   return <>
-    <div className="ewa-heading"><div><span className="ew-eyebrow">Today · {new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())}</span><h1>Run the shop.</h1></div><button className="ew-button small" onClick={create}>New appointment</button></div>
-    <div className="ewa-attention-grid"><article><span>Next chair</span><strong>{next ? timeOnly(next.start_at) : 'Clear'}</strong><p>{next ? `${next.customer_name} · ${next.service_name}` : 'No upcoming appointment today.'}</p></article><article><span>Today</span><strong>{todays.length}</strong><p>{todays.length === 1 ? 'booked appointment' : 'booked appointments'}</p></article><article className={failed ? 'warning' : ''}><span>Needs attention</span><strong>{failed}</strong><p>{failed ? 'failed customer messages' : 'No failed messages.'}</p></article></div>
-    <section className="ewa-panel"><div className="ewa-panel-head"><div><span className="ew-eyebrow">Today’s agenda</span><h2>{todays.length ? 'Chair by chair.' : 'The schedule is open.'}</h2></div></div>{todays.length ? <div className="ewa-agenda">{todays.map((appointment) => <button key={appointment.id} onClick={() => edit(appointment)}><time>{timeOnly(appointment.start_at)}</time><span><strong>{appointment.customer_name}</strong><small>{appointment.service_name} · {appointment.barber_name}</small></span><em>Open →</em></button>)}</div> : <div className="ewa-empty-state"><p>No booked appointments today.</p><button className="ew-link-button" onClick={create}>Create an appointment</button></div>}</section>
+    <div className="ewa-heading"><div><span className="ew-eyebrow">{new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())}</span><h1>Today</h1></div><button className="ew-button small" onClick={create}>New appointment</button></div>
+    <div className="ewa-attention-grid"><article><span>Next chair</span><strong>{next ? timeOnly(next.start_at) : 'Clear'}</strong><p>{next ? `${next.customer_name} · ${next.service_name}` : 'No upcoming appointment today.'}</p></article><article><span>Today</span><strong>{todays.length}</strong><p>{todays.length === 1 ? 'booked appointment' : 'booked appointments'}</p></article><article className={failed ? 'warning ewa-attention-action' : ''} {...(failed ? { role: 'button', tabIndex: 0, onClick: openTexts, onKeyDown: (event: { key: string }) => { if (event.key === 'Enter' || event.key === ' ') openTexts(); } } : {})}><span>Needs attention</span><strong>{failed}</strong><p>{failed ? 'failed customer texts' : 'No failed texts.'}</p></article></div>
+    <section className="ewa-panel"><div className="ewa-panel-head"><div><span className="ew-eyebrow">Agenda</span><h2>{todays.length ? 'Chair by chair' : 'No booked appointments today.'}</h2></div></div>{todays.length ? <div className="ewa-agenda">{todays.map((appointment) => <button key={appointment.id} onClick={() => edit(appointment)}><time>{timeOnly(appointment.start_at)}</time><span><strong>{appointment.customer_name}</strong><small>{appointment.service_name} · {appointment.barber_name}</small></span><em>Open →</em></button>)}</div> : <div className="ewa-empty-state"><button className="ew-link-button" onClick={create}>Create an appointment</button></div>}</section>
   </>;
 }
 
@@ -262,11 +327,13 @@ function eventNarrative(row: AdminRow) {
     services_updated: 'Service updated', barbers_updated: 'Barber updated', availability_created: 'Working hours added',
   };
   const detailText = detail.to ? `Moved to ${when(Number(detail.to))}` : detail.start ? when(Number(detail.start)) : '';
-  return { title: labels[event] || event.replace(/_/g, ' '), detail: detailText };
+  const created = Number(row.created_at);
+  const whenCreated = Number.isFinite(created) && created > 1e9 ? when(created > 1e12 ? created / 1000 : created) : '';
+  return { title: labels[event] || event.replace(/_/g, ' '), detail: detailText || whenCreated };
 }
 
 function MessagesView({ outbox, events }: { outbox: AdminRow[]; events: AdminRow[] }) {
-  return <div className="ewa-message-columns"><section className="ewa-panel"><div className="ewa-panel-head"><div><span className="ew-eyebrow">Delivery</span><h1>Customer messages</h1></div></div><div className="ewa-message-list">{outbox.map((row) => <article key={row.id} className={String(row.status)}><div><strong>{String(row.template || 'Appointment message').replace(/_/g, ' ')}</strong><span>{String(row.channel || '').toUpperCase()} · {String(row.recipient || '')}</span></div><dl><div><dt>Status</dt><dd>{String(row.status)}</dd></div><div><dt>Provider</dt><dd>{String(row.provider || '—')}</dd></div><div><dt>Attempts</dt><dd>{String(row.attempt_count || 0)}</dd></div><div><dt>Provider ID</dt><dd>{String(row.provider_message_id || '—')}</dd></div></dl>{row.error && <p>{String(row.error)}</p>}</article>)}</div></section><section className="ewa-panel"><div className="ewa-panel-head"><div><span className="ew-eyebrow">Audit trail</span><h2>Recent activity</h2></div></div><div className="ewa-activity-list">{events.map((row) => { const item = eventNarrative(row); return <article key={row.id}><strong>{item.title}</strong><span>{item.detail || String(row.created_at || '')}</span></article>; })}</div></section></div>;
+  return <div className="ewa-message-columns"><section className="ewa-panel"><div className="ewa-panel-head"><div><span className="ew-eyebrow">Delivery</span><h1>Texts</h1></div></div><div className="ewa-message-list">{outbox.map((row) => <article key={row.id} className={String(row.status)}><div><strong>{String(row.template || 'Appointment message').replace(/_/g, ' ')}</strong><span>{String(row.channel || '').toUpperCase()} · {String(row.recipient || '')}</span></div><dl><div><dt>Status</dt><dd>{String(row.status)}</dd></div><div><dt>Provider</dt><dd>{String(row.provider || '—')}</dd></div><div><dt>Attempts</dt><dd>{String(row.attempt_count || 0)}</dd></div><div><dt>Provider ID</dt><dd>{String(row.provider_message_id || '—')}</dd></div></dl>{row.error && <p>{String(row.error)}</p>}</article>)}</div></section><section className="ewa-panel"><div className="ewa-panel-head"><div><span className="ew-eyebrow">Audit trail</span><h2>Recent activity</h2></div></div><div className="ewa-activity-list">{events.map((row) => { const item = eventNarrative(row); return <article key={row.id}><strong>{item.title}</strong><span>{item.detail || String(row.created_at || '')}</span></article>; })}</div></section></div>;
 }
 
 export default function EmmiwoodAdminPage() {
@@ -289,23 +356,32 @@ export default function EmmiwoodAdminPage() {
     try { await emmiwoodApi.cancelAppointment(id); refresh(); }
     catch (error) { setMessage((error as Error).message); }
   }
-  function openAppointment(appointment: Appointment | null) { setTab('appointments'); setEditingAppointment(appointment); }
+  function openAppointment(appointment: Appointment | null) { setEditingAppointment(appointment); }
 
   if (authenticated === false) return <Login onLogin={refresh} />;
   if (!data) return <div className="emmiwood ew-app-surface ewa"><EmmiwoodMeta title="Shop Workspace | Emmiwood Barbers" description="Private Emmiwood shop workspace." path="/emmiwood/admin" noindex /><p className="ewa-loading" role="status">{message || 'Opening the shop workspace…'}</p></div>;
 
+  const shopOpen = isShopTab(tab);
+
   return <div className="emmiwood ew-app-surface ewa ewa-workspace">
     <EmmiwoodMeta title="Shop Workspace | Emmiwood Barbers" description="Private Emmiwood shop workspace." path="/emmiwood/admin" noindex />
-    <header className="ewa-top"><a className="ew-brand" href="/emmiwood"><span>E</span><strong>Shop workspace</strong></a><div><span>{data.admin.email} · {data.admin.role}</span><button onClick={() => void logout()}>Sign out</button></div></header>
-    <div className="ewa-shell"><nav className="ewa-nav" aria-label="Shop workspace">{NAV.map((item) => <button className={tab === item.id ? 'active' : ''} onClick={() => setTab(item.id)} key={item.id}>{item.label}</button>)}</nav>
+    <header className="ewa-top"><a className="ew-brand" href="/emmiwood"><span>EWB</span><strong>Shop workspace</strong></a><div><span>{data.admin.email} · {data.admin.role}</span><button onClick={() => void logout()}>Sign out</button></div></header>
+    <div className="ewa-shell"><nav className="ewa-nav" aria-label="Shop workspace">{PRIMARY_NAV.map((item) => {
+      const active = item.id === 'shop' ? shopOpen : tab === item.id || (item.id === 'book' && tab === 'book');
+      return <button className={active ? 'active' : ''} onClick={() => { setTab(item.id === 'shop' ? 'hours' : item.id); if (item.id !== 'today' && item.id !== 'book') setEditingAppointment(undefined); }} key={item.id}>{item.label}</button>;
+    })}</nav>
       <main className="ewa-main">
-        {tab === 'today' && <TodayView data={data} create={() => openAppointment(null)} edit={(appointment) => openAppointment(appointment)} />}
-        {tab === 'appointments' && <section className="ewa-panel"><div className="ewa-panel-head"><div><span className="ew-eyebrow">Calendar</span><h1>Appointments</h1></div><button className="ew-button small" onClick={() => setEditingAppointment(null)}>New appointment</button></div>{editingAppointment !== undefined && <AppointmentEditor data={data} appointment={editingAppointment || undefined} close={() => setEditingAppointment(undefined)} refresh={refresh} />}<AppointmentCards rows={data.appointments} onEdit={setEditingAppointment} onCancel={(id) => void cancelAppointment(id)} /></section>}
+        {shopOpen && <nav className="ewa-shop-nav" aria-label="Shop setup">{SHOP_NAV.map((item) => <button className={tab === item.id ? 'active' : ''} onClick={() => setTab(item.id)} key={item.id}>{item.label}</button>)}</nav>}
+        {tab === 'today' && <>
+          <TodayView data={data} create={() => openAppointment(null)} edit={(appointment) => openAppointment(appointment)} openTexts={() => setTab('messages')} />
+          {editingAppointment !== undefined && <AppointmentEditor data={data} appointment={editingAppointment || undefined} close={() => setEditingAppointment(undefined)} refresh={refresh} />}
+        </>}
+        {tab === 'book' && <section className="ewa-panel"><div className="ewa-panel-head"><div><span className="ew-eyebrow">All appointments</span><h1>Book</h1></div><button className="ew-button small" onClick={() => setEditingAppointment(null)}>New appointment</button></div>{editingAppointment !== undefined && <AppointmentEditor data={data} appointment={editingAppointment || undefined} close={() => setEditingAppointment(undefined)} refresh={refresh} />}<AppointmentCards rows={data.appointments} onEdit={setEditingAppointment} onCancel={(id) => void cancelAppointment(id)} /></section>}
         {tab === 'customers' && <CustomersView customers={data.customers} />}
         {tab === 'team' && <><ResourceEditor resource="barbers" title="Team" eyebrow="Barbers" rows={data.barbers as unknown as AdminRow[]} data={data} refresh={refresh} /><EligibilityPanel data={data} refresh={refresh} /></>}
         {tab === 'services' && <ResourceEditor resource="services" title="Services" eyebrow="Menu and chair time" rows={data.services as unknown as AdminRow[]} data={data} refresh={refresh} />}
-        {tab === 'hours' && <ResourceEditor resource="availability" title="Working hours" eyebrow="Recurring schedule" rows={data.availability} data={data} refresh={refresh} />}
-        {tab === 'closures' && <ResourceEditor resource="blocks" title="Closures & time off" eyebrow="Exceptions" rows={data.blocks} data={data} refresh={refresh} />}
+        {tab === 'hours' && <HoursEditor rows={data.availability} data={data} refresh={refresh} />}
+        {tab === 'closures' && <ResourceEditor resource="blocks" title="Closures" eyebrow="Exceptions" rows={data.blocks} data={data} refresh={refresh} />}
         {tab === 'messages' && <MessagesView outbox={data.outbox} events={data.events} />}
         <p className="ew-form-message" aria-live="polite">{message}</p>
       </main>

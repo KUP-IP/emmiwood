@@ -1,0 +1,34 @@
+{
+  "verified_at": "2026-08-15T14:34:46.782972+00:00",
+  "campaign_sid": "QE2c6890da8086d771620e9b13fadeba0b",
+  "messaging_service_sid": "MG89702f0bb4aac7175ade15db9c88d9f4",
+  "brand_sid": "BN74f922e631a815558e38711abf4de3d0",
+  "http_status": 200,
+  "status": "IN_PROGRESS",
+  "message_flow": "End users opt in by visiting https://www.emmiwood.com/emmiwood/book and entering their mobile number. They may optionally check a box agreeing to receive appointment confirmation, reminder, and update texts from Emmiwood Barbers. Consent is not required to complete a booking. The opt-in checkbox and disclosures are documented at https://www.emmiwood.com/emmiwood/opt-in-evidence/ (static evidence page). Privacy Policy: https://www.emmiwood.com/emmiwood/privacy (states that mobile phone numbers and messaging consent are not shared, sold, or provided to third parties or affiliates for marketing or promotional purposes). SMS Terms: https://www.emmiwood.com/emmiwood/sms-terms (frequency, rates, STOP, and HELP). Message frequency varies. Message and data rates may apply. Customers reply STOP to opt out or HELP for help. KUP Solutions operates the booking and SMS technology for Emmiwood Barbers as a service provider (registered Sole Proprietor brand) and is not a marketing affiliate. Staff admin one-time passcodes are sent only to allowlisted administrator mobile numbers for portal security, not marketing.",
+  "message_samples": [
+    "Emmiwood Barbers: your sign-in code is 123456. It expires in ten minutes.",
+    "Emmiwood Barbers: appointment confirmed. Signature Haircut with Barro \u00b7 Wed, Aug 12, 9:00 AM. Manage/cancel: https://www.emmiwood.com/emmiwood/manage#token=example Reply STOP to opt out.",
+    "Emmiwood Barbers reminder: Signature Haircut with Barro \u00b7 Thu, Aug 13, 9:00 AM. Manage/cancel: https://www.emmiwood.com/emmiwood/manage#token=example Reply STOP to opt out.",
+    "Emmiwood Barbers: appointment cancelled. Signature Haircut with Barro \u00b7 Wed, Aug 12, 9:00 AM. Reply STOP to opt out.",
+    "Emmiwood Barbers: appointment rescheduled. Signature Haircut with Barro \u00b7 Fri, Aug 14, 10:00 AM. Manage/cancel: https://www.emmiwood.com/emmiwood/manage#token=example Reply STOP to opt out."
+  ],
+  "description": "This campaign sends transactional SMS for Emmiwood Barbers customers and staff on a KUP-hosted booking system. Messages include booking confirmations, appointment reminders, reschedule and cancellation notices for customers who opt in during online booking, and one-time staff sign-in codes for allowlisted shop administrators. Messages are not used for marketing or promotional offers.",
+  "errors": [],
+  "date_created": "2026-08-12T13:44:46Z",
+  "date_updated": "2026-08-12T13:44:46Z",
+  "crawl": {
+    "privacy": "https://www.emmiwood.com/emmiwood/privacy",
+    "sms_terms": "https://www.emmiwood.com/emmiwood/sms-terms",
+    "opt_in_evidence": "https://www.emmiwood.com/emmiwood/opt-in-evidence/",
+    "book": "https://www.emmiwood.com/emmiwood/book",
+    "note": "Static 200 verified 2026-08-15 before resubmit; URLs not sentence-terminal (no trailing-dot trap)"
+  },
+  "identity_note": "Sole Prop brand_name is KUP Solutions; message_flow names KUP as service provider for Emmiwood Barbers. If next failure is 30914/30918, stop and register Standard/EIN brand.",
+  "did_not": [
+    "delete_or_recreate",
+    "send_sms",
+    "enable_scheduler",
+    "set_EMMIWOOD_NOTIFICATION_URL"
+  ]
+}

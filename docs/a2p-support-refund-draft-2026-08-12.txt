@@ -1,0 +1,23 @@
+Subject: Request credit for A2P campaign vetting fees on rejected campaign QE2c6890da8086d771620e9b13fadeba0b
+
+Account SID: AC49a825… (full SID from Twilio console; omitted from git)
+Messaging Service: MG89702f0bb4aac7175ade15db9c88d9f4
+Brand SID: BN74f922e631a815558e38711abf4de3d0 (APPROVED / VERIFIED)
+Campaign SID (UsAppToPerson): QE2c6890da8086d771620e9b13fadeba0b
+Campaign Registry SID: CMcd97283ff4f594ce1fd96215a2e0e600
+Campaign status: FAILED
+Error: 30908 — privacy policy could not be verified (MESSAGE_FLOW)
+
+Request:
+Please credit the campaign vetting fee(s) associated with this rejected campaign. Usage shows campaign vetting charges this month of approximately $30 (2× ~$15) under a2p-10dlc-registrationfees-campaignvetting / a2p-registration-fees around 2026-08-11–2026-08-12.
+
+Context:
+- Brand registration is APPROVED; only the campaign failed review.
+- Root cause was a non-crawlable privacy presentation (SPA shell / URL punctuation hazard on the SMS terms link in MessageFlow). Static privacy and SMS terms pages are now live and return crawlable HTML at:
+  - https://emmiwood-barbers-preview.pages.dev/emmiwood/privacy
+  - https://emmiwood-barbers-preview.pages.dev/emmiwood/sms-terms
+- We will edit and resubmit the *same* campaign SID (not delete/recreate) per Twilio guidance that vetting is charged once per campaign.
+
+We are not asking to waive a successful registration fee; we are asking for goodwill credit on vetting for a campaign that was rejected for a now-corrected crawlability issue, and for any duplicate thrash charges.
+
+Thank you.
