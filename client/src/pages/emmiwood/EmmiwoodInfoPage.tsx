@@ -1,4 +1,5 @@
 import { EMMIWOOD_ADDRESS, EMMIWOOD_PHONE_LABEL } from './content';
+import { EmmiwoodAppHeader } from './EmmiwoodAppHeader';
 import { EmmiwoodMeta } from './meta';
 import '@fontsource/outfit/400.css';
 import '@fontsource/outfit/500.css';
@@ -68,7 +69,7 @@ export default function EmmiwoodInfoPage({ kind }: { kind: InfoKind }) {
   const copy = COPY[kind];
   return <div className="emmiwood ew-app-surface">
     <EmmiwoodMeta title={copy.title} description={copy.description} path={`/emmiwood/${kind}`} noindex={kind === 'chair-rental'} />
-    <header className="ew-app-header"><a className="ew-brand" href="/emmiwood"><span>E</span><strong>Emmiwood</strong></a><a className="ew-link ew-back-link" href="/emmiwood">Back to the shop</a></header>
+    <EmmiwoodAppHeader />
     <main className="ew-info-page"><article><span className="ew-eyebrow">{copy.eyebrow}</span><h1>{copy.title.split(' | ')[0]}.</h1>{copy.body}</article></main>
     <footer className="ew-app-footer"><span>1118 S Minnesota Ave · Sioux Falls</span><a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a></footer>
   </div>;

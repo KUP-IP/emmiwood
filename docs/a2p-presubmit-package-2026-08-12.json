@@ -1,0 +1,195 @@
+{
+  "generated_at": "2026-08-12T16:09:46.931116+00:00",
+  "campaign_sid": "QE2c6890da8086d771620e9b13fadeba0b",
+  "messaging_service_sid": "MG89702f0bb4aac7175ade15db9c88d9f4",
+  "brand_sid": "BN74f922e631a815558e38711abf4de3d0",
+  "status": "FAILED",
+  "errors": [
+    {
+      "description": "The campaign submission has been reviewed and rejected because a compliant privacy policy can not be verified.",
+      "error_code": 30908,
+      "fields": [
+        "MESSAGE_FLOW"
+      ],
+      "url": "https://www.twilio.com/docs/api/errors/30908"
+    }
+  ],
+  "fee_docs": {
+    "source": "https://www.twilio.com/docs/messaging/compliance/a2p-10dlc/troubleshooting-a2p-brands/troubleshooting-and-rectifying-a2p-campaigns",
+    "claim": "Vetting fee assessed once per Campaign; edit+resubmit same FAILED campaign does not re-charge; delete+recreate does."
+  },
+  "usage_this_month": {
+    "campaign_vetting_subcategory_price": 30,
+    "campaign_vetting_usage": 2,
+    "daily_a2p_registration_fees": [
+      {
+        "date": "2026-08-11",
+        "price": 19,
+        "usage": 2
+      },
+      {
+        "date": "2026-08-12",
+        "price": 15,
+        "usage": 1
+      }
+    ],
+    "notes": "Two campaign-vetting line items (~$15 each) this month; refund ask $30 primary for thrash of failed/duplicate vetting."
+  },
+  "crawl_receipt": {
+    "generated_at": "2026-08-12T16:08:19.827265+00:00",
+    "results": [
+      {
+        "url": "https://emmiwood-barbers-preview.pages.dev/emmiwood/privacy",
+        "ts": "2026-08-12T16:08:19.386169+00:00",
+        "status": 200,
+        "final_url": "https://emmiwood-barbers-preview.pages.dev/emmiwood/privacy",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 3766,
+        "is_html": true,
+        "has_doctype": true,
+        "looks_spa_shell": false,
+        "has_privacy_keywords": true,
+        "has_sms_keywords": true,
+        "title": "Privacy | Emmiwood Barbers",
+        "snippet": "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\" /> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /> <title>Privacy | Emmiwood Barbers</title> <meta name=\"description\" content=\"How Emmiwood Barbers uses booking, mobile numbers, and optional appointment texts.\" /> <",
+        "static_policy_signal": true
+      },
+      {
+        "url": "https://emmiwood-barbers-preview.pages.dev/emmiwood/sms-terms",
+        "ts": "2026-08-12T16:08:19.499854+00:00",
+        "status": 200,
+        "final_url": "https://emmiwood-barbers-preview.pages.dev/emmiwood/sms-terms",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 2479,
+        "is_html": true,
+        "has_doctype": true,
+        "looks_spa_shell": false,
+        "has_privacy_keywords": true,
+        "has_sms_keywords": true,
+        "title": "SMS Terms | Emmiwood Barbers",
+        "snippet": "<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"UTF-8\" /> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /> <title>SMS Terms | Emmiwood Barbers</title> <meta name=\"description\" content=\"Terms for optional Emmiwood appointment confirmation, reminder, and update texts.\" /> ",
+        "static_policy_signal": true
+      },
+      {
+        "url": "https://emmiwood-barbers-preview.pages.dev/emmiwood/sms-terms.",
+        "ts": "2026-08-12T16:08:19.562887+00:00",
+        "status": 200,
+        "final_url": "https://emmiwood-barbers-preview.pages.dev/emmiwood/sms-terms.",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 358,
+        "is_html": true,
+        "has_doctype": true,
+        "looks_spa_shell": true,
+        "has_privacy_keywords": false,
+        "has_sms_keywords": false,
+        "title": "Emmiwood Barbers",
+        "snippet": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>Emmiwood Barbers</title> <script type=\"module\" crossorigin src=\"/assets/index-BwJXo1XN.js\"></script> <link rel=\"stylesheet\" crossorigin href=\"/assets/index-BpwGuMon.",
+        "static_policy_signal": false
+      },
+      {
+        "url": "https://emmiwood-barbers-preview.pages.dev/emmiwood/book",
+        "ts": "2026-08-12T16:08:19.620080+00:00",
+        "status": 200,
+        "final_url": "https://emmiwood-barbers-preview.pages.dev/emmiwood/book",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 358,
+        "is_html": true,
+        "has_doctype": true,
+        "looks_spa_shell": true,
+        "has_privacy_keywords": false,
+        "has_sms_keywords": false,
+        "title": "Emmiwood Barbers",
+        "snippet": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>Emmiwood Barbers</title> <script type=\"module\" crossorigin src=\"/assets/index-BwJXo1XN.js\"></script> <link rel=\"stylesheet\" crossorigin href=\"/assets/index-BpwGuMon.",
+        "static_policy_signal": false
+      },
+      {
+        "url": "https://emmiwood-barbers-preview.pages.dev/privacy",
+        "ts": "2026-08-12T16:08:19.685338+00:00",
+        "status": 200,
+        "final_url": "https://emmiwood-barbers-preview.pages.dev/privacy",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 358,
+        "is_html": true,
+        "has_doctype": true,
+        "looks_spa_shell": true,
+        "has_privacy_keywords": false,
+        "has_sms_keywords": false,
+        "title": "Emmiwood Barbers",
+        "snippet": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>Emmiwood Barbers</title> <script type=\"module\" crossorigin src=\"/assets/index-BwJXo1XN.js\"></script> <link rel=\"stylesheet\" crossorigin href=\"/assets/index-BpwGuMon.",
+        "static_policy_signal": false
+      },
+      {
+        "url": "https://emmiwood-barbers-preview.pages.dev/sms-terms",
+        "ts": "2026-08-12T16:08:19.745744+00:00",
+        "status": 200,
+        "final_url": "https://emmiwood-barbers-preview.pages.dev/sms-terms",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 358,
+        "is_html": true,
+        "has_doctype": true,
+        "looks_spa_shell": true,
+        "has_privacy_keywords": false,
+        "has_sms_keywords": false,
+        "title": "Emmiwood Barbers",
+        "snippet": "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>Emmiwood Barbers</title> <script type=\"module\" crossorigin src=\"/assets/index-BwJXo1XN.js\"></script> <link rel=\"stylesheet\" crossorigin href=\"/assets/index-BpwGuMon.",
+        "static_policy_signal": false
+      }
+    ]
+  },
+  "message_flow_current": "End users opt in on the Emmiwood Barbers booking website at https://emmiwood-barbers-preview.pages.dev/emmiwood/book (production will use the shop website). When booking, they enter their mobile number and may optionally check a box agreeing to receive appointment confirmation, reminder, and update texts from Emmiwood Barbers. Consent is not required to complete a booking. Opt-in language and SMS terms are shown at booking and at https://emmiwood-barbers-preview.pages.dev/emmiwood/sms-terms. The privacy policy at https://emmiwood-barbers-preview.pages.dev/emmiwood/privacy explains data collection and states that mobile phone numbers and messaging consent are not shared, sold, or provided to third parties or affiliates for marketing or promotional purposes. Message frequency varies. Message and data rates may apply. Customers reply STOP to opt out or HELP for help. Staff admin one-time passcodes are sent only to allowlisted administrator mobile numbers for portal security, not marketing.",
+  "message_flow_proposed": "End users opt in on the Emmiwood Barbers booking website at https://emmiwood-barbers-preview.pages.dev/emmiwood/book (production will use the shop website). When booking, they enter their mobile number and may optionally check a box agreeing to receive appointment confirmation, reminder, and update texts from Emmiwood Barbers. Consent is not required to complete a booking. Opt-in language and SMS terms are shown at booking and at https://emmiwood-barbers-preview.pages.dev/emmiwood/sms-terms, and the privacy policy is at https://emmiwood-barbers-preview.pages.dev/emmiwood/privacy. That policy explains data collection and states that mobile phone numbers and messaging consent are not shared, sold, or provided to third parties or affiliates for marketing or promotional purposes. Message frequency varies. Message and data rates may apply. Customers reply STOP to opt out or HELP for help. Staff admin one-time passcodes are sent only to allowlisted administrator mobile numbers for portal security, not marketing.",
+  "message_flow_diff": {
+    "changed": true,
+    "fix": "Rewrite so privacy/sms-terms URLs are not sentence-terminal with a trailing period (crawler was hitting SPA at sms-terms.)."
+  },
+  "resubmit_ready": {
+    "privacy_static_green": true,
+    "sms_terms_static_green": true,
+    "trailing_dot_fixed_in_proposed": true,
+    "book_is_spa_expected": true,
+    "do_not_resubmit_without_GO": true
+  },
+  "api_update_skeleton": {
+    "method": "POST",
+    "url": "https://messaging.twilio.com/v1/Services/MG89702f0bb4aac7175ade15db9c88d9f4/Compliance/Usa2p/QE2c6890da8086d771620e9b13fadeba0b",
+    "form_fields": {
+      "MessageFlow": "(proposed message_flow)"
+    },
+    "warning": "This call resubmits for vetting. Do not run without GO. Docs say no second fee."
+  },
+  "support_ticket_draft": "Subject: Request credit for A2P campaign vetting fees on rejected campaign QE2c6890da8086d771620e9b13fadeba0b\n\nAccount SID: AC49a825…\nMessaging Service: MG89702f0bb4aac7175ade15db9c88d9f4\nBrand SID: BN74f922e631a815558e38711abf4de3d0 (APPROVED / VERIFIED)\nCampaign SID (UsAppToPerson): QE2c6890da8086d771620e9b13fadeba0b\nCampaign Registry SID: CMcd97283ff4f594ce1fd96215a2e0e600\nCampaign status: FAILED\nError: 30908 \u2014 privacy policy could not be verified (MESSAGE_FLOW)\n\nRequest:\nPlease credit the campaign vetting fee(s) associated with this rejected campaign. Usage shows campaign vetting charges this month of approximately $30 (2\u00d7 ~$15) under a2p-10dlc-registrationfees-campaignvetting / a2p-registration-fees around 2026-08-11\u20132026-08-12.\n\nContext:\n- Brand registration is APPROVED; only the campaign failed review.\n- Root cause was a non-crawlable privacy presentation (SPA shell / URL punctuation hazard on the SMS terms link in MessageFlow). Static privacy and SMS terms pages are now live and return crawlable HTML at:\n  - https://emmiwood-barbers-preview.pages.dev/emmiwood/privacy\n  - https://emmiwood-barbers-preview.pages.dev/emmiwood/sms-terms\n- We will edit and resubmit the *same* campaign SID (not delete/recreate) per Twilio guidance that vetting is charged once per campaign.\n\nWe are not asking to waive a successful registration fee; we are asking for goodwill credit on vetting for a campaign that was rejected for a now-corrected crawlability issue, and for any duplicate thrash charges.\n\nThank you.\n",
+  "console_confirm": {
+    "checked_at": "2026-08-12T16:13:20.717007+00:00",
+    "balance_usd": 20.0,
+    "campaign_registry_sid": "CMcd97283ff4f594ce1fd96215a2e0e600",
+    "usa2p_sid": "QE2c6890da8086d771620e9b13fadeba0b",
+    "status_console": "Rejected/Failed",
+    "error": "30908 privacy policy can not be verified",
+    "edit_ui": "Edit & resubmit button present on Trust Hub campaign detail",
+    "edit_url": "https://1console.twilio.com/us1/trusthub/registrations/a2p-campaigns/CMcd97283ff4f594ce1fd96215a2e0e600",
+    "edit_flow_opened": "senders-onboarding/a2p-campaign with status=FAILED + Persona embed",
+    "fee_language_on_detail_page": "none visible before Edit",
+    "docs_fee_claim": "vetting fee once per Campaign; resubmit no second fee",
+    "did_not_submit": true,
+    "edit_form_opened": true,
+    "form_heading": "Revise errors and resubmit your A2P Campaign registration",
+    "error_banner": "30908 privacy policy can not be verified",
+    "fee_language_on_edit_form": "none observed (OCR + intro + detail pages)",
+    "confirm_checkbox_present": "I confirm the information entered here is ready to submit for review.",
+    "message_flow_still_has_trailing_dot_sms_terms": true,
+    "did_not_check_confirm_or_submit": true
+  },
+  "execute_status": {
+    "at": "2026-08-12T16:15:17.601832+00:00",
+    "steps_done": [
+      "console_edit_path_confirmed",
+      "presubmit_package",
+      "support_draft_clipboard"
+    ],
+    "steps_blocked_for_GO": [
+      "resubmit_campaign",
+      "sms_smoke"
+    ],
+    "support_submit": "draft ready on clipboard + docs file; not auto-submitted (external ticket)"
+  }
+}

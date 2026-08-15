@@ -96,18 +96,26 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
     return () => { active = false; };
   }, [service]);
 
+  const directions = <a target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a>;
+
   return <div className="ew-next-opening" aria-live="polite">
     <span className="ew-eyebrow">Next online opening</span>
     {!checked && <strong>Checking the book…</strong>}
     {checked && opening && <>
       <strong>{openingLabel(opening)}</strong>
       <small>with {opening.barberName} · {service?.name}</small>
-      <a href={`/emmiwood/book?service=${service?.id}&barber=${opening.barberId}`}>Take this opening</a>
+      <div className="ew-next-opening-links">
+        <a href={`/emmiwood/book?service=${service?.id}&barber=${opening.barberId}`}>Take this opening</a>
+        {directions}
+      </div>
     </>}
     {checked && !opening && <>
       <strong>Call for today’s options.</strong>
       <small>Walk-ins run noon–5, Monday through Saturday.</small>
-      <a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a>
+      <div className="ew-next-opening-links">
+        <a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a>
+        {directions}
+      </div>
     </>}
   </div>;
 }
@@ -137,9 +145,6 @@ function TodayAtEmmiwood({ catalog }: { catalog: Catalog }) {
     </header>
     <HoursTimeline />
     <NextOpening catalog={catalog} />
-    <div className="ew-today-actions">
-      <a className="ew-link" target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a>
-    </div>
   </aside>;
 }
 
@@ -214,7 +219,7 @@ export default function EmmiwoodPage() {
     <header className="ew-site-header">
       <a className="ew-brand" href="#top" aria-label="Emmiwood home"><span>EWB</span><strong>Emmiwood</strong></a>
       <nav aria-label="Primary navigation"><a href="#services">Services</a><a href="#barbers">Barbers</a><a href="#visit">Visit</a></nav>
-      <a className="ew-button small ew-header-book" href="/emmiwood/book">Book an appointment</a>
+      <a className="ew-button" href="/emmiwood/book">Book an appointment</a>
     </header>
     <nav className="ew-mobile-jump" aria-label="Page sections">
       <a href="#services">Services</a>

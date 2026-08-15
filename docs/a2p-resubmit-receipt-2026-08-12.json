@@ -1,0 +1,20 @@
+{
+  "verified_at": "2026-08-12T16:32:48.351389+00:00",
+  "campaign_sid": "QE2c6890da8086d771620e9b13fadeba0b",
+  "status": "IN_PROGRESS",
+  "message_flow": "End users opt in on the Emmiwood Barbers booking website at https://www.emmiwood.com/emmiwood/book (shop domain). When booking, they enter their mobile number and may optionally check a box agreeing to receive appointment confirmation, reminder, and update texts from Emmiwood Barbers. Consent is not required to complete a booking. Opt-in language and SMS terms are shown at booking and at https://www.emmiwood.com/emmiwood/sms-terms and the privacy policy is published at https://www.emmiwood.com/emmiwood/privacy which explains data collection and states that mobile phone numbers and messaging consent are not shared, sold, or provided to third parties or affiliates for marketing or promotional purposes. Message frequency varies. Message and data rates may apply. Customers reply STOP to opt out or HELP for help. Staff admin one-time passcodes are sent only to allowlisted administrator mobile numbers for portal security, not marketing.",
+  "message_samples": [
+    "Emmiwood Barbers: your sign-in code is 123456. It expires in ten minutes.",
+    "Emmiwood Barbers: appointment confirmed. Signature Haircut with Barro \u00b7 Wed, Aug 12, 9:00 AM. Manage/cancel: https://www.emmiwood.com/emmiwood/manage#token=example Reply STOP to opt out.",
+    "Emmiwood Barbers reminder: Signature Haircut with Barro \u00b7 Thu, Aug 13, 9:00 AM. Manage/cancel: https://www.emmiwood.com/emmiwood/manage#token=example Reply STOP to opt out.",
+    "Emmiwood Barbers: appointment cancelled. Signature Haircut with Barro \u00b7 Wed, Aug 12, 9:00 AM. Reply STOP to opt out.",
+    "Emmiwood Barbers: appointment rescheduled. Signature Haircut with Barro \u00b7 Fri, Aug 14, 10:00 AM. Manage/cancel: https://www.emmiwood.com/emmiwood/manage#token=example Reply STOP to opt out."
+  ],
+  "errors": [],
+  "crawl": {
+    "privacy": "https://www.emmiwood.com/emmiwood/privacy",
+    "sms_terms": "https://www.emmiwood.com/emmiwood/sms-terms",
+    "book": "https://www.emmiwood.com/emmiwood/book",
+    "note": "Verified via CF edge IP when local DNS cache still parks www"
+  }
+}

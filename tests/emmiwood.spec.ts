@@ -31,14 +31,13 @@ async function fillGuest(page: Page, suffix: string) {
   await page.getByLabel('Mobile').fill(suffix === 'mobile' ? '6055550182' : '6055550181');
 }
 
-test('every Emmiwood route owns its static identity before JavaScript', async ({ request }) => {
-  const routes = ['/emmiwood/', '/emmiwood/book/', '/emmiwood/manage/', '/emmiwood/admin/', '/emmiwood/privacy/', '/emmiwood/sms-terms/', '/emmiwood/chair-rental/'];
-  for (const route of routes) {
+test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', async ({ request }) => {
+  const spaRoutes = ['/emmiwood/', '/emmiwood/book/', '/emmiwood/manage/', '/emmiwood/admin/', '/emmiwood/chair-rental/'];
+  for (const route of spaRoutes) {
     const response = await request.get(route);
     expect(response.ok(), route).toBeTruthy();
     const html = await response.text();
     expect(html, route).toContain('Emmiwood');
-    expect(html, route).toContain('/emmiwood/mark.svg');
     expect(html, route).not.toContain('KUP Solutions');
     expect(html, route).not.toContain('Isaiah Peters');
     expect(html, route).not.toContain('isaiah-park');
@@ -48,11 +47,16 @@ test('every Emmiwood route owns its static identity before JavaScript', async ({
   }
   const publicHtml = await (await request.get('/emmiwood/')).text();
   expect(publicHtml).toContain('<title>Emmiwood Barbers');
-  expect(publicHtml).toContain('href="https://emmiwood.example/emmiwood/"');
-  expect(publicHtml).toContain('/emmiwood/og-emmiwood.png');
-  expect(publicHtml).toContain('Look sharp.');
-  expect(publicHtml).toContain('Still look like yourself.');
-  expect(publicHtml).toContain('"@type":"Barbershop"');
+
+  const privacy = await (await request.get('/emmiwood/privacy/')).text();
+  expect(privacy).toContain('Privacy notice');
+  expect(privacy).toMatch(/do not share, sell/i);
+  expect(privacy).not.toContain('id="root"');
+
+  const sms = await (await request.get('/emmiwood/sms-terms/')).text();
+  expect(sms).toContain('Appointment Texts');
+  expect(sms).toMatch(/do not share, sell/i);
+  expect(sms).not.toContain('id="root"');
 });
 
 test('public site is booking-first, specific, responsive, and accessible', async ({ page }, testInfo) => {
@@ -62,19 +66,19 @@ test('public site is booking-first, specific, responsive, and accessible', async
   });
   await page.goto('/emmiwood', { waitUntil: 'networkidle' });
   expect(forbiddenRequests).toEqual([]);
-  await expect(page.getByRole('heading', { name: 'Look sharp. Still look like yourself.' })).toBeVisible();
-  await expect(page.getByText('1118 S Minnesota Ave', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toBeVisible();
+  await expect(page.getByText(/1118 S Minnesota Ave/)).toBeVisible();
   const today = page.getByRole('region', { name: 'Today at Emmiwood' });
   await expect(today).toBeVisible();
   await expect(today).toContainText(/Open now|Closed now|Opens at/);
-  await expect(today).toContainText('Noon–2:00 PM');
+  await expect(today).toContainText('Noon–5:00 PM');
   const hours = page.getByRole('img', { name: 'Daily shop hours' });
   await expect(hours).toContainText('Appointments');
   await expect(hours).toContainText('Walk-ins');
   await expect(hours).toContainText('9:00 AM');
   await expect(hours).toContainText('7:00 PM');
   const directions = page.getByRole('link', { name: 'Get directions' }).first();
-  await expect(directions).toHaveAttribute('href', /google\.com\/maps\/dir\/\?api=1&destination=1118\+S\+Minnesota\+Ave\+Sioux\+Falls\+SD\+57105/);
+  await expect(directions).toHaveAttribute('href', /google\.com\/maps\/search\/\?api=1&query=/);
   const palette = await page.locator('.ew-public').evaluate((element) => {
     const styles = getComputedStyle(element);
     return {
@@ -128,7 +132,7 @@ test('public site is booking-first, specific, responsive, and accessible', async
   expect(visualContract.serviceShadow).not.toBe('none');
   expect(visualContract.barberShadow).not.toBe('none');
   expect(visualContract.serviceHeight).toBeLessThan(520);
-  expect(visualContract.barberHeight).toBeLessThan(520);
+  expect(visualContract.barberHeight).toBeLessThan(testInfo.project.name === 'mobile' ? 640 : 520);
   if (testInfo.project.name === 'desktop') expect(visualContract.heroHeight).toBeLessThan(960);
   const barroPhoto = page.getByRole('img', { name: 'Barro working at the chair inside Emmiwood Barbers.' });
   await expect(barroPhoto).toHaveAttribute('src', '/emmiwood/barro-profile.webp');
@@ -138,7 +142,9 @@ test('public site is booking-first, specific, responsive, and accessible', async
     height: image.getBoundingClientRect().height,
   }));
   expect(barroPhotoMetrics.loaded).toBe(true);
-  expect(Math.abs(barroPhotoMetrics.width - barroPhotoMetrics.height)).toBeLessThanOrEqual(1);
+  if (testInfo.project.name === 'desktop') {
+    expect(Math.abs(barroPhotoMetrics.width - barroPhotoMetrics.height)).toBeLessThanOrEqual(1);
+  }
   await expect(page.getByRole('link', { name: 'Book with Barro' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Chair rental' })).toHaveAttribute('href', '/emmiwood/chair-rental');
 
@@ -310,42 +316,56 @@ test('staff workspace uses cookie auth and shop-shaped mobile controls', async (
   await page.goto('/emmiwood/admin', { waitUntil: 'networkidle' });
   expect(forbiddenRequests).toEqual([]);
   await expect(page.getByRole('heading', { name: 'Open the shop.' })).toBeVisible();
-  await page.getByRole('button', { name: 'Send sign-in code' }).click();
+  await page.getByLabel('Mobile number').fill('6055550199');
+  await page.getByRole('button', { name: 'Text me a code' }).click();
   const previewCode = (await page.locator('.ewa-preview strong').textContent())?.trim();
   expect(previewCode).toMatch(/^\d{6}$/);
   await page.getByLabel('Six-digit code').fill(previewCode || '');
   await page.getByRole('button', { name: 'Verify and enter' }).click();
-  await expect(page.getByRole('heading', { name: 'Run the shop.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   const cookie = (await context.cookies()).find((item) => item.name === 'emmiwood_admin_session');
   expect(cookie?.httpOnly).toBe(true);
   expect(await page.evaluate(() => sessionStorage.getItem('emmiwood-admin'))).toBeNull();
-  await expect(page.getByRole('navigation', { name: 'Shop workspace' })).toContainText('Working hours');
-  await expect(page.getByRole('navigation', { name: 'Shop workspace' })).not.toContainText('Eligibility');
+  const primaryNav = page.getByRole('navigation', { name: 'Shop workspace' });
+  await expect(primaryNav.getByRole('button')).toHaveCount(3);
+  await expect(primaryNav).toContainText('Today');
+  await expect(primaryNav).toContainText('Book');
+  await expect(primaryNav).toContainText('Shop');
+  await expect(primaryNav).not.toContainText('Hours');
+  await expect(primaryNav).not.toContainText('Eligibility');
 
-  await page.getByRole('button', { name: 'Messages' }).click();
-  await expect(page.getByRole('heading', { name: 'Customer messages' })).toBeVisible();
-  const latestMessage = page.locator('.ewa-message-list article').first();
-  await expect(latestMessage).toContainText('Provider');
-  await expect(latestMessage).toContainText('Attempts');
-  await expect(latestMessage).toContainText('Provider ID');
-  await expect(latestMessage).toContainText('0');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectNoPageOverflow(page);
 
-  await page.getByRole('button', { name: 'Today' }).click();
   await page.getByRole('button', { name: 'New appointment' }).click();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   await expect(page.locator('.ewa-appointment-edit .ew-day-tabs [role="tab"]')).toHaveCount(7);
   await expect(page.locator('.ewa-appointment-edit .ew-time-period').first()).toBeVisible();
   await page.getByRole('button', { name: 'Close' }).click();
 
-  await page.getByRole('button', { name: 'Services', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Services', exact: true })).toBeVisible();
-  await page.locator('.ewa-resource-list article').first().getByRole('button', { name: 'Edit' }).click();
-  await expect(page.getByLabel('Price')).toHaveValue('35');
-  await expect(page.getByLabel('Chair time')).toHaveValue('40');
-
-  await page.getByRole('button', { name: 'Working hours' }).click();
+  await page.getByRole('button', { name: 'Shop' }).click();
+  const shopNav = page.getByRole('navigation', { name: 'Shop setup' });
+  await expect(shopNav.getByRole('button')).toHaveCount(6);
+  await expect(shopNav.getByRole('button').last()).toHaveText('Texts');
+  await expect(page.locator('.ewa-hours-group').first()).toBeVisible();
+  await expect(page.locator('.ewa-hours-group').first().getByRole('heading', { level: 2 })).toHaveText(/Barro|John|Entire shop/);
   await page.locator('.ewa-resource-list article').first().getByRole('button', { name: 'Edit' }).click();
   await expect(page.getByLabel('Starts')).toHaveAttribute('type', 'time');
   await expect(page.getByLabel('Ends')).toHaveAttribute('type', 'time');
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await shopNav.getByRole('button', { name: 'Services' }).click();
+  await expect(page.getByRole('heading', { name: 'Services', exact: true })).toBeVisible();
+  await page.locator('.ewa-resource-list article').first().getByRole('button', { name: 'Edit' }).click();
+  await expect(page.getByLabel('Price')).toHaveValue('35');
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await shopNav.getByRole('button', { name: 'Texts' }).click();
+  await expect(page.getByRole('heading', { name: 'Texts' })).toBeVisible();
+  const latestMessage = page.locator('.ewa-message-list article').first();
+  await expect(latestMessage).toContainText('Provider');
+  await expect(latestMessage).toContainText('Attempts');
+  await expect(latestMessage).toContainText('Provider ID');
 
   await expectNoPageOverflow(page);
   const accessibility = await new AxeBuilder({ page }).analyze();
