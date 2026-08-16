@@ -14,10 +14,10 @@
     "release:preflight": "node scripts/release-preflight.mjs"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.10.2",
-    "@playwright/test": "^1.58.2",
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
     "typescript": "5.9.3",
-    "wrangler": "^4.120.1"
+    "wrangler": "^4.123.0"
   },
   "overrides": {
     "sharp": "^0.35.3"
