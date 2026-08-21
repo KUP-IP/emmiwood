@@ -58,7 +58,7 @@ Last updated: 2026-08-21
 
 ## Implementation details
 
-- Standalone `main` deploys to KUP-owned preview project `emmiwood-barbers-preview` with D1 `emmiwood-standalone-preview-db`.
+- Cloudflare Pages project `emmiwood-barbers-preview`: custom-domain **production follows branch `review`**. `main` is the git trunk; do not assume a `main` Pages deploy updates www.emmiwood.com.
 - Customer email collection is removed from public and operator booking forms.
 - KUP-managed Twilio account and dedicated Emmiwood sender `+16052503489` are live (see `docs/twilio-number-split.md`).
 - GitHub repository is public with enforceable branch protections.
