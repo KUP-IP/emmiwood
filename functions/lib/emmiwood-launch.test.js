@@ -68,13 +68,13 @@ test('booking records consent provenance only when the guest opts into appointme
     await book(env, {
       serviceId: 'signature', barberId: 'barro', date, start: zonedEpoch(date, 600), now: start - 5 * 3600,
       name: 'Consented Guest', phone: '6055550142', smsConsent: true,
-      smsConsentVersion: 'appointment-texts-v1',
+      smsConsentVersion: 'kup-appointment-texts-v1',
     });
 
     assert.deepEqual(
       db.query('SELECT name,sms_consent,sms_consent_version,sms_consent_at IS NOT NULL consented_at FROM emmiwood_customers ORDER BY name'),
       [
-        { name: 'Consented Guest', sms_consent: 1, sms_consent_version: 'appointment-texts-v1', consented_at: 1 },
+        { name: 'Consented Guest', sms_consent: 1, sms_consent_version: 'kup-appointment-texts-v1', consented_at: 1 },
         { name: 'No Consent Guest', sms_consent: 0, sms_consent_version: null, consented_at: 0 },
       ],
     );
@@ -129,7 +129,7 @@ test('consented lifecycle queues eligible reminders and supersedes them on resch
     }, {
       serviceId: 'signature', barberId: 'barro', date, start, now,
       name: 'Lifecycle Guest', phone: '6055550177', smsConsent: true,
-      smsConsentVersion: 'appointment-texts-v1',
+      smsConsentVersion: 'kup-appointment-texts-v1',
     });
     assert.deepEqual(
       db.query("SELECT template,status,COUNT(*) count FROM emmiwood_notification_outbox GROUP BY template,status ORDER BY template,status"),
@@ -176,3 +176,25 @@ test('consented lifecycle queues eligible reminders and supersedes them on resch
     db.close();
   }
 });
+
+test('legacy appointment-texts-v1 consent is stored but does not enqueue SMS', async () => {
+  const db = setupEmmiwoodTestD1();
+  const date = nextBookableDate();
+  const start = zonedEpoch(date, 540);
+  const env = { DB: db, ENVIRONMENT: 'preview' };
+  try {
+    await book(env, {
+      serviceId: 'signature', barberId: 'barro', date, start, now: start - 5 * 3600,
+      name: 'Legacy Consent Guest', phone: '6055550143', smsConsent: true,
+      smsConsentVersion: 'appointment-texts-v1',
+    });
+    assert.deepEqual(
+      db.query("SELECT sms_consent,sms_consent_version FROM emmiwood_customers WHERE name='Legacy Consent Guest'"),
+      [{ sms_consent: 1, sms_consent_version: 'appointment-texts-v1' }],
+    );
+    assert.deepEqual(db.query('SELECT count(*) count FROM emmiwood_notification_outbox'), [{ count: 0 }]);
+  } finally {
+    db.close();
+  }
+});
+

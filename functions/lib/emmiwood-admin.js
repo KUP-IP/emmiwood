@@ -323,7 +323,7 @@ export { EDIT_ROLES };
 
 
 async function appointmentById(env, id) {
-  const row = await env.DB.prepare(`SELECT a.*,c.name customer_name,c.phone,c.email,c.sms_consent,
+  const row = await env.DB.prepare(`SELECT a.*,c.name customer_name,c.phone,c.email,c.sms_consent,c.sms_consent_version,
     s.duration_minutes,s.buffer_minutes,s.name service_name,b.name barber_name
     FROM emmiwood_appointments a
     JOIN emmiwood_customers c ON c.id=a.customer_id
@@ -355,6 +355,7 @@ export async function cancelAdminAppointment(env, id, admin) {
         appointmentId: appointment.id,
         recipient: appointment.phone,
         smsConsent: Boolean(appointment.sms_consent),
+        smsConsentVersion: appointment.sms_consent_version,
         event: 'cancelled',
         startAt: appointment.start_at,
         serviceName: appointment.service_name,
@@ -402,6 +403,7 @@ export async function rescheduleAdminAppointment(env, id, input, admin) {
         appointmentId: appointment.id,
         recipient: appointment.phone,
         smsConsent: Boolean(appointment.sms_consent),
+        smsConsentVersion: appointment.sms_consent_version,
         event: 'rescheduled',
         startAt: chosen.start,
         previousStartAt: appointment.start_at,

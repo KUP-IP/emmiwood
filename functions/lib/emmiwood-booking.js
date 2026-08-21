@@ -101,7 +101,7 @@ export async function reserveAppointment(db, appointment) {
       (id,shop_id,name,phone,email,sms_consent,sms_consent_version,sms_consent_at) VALUES(?,?,?,?,?,?,?,?)`, [
       appointment.customer.id, appointment.shopId, appointment.customer.name, appointment.customer.phone,
       appointment.customer.email || null, appointment.customer.smsConsent ? 1 : 0,
-      appointment.customer.smsConsent ? (appointment.customer.smsConsentVersion || 'appointment-texts-v1') : null,
+      appointment.customer.smsConsent ? (appointment.customer.smsConsentVersion || 'kup-appointment-texts-v1') : null,
       appointment.customer.smsConsent ? (appointment.customer.smsConsentAt || Math.floor(Date.now() / 1000)) : null,
     ]),
     statement(db, `INSERT INTO emmiwood_appointments

@@ -9,7 +9,10 @@ export const EMMIWOOD_MAPS_URL = `https://www.google.com/maps/search/?api=1&quer
 /** Geocoded pin for 1118 S Minnesota Ave, Sioux Falls, SD 57105 */
 export const EMMIWOOD_LAT = 43.5355407;
 export const EMMIWOOD_LNG = -96.7311599;
-export const EMMIWOOD_CONSENT_VERSION = 'appointment-texts-v1';
+export const EMMIWOOD_CONSENT_VERSION = 'kup-appointment-texts-v1';
+export const KUP_SMS_PROGRAM_URL = 'https://kup.solutions/sms';
+export const KUP_SMS_PRIVACY_URL = 'https://kup.solutions/sms/privacy';
+export const KUP_SMS_TERMS_URL = 'https://kup.solutions/sms/terms';
 
 /** Google Maps Embed API when `VITE_GOOGLE_MAPS_API_KEY` is set; otherwise a keyed-less Maps embed of the pin. */
 export function emmiwoodMapsEmbedSrc(): string {
