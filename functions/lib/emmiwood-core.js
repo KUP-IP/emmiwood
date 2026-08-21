@@ -5,7 +5,7 @@ import {
   cancelAppointment as cancelBooking,
   rescheduleAppointment as rescheduleBooking,
 } from './emmiwood-booking.js';
-import { appointmentSmsStatements } from './emmiwood-notifications.js';
+import { appointmentSmsStatements, KUP_APPOINTMENT_SMS_CONSENT_VERSION } from './emmiwood-notifications.js';
 
 export const SHOP_ID = 'emmiwood';
 export const SHOP_TIME_ZONE = 'America/Chicago';
@@ -258,6 +258,7 @@ export async function book(env, input, adminId = null) {
       appointmentId: id,
       recipient: phone,
       smsConsent,
+      smsConsentVersion: smsConsent ? String(input.smsConsentVersion || KUP_APPOINTMENT_SMS_CONSENT_VERSION) : null,
       event: 'booked',
       startAt: chosen.start,
       serviceName: service.name,
@@ -277,14 +278,14 @@ export async function book(env, input, adminId = null) {
       phone,
       email: input.email?.trim(),
       smsConsent,
-      smsConsentVersion: smsConsent ? String(input.smsConsentVersion || 'appointment-texts-v1') : null,
+      smsConsentVersion: smsConsent ? String(input.smsConsentVersion || KUP_APPOINTMENT_SMS_CONSENT_VERSION) : null,
       smsConsentAt: smsConsent ? Math.floor(Date.now() / 1000) : null,
     },
   });
   return { id, manageToken, start: chosen.start, barberName: chosen.barberName, serviceName: service.name };
 }
 
-const MANAGE_SELECT = `SELECT a.*,c.name customer_name,c.phone,c.email,c.sms_consent,b.name barber_name,s.name service_name,s.price_cents,s.duration_minutes,s.buffer_minutes
+const MANAGE_SELECT = `SELECT a.*,c.name customer_name,c.phone,c.email,c.sms_consent,c.sms_consent_version,b.name barber_name,s.name service_name,s.price_cents,s.duration_minutes,s.buffer_minutes
   FROM emmiwood_appointments a JOIN emmiwood_customers c ON c.id=a.customer_id JOIN emmiwood_barbers b ON b.id=a.barber_id JOIN emmiwood_services s ON s.id=a.service_id`;
 
 export async function managedAppointment(env, manageToken) {
@@ -305,6 +306,7 @@ export async function cancelAppointment(env, manageToken, adminId = null, now = 
       appointmentId: appointment.id,
       recipient: appointment.phone,
       smsConsent: Boolean(appointment.sms_consent),
+      smsConsentVersion: appointment.sms_consent_version,
       event: 'cancelled',
       startAt: appointment.start_at,
       serviceName: appointment.service_name,
@@ -346,6 +348,7 @@ export async function rescheduleAppointment(env, manageToken, input, adminId = n
         appointmentId: appointment.id,
         recipient: appointment.phone,
         smsConsent: Boolean(appointment.sms_consent),
+        smsConsentVersion: appointment.sms_consent_version,
         event: 'rescheduled',
         startAt: chosen.start,
         previousStartAt: appointment.start_at,

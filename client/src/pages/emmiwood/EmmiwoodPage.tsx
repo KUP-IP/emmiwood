@@ -323,7 +323,7 @@ export default function EmmiwoodPage() {
 
     <footer className="ew-site-footer">
       <a className="ew-brand" href="#top"><span>EWB</span><strong>Emmiwood</strong></a>
-      <div><a href="/emmiwood/privacy">Privacy</a><a href="/emmiwood/sms-terms">SMS terms</a><a href="/emmiwood/chair-rental">Chair rental</a><a href="/emmiwood/admin">Staff sign in</a></div>
+      <div><a href="/emmiwood/privacy">Privacy</a><a href="https://kup.solutions/sms/terms" rel="noreferrer">SMS terms</a><a href="/emmiwood/chair-rental">Chair rental</a><a href="/emmiwood/admin">Staff sign in</a></div>
       <p>© {new Date().getFullYear()} Emmiwood Barbers · Sioux Falls, South Dakota</p>
     </footer>
     <nav className="ew-mobile-book" aria-label="Mobile booking"><a href="/emmiwood/book"><span>Appointments</span><strong>Book now →</strong></a></nav>

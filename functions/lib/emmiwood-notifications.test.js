@@ -181,6 +181,8 @@ test('mock delivery never performs an external send and copy carries opt-out lan
   const result = await deliverNotification({}, { provider: 'mock', channel: 'sms' });
   assert.deepEqual(result, { provider: NOTIFICATION_PROVIDER_MOCK, status: 'queued' });
   assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /Reply STOP/);
+  assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /^KUP Solutions:/);
+  assert.match(renderSms('admin_login_code', { code: '123456' }), /^KUP Solutions: your sign-in code is 123456/);
 });
 
 test('booking confirmation SMS includes absolute manage link and appointment detail', () => {
@@ -192,10 +194,12 @@ test('booking confirmation SMS includes absolute manage link and appointment det
   const body = renderSms('booking_confirmation', {
     serviceName: 'Signature Haircut',
     barberName: 'Barro',
+    shopName: 'Emmiwood Barbers',
     when: 'Wed, Aug 12, 9:00 AM',
     manageUrl,
     optOut: 'Reply STOP to opt out.',
   });
+  assert.match(body, /^KUP Solutions: appointment confirmed at Emmiwood Barbers/);
   assert.match(body, /Signature Haircut with Barro/);
   assert.match(body, /Manage\/cancel: https:\/\/emmiwood-barbers-preview\.pages\.dev\/emmiwood\/manage#token=tok_abc/);
   assert.match(body, /Reply STOP/);

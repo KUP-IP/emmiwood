@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-08-15
+Last updated: 2026-08-21
 
 ## Locked decisions
 
@@ -38,11 +38,14 @@ Last updated: 2026-08-15
     - Emmiwood appointment/OTP From is **`+16052503489`** only (Messaging Service `MG89702f…`).
     - 605 Good Dog holds **`+16058004499`** as an **internal** business line; public NAP remains **no `tel:`** on 605good.dog / GBP.
     - A2P Sole Prop brand **APPROVED** / identity **VERIFIED**.
-    - Campaign `QE2c6890…` (registry `CMcd97283…`): edit/resubmit **same SID only** (no delete/recreate). Sole Prop brand on file is **KUP Solutions**; public SMS identity is **Emmiwood Barbers**, with KUP named as technology operator in `message_flow` / privacy.
-    - Message flow and samples use **`https://www.emmiwood.com/emmiwood/{book,privacy,sms-terms,opt-in-evidence}`** (no trailing-dot URL trap; no pages.dev in live submission).
-    - Static crawler HTML for privacy/sms-terms/opt-in-evidence is required for TCR **30908/30909**.
+    - Campaign `QE2c6890…` (registry `CMcd97283…`): edit/resubmit **same SID only** (no delete/recreate). Sole Prop brand on file is **KUP Solutions**.
+    - **Public SMS identity is KUP Solutions** (KUP Direct). Shop names are appointment payload, not a second messaging brand. Consent, samples, `renderSms`, and legal pages must say KUP Solutions — not Emmiwood as the From brand.
+    - Campaign website / SMS privacy / SMS terms: **`https://kup.solutions/sms`**, **`https://kup.solutions/sms/privacy`**, **`https://kup.solutions/sms/terms`** (not The Bridge `/privacy`). Opt-in evidence: **`https://www.emmiwood.com/emmiwood/opt-in-evidence/`**. Book URL is cited only as the location of the control.
+    - Consent version **`kup-appointment-texts-v1`**. Processor does not enqueue `appointment-texts-v1`.
+    - **2026-08-21:** pre-POST inspect: campaign **FAILED** (not `IN_PROGRESS`); Usa2p has no title field; `brand_name` KUP Solutions; first/last Isaiah Peters. Same-SID POST → **IN_PROGRESS**, empty `errors[]`. Receipt: `docs/a2p-resubmit-receipt-2026-08-21.json`.
     - Live SMS retest only after campaign **VERIFIED**, exact-ID processor, From `+16052503489`, under spend GO. Scheduler stays **false** until that smoke.
-    - **2026-08-15:** campaign was **FAILED / 30908**. Same-SID POST resubmit accepted (`IN_PROGRESS`, empty `errors[]`). Stronger `message_flow` cites opt-in-evidence + labeled Privacy/SMS terms + KUP-as-operator (no trailing-dot URLs). If the next failure is **30914/30918** (identity), stop and register a Standard/Low-Volume brand with EIN — do not delete/recreate this SID first.
+    - If the next failure is **30914** requiring the legal name in **message bodies**, Sole Prop Direct is the wrong vehicle — EIN → Low-Volume Standard with the same KUP Solutions identity, not another Emmiwood filing.
+
 15. **A2P host origin (amended 2026-08-15):** Custom domains **`emmiwood.com` and `www.emmiwood.com`** are attached and **active** on Pages project `emmiwood-barbers-preview`. Canonical public origin remains **`https://www.emmiwood.com`**. Google Workspace MX (`smtp.google.com`) and site verification TXT stay at Namecheap.
 
 ## Deferred

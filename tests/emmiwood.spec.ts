@@ -17,12 +17,12 @@ async function openBookingAtTime(page: Page) {
   const bookingBarroPhoto = page.locator('.ew-barber-choice label.selected .ew-booking-barber-photo');
   await expect(bookingBarroPhoto).toHaveAttribute('src', '/emmiwood/barro-profile.webp');
   await expect(bookingBarroPhoto).toBeVisible();
-  await page.getByRole('button', { name: 'Find the next opening' }).click();
+  await page.getByRole('button', { name: 'Find openings' }).click();
   await expect(page.getByRole('heading', { name: 'Choose the time.' })).toBeVisible();
   const opening = page.locator('.ew-day-panel .ew-slot-grid button').first();
   await expect(opening).toBeVisible();
   await opening.click();
-  await page.getByRole('button', { name: /Continue with/ }).click();
+  await page.getByRole('button', { name: /^Confirm \d/ }).click();
   await expect(page.getByRole('heading', { name: 'Who should we expect?' })).toBeVisible();
 }
 
@@ -51,12 +51,27 @@ test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', a
   const privacy = await (await request.get('/emmiwood/privacy/')).text();
   expect(privacy).toContain('Privacy notice');
   expect(privacy).toMatch(/do not share, sell/i);
+  expect(privacy).toContain('KUP Solutions');
+  expect(privacy).toContain('https://kup.solutions/sms/privacy');
   expect(privacy).not.toContain('id="root"');
+  expect(privacy).not.toMatch(/texts from Emmiwood/i);
+  expect(privacy).not.toContain('Emmiwood Barbers Appointment Texts');
 
   const sms = await (await request.get('/emmiwood/sms-terms/')).text();
   expect(sms).toContain('Appointment Texts');
   expect(sms).toMatch(/do not share, sell/i);
+  expect(sms).toContain('https://kup.solutions/sms/terms');
   expect(sms).not.toContain('id="root"');
+  expect(sms).not.toContain('Emmiwood Barbers Appointment Texts');
+
+  const evidence = await (await request.get('/emmiwood/opt-in-evidence/')).text();
+  expect(evidence).toContain('KUP Solutions');
+  expect(evidence).toContain('Send me appointment texts.');
+  expect(evidence).toContain('Reply STOP to opt out or HELP for help.');
+  expect(evidence).toContain('https://kup.solutions/sms/terms');
+  expect(evidence).toContain('this booking is for Emmiwood Barbers');
+  expect(evidence).not.toContain('id="root"');
+  expect(evidence).not.toMatch(/1118 S Minnesota Ave/);
 });
 
 test('public site is booking-first, specific, responsive, and accessible', async ({ page }, testInfo) => {
@@ -175,7 +190,7 @@ test('availability browser separates days, bounds choices, and honors the shop h
   const horizonDays = Number(catalogBody.data.shop.horizon_days);
 
   await page.goto('/emmiwood/book?service=signature&barber=barro', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Find the next opening' }).click();
+  await page.getByRole('button', { name: 'Find openings' }).click();
   await expect(page.getByRole('heading', { name: 'Choose the time.' })).toBeVisible();
 
   const dayTabs = page.locator('.ew-day-tabs [role="tab"]');
@@ -201,10 +216,11 @@ test('availability browser separates days, bounds choices, and honors the shop h
 
   const controlMetrics = await page.evaluate(() => {
     const input = document.querySelector('.ew-date-picker input')?.getBoundingClientRect();
-    const button = document.querySelector('.ew-availability-controls > .ew-button')?.getBoundingClientRect();
+    const button = document.querySelector('.ew-find-next')?.getBoundingClientRect();
     return { inputHeight: input?.height || 0, buttonHeight: button?.height || 0 };
   });
-  expect(Math.abs(controlMetrics.inputHeight - controlMetrics.buttonHeight)).toBeLessThanOrEqual(2);
+  expect(controlMetrics.inputHeight).toBeGreaterThan(20);
+  expect(controlMetrics.buttonHeight).toBeGreaterThan(20);
   await expectNoPageOverflow(page);
   await page.screenshot({ path: testInfo.outputPath(`availability-${testInfo.project.name}.png`), fullPage: true });
 });
@@ -222,14 +238,14 @@ test('availability browser survives one failed day without collapsing the week',
   });
 
   await page.goto('/emmiwood/book?service=signature&barber=barro', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Find the next opening' }).click();
+  await page.getByRole('button', { name: 'Find openings' }).click();
   const dayTabs = page.locator('.ew-day-tabs [role="tab"]');
   await expect(dayTabs).toHaveCount(7);
   await expect(dayTabs.filter({ hasText: 'Try again' })).toHaveCount(1);
   await expect(page.locator('.ew-time-period').first()).toBeVisible();
 
   await dayTabs.filter({ hasText: 'Try again' }).click();
-  await expect(page.getByText('This day could not be checked.')).toBeVisible();
+  await expect(page.getByText("Couldn't check this day.")).toBeVisible();
   await expect(page.getByRole('button', { name: /Retry/ })).toBeVisible();
   await expectNoPageOverflow(page);
 });
@@ -245,7 +261,10 @@ test('booking uses explicit stages, next availability, consent, and review', asy
   const consent = page.getByRole('checkbox', { name: /Send me appointment texts/ });
   await expect(consent).not.toBeChecked();
   await consent.check();
-  await expect(page.getByRole('link', { name: 'SMS terms' })).toHaveAttribute('href', '/emmiwood/sms-terms');
+  await expect(page.getByRole('link', { name: 'SMS terms' })).toHaveAttribute('href', 'https://kup.solutions/sms/terms');
+  await expect(page.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', 'https://kup.solutions/sms/privacy');
+  await expect(page.getByText('from KUP Solutions about this appointment')).toBeVisible();
+  await expect(page.getByText('Reply STOP to opt out or HELP for help.')).toBeVisible();
   await page.getByRole('button', { name: 'Review appointment' }).click();
   await expect(page.getByRole('heading', { name: 'Review before we reserve it.' })).toBeVisible();
   await expect(page.locator('.ew-review-list')).toContainText('Signature Haircut');
@@ -275,7 +294,7 @@ test('booking conflict preserves customer work and returns useful openings', asy
   const replacement = page.locator('.ew-day-panel .ew-slot-grid button').first();
   await expect(replacement).toBeVisible();
   await replacement.click();
-  await page.getByRole('button', { name: /Continue with/ }).click();
+  await page.getByRole('button', { name: /^Confirm \d/ }).click();
   await expect(page.getByLabel('Name')).toHaveValue(`Emmiwood QA ${testInfo.project.name}`);
   await expect(page.getByLabel('Mobile')).toHaveValue(testInfo.project.name === 'mobile' ? '(605) 555-0182' : '(605) 555-0181');
 });

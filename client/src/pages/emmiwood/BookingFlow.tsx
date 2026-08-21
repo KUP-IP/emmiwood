@@ -9,7 +9,7 @@ import {
   prettyTime,
   slotDate,
 } from './availability';
-import { BARBER_DETAILS, EMMIWOOD_CONSENT_VERSION, EMMIWOOD_PHONE_LABEL, money } from './content';
+import { BARBER_DETAILS, EMMIWOOD_CONSENT_VERSION, EMMIWOOD_PHONE_LABEL, KUP_SMS_PRIVACY_URL, KUP_SMS_TERMS_URL, money } from './content';
 import type { Appointment, Catalog, Slot } from './types';
 
 const hasService = (catalog: Catalog, id?: string | null) => Boolean(id && catalog.services.some((service) => service.id === id));
@@ -271,7 +271,7 @@ export function BookingFlow({
             <label>Mobile<input id="ew-guest-phone" ref={phoneInputRef} type="tel" inputMode="tel" autoComplete="tel" placeholder="(605) 555-0123" aria-describedby={message === 'Enter a valid 10-digit mobile number.' ? 'ew-details-message ew-mobile-help' : 'ew-mobile-help'} aria-invalid={message === 'Enter a valid 10-digit mobile number.' ? true : undefined} value={details.phone} onChange={(event) => { setDetails({ ...details, phone: event.target.value }); if (message) setMessage(''); }} onBlur={() => setDetails((current) => ({ ...current, phone: formatUsPhone(current.phone) }))} required /><small id="ew-mobile-help" className="ew-field-help">Required so the shop can contact you about this appointment. Marketing texts are not sent.</small></label>
             <label className="wide">Notes <small>optional</small><textarea rows={3} value={details.notes} onChange={(event) => setDetails({ ...details, notes: event.target.value })} placeholder="Hair goals, accessibility needs, or anything the barber should know." /></label>
           </div>
-          <label className="ew-consent"><input type="checkbox" checked={details.smsConsent} onChange={(event) => setDetails({ ...details, smsConsent: event.target.checked })} /><span><strong>Send me appointment texts.</strong> I agree to receive confirmation and reminder messages from Emmiwood. Message and data rates may apply. Reply STOP to opt out. <a href="/emmiwood/sms-terms" target="_blank">SMS terms</a> · <a href="/emmiwood/privacy" target="_blank">Privacy</a></span></label>
+          <label className="ew-consent"><input type="checkbox" checked={details.smsConsent} onChange={(event) => setDetails({ ...details, smsConsent: event.target.checked })} /><span><strong>Send me appointment texts.</strong> I agree to receive confirmation and reminder messages from KUP Solutions about this appointment. Message and data rates may apply. Reply STOP to opt out or HELP for help. <a href={KUP_SMS_TERMS_URL} target="_blank" rel="noreferrer">SMS terms</a> · <a href={KUP_SMS_PRIVACY_URL} target="_blank" rel="noreferrer">Privacy</a></span></label>
           <p id="ew-details-message" className={`ew-form-message${message ? ' is-error' : ' is-empty'}`} role={message ? 'alert' : undefined} aria-live="polite">{message}</p>
           <div className="ew-stage-actions"><button className="ew-link-button" type="button" onClick={() => setStage('time')}>Back</button><button className="ew-button" type="submit">Review appointment</button></div>
         </form>

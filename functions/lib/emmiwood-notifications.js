@@ -3,6 +3,8 @@ export const NOTIFICATION_PROVIDER_TWILIO = 'twilio';
 export const NOTIFICATION_PROVIDER_RESEND = 'resend';
 export const NOTIFICATION_PROVIDER_UNCONFIGURED = 'unconfigured';
 export const REMINDER_LEAD_SECONDS = 24 * 60 * 60;
+export const KUP_APPOINTMENT_SMS_CONSENT_VERSION = 'kup-appointment-texts-v1';
+export const KUP_SMS_BRAND = 'KUP Solutions';
 
 /** v1 production gate: processor + SMS only. Resend/email secrets are deferred. */
 export const PRODUCTION_NOTIFICATION_SECRET_NAMES = Object.freeze([
@@ -160,11 +162,13 @@ export function appointmentSmsStatements(env, {
   appointmentId,
   recipient,
   smsConsent,
+  smsConsentVersion,
   event,
   startAt,
   previousStartAt = null,
   serviceName,
   barberName,
+  shopName = 'Emmiwood Barbers',
   manageToken = null,
   now = Math.floor(Date.now() / 1000),
 }) {
@@ -180,6 +184,8 @@ export function appointmentSmsStatements(env, {
       WHERE appointment_id=? AND channel='sms' AND status='queued'`)
       .bind(reason, appointmentId));
   }
+
+  if (smsConsentVersion !== KUP_APPOINTMENT_SMS_CONSENT_VERSION) return statements;
 
   const templateByEvent = {
     booked: 'booking_confirmation',
@@ -197,6 +203,7 @@ export function appointmentSmsStatements(env, {
     previousStart: previousStartAt,
     serviceName,
     barberName,
+    shopName,
     when,
     manageUrl,
     optOut: 'Reply STOP to opt out.',
@@ -227,6 +234,7 @@ export function appointmentSmsStatements(env, {
         start: startAt,
         serviceName,
         barberName,
+        shopName,
         when,
         manageUrl,
         optOut: 'Reply STOP to opt out.',
@@ -296,6 +304,7 @@ export async function deliverNotification(env, row) {
 
 export function renderSms(template, payload) {
   const optOut = payload.optOut ? ` ${payload.optOut}` : '';
+  const shop = payload.shopName || 'Emmiwood Barbers';
   let detail = '';
   if (payload.serviceName && payload.barberName) detail = ` ${payload.serviceName} with ${payload.barberName}`;
   else if (payload.serviceName) detail = ` ${payload.serviceName}`;
@@ -303,12 +312,12 @@ export function renderSms(template, payload) {
   if (payload.when) detail += detail ? ` · ${payload.when}` : ` ${payload.when}`;
   const manage = payload.manageUrl ? ` Manage/cancel: ${payload.manageUrl}` : '';
   switch (template) {
-    case 'admin_login_code': return `Emmiwood Barbers: your sign-in code is ${payload.code}. It expires in ten minutes.`;
-    case 'booking_confirmation': return `Emmiwood Barbers: appointment confirmed.${detail}.${manage}${optOut}`;
-    case 'appointment_reminder': return `Emmiwood Barbers reminder:${detail || ' tomorrow'}.${manage}${optOut}`;
-    case 'cancellation_confirmation': return `Emmiwood Barbers: appointment cancelled.${detail}.${optOut}`;
-    case 'reschedule_confirmation': return `Emmiwood Barbers: appointment rescheduled.${detail}.${manage}${optOut}`;
-    default: return `Emmiwood Barbers appointment update.${optOut}`;
+    case 'admin_login_code': return `${KUP_SMS_BRAND}: your sign-in code is ${payload.code}. It expires in ten minutes.`;
+    case 'booking_confirmation': return `${KUP_SMS_BRAND}: appointment confirmed at ${shop}.${detail}.${manage}${optOut}`;
+    case 'appointment_reminder': return `${KUP_SMS_BRAND} reminder at ${shop}:${detail || ' tomorrow'}.${manage}${optOut}`;
+    case 'cancellation_confirmation': return `${KUP_SMS_BRAND}: appointment cancelled at ${shop}.${detail}.${optOut}`;
+    case 'reschedule_confirmation': return `${KUP_SMS_BRAND}: appointment rescheduled at ${shop}.${detail}.${manage}${optOut}`;
+    default: return `${KUP_SMS_BRAND} appointment update at ${shop}.${optOut}`;
   }
 }
 

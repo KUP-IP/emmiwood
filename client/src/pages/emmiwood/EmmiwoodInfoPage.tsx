@@ -14,42 +14,33 @@ type InfoKind = 'privacy' | 'sms-terms' | 'chair-rental';
 const COPY: Record<InfoKind, { title: string; description: string; eyebrow: string; body: JSX.Element }> = {
   privacy: {
     title: 'Privacy | Emmiwood Barbers',
-    description: 'How Emmiwood Barbers uses booking, mobile numbers, and optional appointment texts.',
+    description: 'How Emmiwood Barbers uses booking information. Appointment texts are sent by KUP Solutions.',
     eyebrow: 'Customer privacy',
     body: <>
-      <p>Emmiwood Barbers (“Emmiwood,” “we,” “us”) operates a booking website and optional appointment text program for the shop at {EMMIWOOD_ADDRESS}. This privacy notice explains what information we collect and how it is used for booking and messaging.</p>
+      <p>Emmiwood Barbers (“Emmiwood,” “we,” “us”) operates the shop booking website at {EMMIWOOD_ADDRESS}. This notice explains booking information collected on this website.</p>
       <h2>Information we collect</h2>
       <p>When you book or manage an appointment we may collect: your name, mobile phone number, appointment details (service, barber, date and time), optional notes you provide, SMS opt-in status if you choose appointment texts, and technical records needed to run the booking system (for example request logs and audit events).</p>
       <h2>How we use information</h2>
-      <p>We use this information to schedule and manage appointments, prevent double-booking, send optional appointment texts you opt into, support cancellation or rescheduling, operate shop administration, and provide technical support for the booking system.</p>
-      <h2>Mobile numbers and messaging consent</h2>
-      <p><strong>We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes.</strong> Mobile numbers and opt-in status are used only to operate Emmiwood appointment and staff-security messaging you request, and to support the booking system.</p>
-      <p>Optional appointment texts are transactional only (for example confirmation, reminder, cancellation, or reschedule notices). Message frequency varies based on your appointments and updates (typically a small number of messages per booked appointment). <strong>Message and data rates may apply.</strong> Consent to texts is optional and is not required to complete a booking. You may reply <strong>STOP</strong> to opt out of applicable messages or <strong>HELP</strong> for help. Carrier delivery is not guaranteed.</p>
-      <h2>Access and service providers</h2>
-      <p>Authorized Emmiwood staff may access booking data to run the shop. KUP Solutions operates the booking technology as a service provider on Emmiwood’s behalf and may access data only to host, secure, and support the system. Infrastructure vendors (for example hosting and SMS delivery) process data only as needed to provide those services under this program—not for their own marketing.</p>
-      <h2>Retention</h2>
-      <p>Booking and messaging records are retained for legitimate shop operations, customer support, security, and legal requirements, then removed or minimized when no longer needed.</p>
-      <h2>SMS terms</h2>
-      <p>Program details for optional appointment texts are also described in our <a href="/emmiwood/sms-terms">SMS terms</a>.</p>
+      <p>We use this information to schedule and manage appointments, prevent double-booking, support cancellation or rescheduling, operate shop administration, and provide technical support for the booking system.</p>
+      <h2>Appointment texts</h2>
+      <p>Optional appointment confirmation and reminder texts are sent by <strong>KUP Solutions</strong>, not by Emmiwood Barbers as a separate messaging brand. Program details: <a href="https://kup.solutions/sms/privacy" target="_blank" rel="noreferrer">SMS privacy</a> · <a href="https://kup.solutions/sms/terms" target="_blank" rel="noreferrer">SMS terms</a>.</p>
+      <p>We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes. Consent is optional and is not required to complete a booking.</p>
+      <h2>Access</h2>
+      <p>Authorized Emmiwood staff may access booking data to run the shop. KUP Solutions hosts the booking technology and sends opted-in appointment texts.</p>
       <h2>Contact</h2>
-      <p>Questions about privacy or your booking information: call the shop at {EMMIWOOD_PHONE_LABEL} or visit us at {EMMIWOOD_ADDRESS}.</p>
+      <p>Questions about a booking: call the shop at {EMMIWOOD_PHONE_LABEL}. Questions about appointment texts: <a href="mailto:isaiah@kup.solutions">isaiah@kup.solutions</a>.</p>
     </>,
   },
   'sms-terms': {
     title: 'SMS Terms | Emmiwood Barbers',
-    description: 'Terms for optional Emmiwood appointment confirmation, reminder, and update texts.',
+    description: 'Appointment texts for this booking site are sent by KUP Solutions.',
     eyebrow: 'Optional appointment texts',
     body: <>
-      <p><strong>Program name:</strong> Emmiwood Barbers Appointment Texts. Operated for Emmiwood Barbers ({EMMIWOOD_ADDRESS}).</p>
-      <p>When you select “Send me appointment texts” (or equivalent opt-in) on the booking website, you agree to receive transactional SMS messages from Emmiwood Barbers about the appointment you are booking or managing.</p>
-      <h2>Message types and frequency</h2>
-      <p>Messages may include booking confirmation, appointment reminders, cancellation confirmation, rescheduling confirmation, and related appointment updates. <strong>Message frequency varies</strong> (typically a small number of messages per appointment, plus updates if you change or cancel). Staff admin sign-in codes may be sent only to allowlisted shop administrators for portal security—not for marketing.</p>
-      <h2>Consent and cost</h2>
-      <p>Consent is optional and is <strong>not a condition of booking</strong>. <strong>Message and data rates may apply.</strong> Carrier delivery is not guaranteed.</p>
-      <h2>Opt out and help</h2>
-      <p>Reply <strong>STOP</strong> to opt out of applicable messages. Reply <strong>HELP</strong> for help, or call {EMMIWOOD_PHONE_LABEL} for appointment support.</p>
-      <h2>Privacy</h2>
-      <p>Mobile numbers and messaging consent are handled as described in our <a href="/emmiwood/privacy">privacy notice</a>. We do not share, sell, or provide mobile phone numbers or messaging consent data to third parties or affiliates for marketing or promotional purposes.</p>
+      <p>This booking website does not operate a separate Emmiwood Barbers text program. Optional appointment texts are sent by <strong>KUP Solutions</strong>.</p>
+      <p>When you select “Send me appointment texts” on this site, you agree to receive transactional SMS messages from KUP Solutions about the appointment you are booking or managing.</p>
+      <p><strong>We do not share, sell, or provide mobile phone numbers or messaging consent data to third parties or affiliates for marketing or promotional purposes</strong> under the KUP Solutions appointment-text program.</p>
+      <p><a href="https://kup.solutions/sms" target="_blank" rel="noreferrer">Program</a> · <a href="https://kup.solutions/sms/terms" target="_blank" rel="noreferrer">SMS terms</a> · <a href="https://kup.solutions/sms/privacy" target="_blank" rel="noreferrer">SMS privacy</a></p>
+      <p>Message frequency varies. Message and data rates may apply. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help.</p>
     </>,
   },
   'chair-rental': {
