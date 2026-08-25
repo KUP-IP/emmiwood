@@ -38,13 +38,12 @@ npm run release:preflight -- \
 
 ## Production administrator seed
 
-Production requires exactly three active, phone-unique accounts:
+Production requires exactly two active, phone-unique individual accounts:
 
 - `admin-isaiah`: owner
-- `admin-recovery`: manager
-- `admin-kup-support`: read/support-only `kup_support`
+- `admin-barro`: manager (full administration and support visibility)
 
-Real emails and E.164 phones are supplied only through the six `EMMIWOOD_OWNER_*`, `EMMIWOOD_RECOVERY_*`, and `EMMIWOOD_SUPPORT_*` environment inputs. Never commit them, paste them into a gate, or store them in a migration. Dry-run validation masks all identities and performs no provider call:
+Isaiah and Barro handle support through their own accounts; production does not seed a shared or third support login. Real emails and E.164 phones are supplied only through the four `EMMIWOOD_OWNER_*` and `EMMIWOOD_BARRO_*` environment inputs. Never commit them, paste them into a gate, or store them in a migration. Dry-run validation masks all identities and performs no provider call:
 
 ```bash
 node scripts/seed-production-admins.mjs
@@ -81,7 +80,7 @@ npm run release:preflight -- \
   --readiness-url https://emmiwood.pages.dev/api/emmiwood/internal/notifications
 ```
 
-Deploy readiness requires: exact runtime SHA, production environment, pages.dev origin, frozen writes, `main` Pages branch, matching deployment source, no pending migrations, exactly three valid administrators, zero queued notifications, workflow manually disabled, and no processor URL variable.
+Deploy readiness requires: exact runtime SHA, production environment, pages.dev origin, frozen writes, `main` Pages branch, matching deployment source, no pending migrations, exactly two valid administrators, zero queued notifications, workflow manually disabled, and no processor URL variable.
 
 ## Cutover readiness
 

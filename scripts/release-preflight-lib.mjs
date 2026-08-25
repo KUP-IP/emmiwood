@@ -102,13 +102,11 @@ export function validateAdminRoster(admins = []) {
   const errors = [];
   const active = Array.isArray(admins) ? admins.filter((admin) => Number(admin?.active) === 1) : [];
   const phones = active.map((admin) => String(admin?.phone || '').trim());
-  const owner = active.find((admin) => admin?.role === 'owner');
-  const recovery = active.find((admin) => admin?.id === 'admin-recovery' && admin?.role === 'manager');
-  const support = active.find((admin) => admin?.id === 'admin-kup-support' && admin?.role === 'kup_support');
+  const owner = active.find((admin) => admin?.id === 'admin-isaiah' && admin?.role === 'owner');
+  const barro = active.find((admin) => admin?.id === 'admin-barro' && admin?.role === 'manager');
 
-  if (!owner) errors.push('production admin roster requires an active owner');
-  if (!recovery) errors.push('production admin roster requires admin-recovery with manager role');
-  if (!support) errors.push('production admin roster requires admin-kup-support with kup_support role');
+  if (!owner) errors.push('production admin roster requires admin-isaiah with owner role');
+  if (!barro) errors.push('production admin roster requires admin-barro with manager role');
   if (active.some((admin) => String(admin?.phone || '').trim() === PLACEHOLDER_ADMIN_PHONE)) {
     errors.push(`production admin roster still contains placeholder phone ${PLACEHOLDER_ADMIN_PHONE}`);
   }
@@ -116,7 +114,7 @@ export function validateAdminRoster(admins = []) {
     errors.push('every active production admin requires a valid E.164 phone');
   }
   if (new Set(phones).size !== phones.length) errors.push('active production admin phones must be unique');
-  if (active.length !== 3) errors.push(`production admin roster must contain exactly 3 active accounts; observed ${active.length}`);
+  if (active.length !== 2) errors.push(`production admin roster must contain exactly 2 active accounts; observed ${active.length}`);
   return errors;
 }
 

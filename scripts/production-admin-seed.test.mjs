@@ -15,18 +15,15 @@ import { validateAdminRoster } from './release-preflight-lib.mjs';
 const VALID_ENV = {
   EMMIWOOD_OWNER_EMAIL: 'owner@example.com',
   EMMIWOOD_OWNER_PHONE: '+16055550101',
-  EMMIWOOD_RECOVERY_EMAIL: 'recovery@example.com',
-  EMMIWOOD_RECOVERY_PHONE: '+16055550102',
-  EMMIWOOD_SUPPORT_EMAIL: 'support@example.com',
-  EMMIWOOD_SUPPORT_PHONE: '+16055550103',
+  EMMIWOOD_BARRO_EMAIL: 'barro@example.com',
+  EMMIWOOD_BARRO_PHONE: '+16055550102',
 };
 
-test('production admin seed builds the exact role-isolated roster', () => {
+test('production admin seed builds the exact individual roster', () => {
   const roster = productionAdminRosterFromEnv(VALID_ENV);
   assert.deepEqual(roster.map(({ id, role }) => ({ id, role })), [
     { id: 'admin-isaiah', role: 'owner' },
-    { id: 'admin-recovery', role: 'manager' },
-    { id: 'admin-kup-support', role: 'kup_support' },
+    { id: 'admin-barro', role: 'manager' },
   ]);
   const sql = buildAdminSeedSql(roster);
   assert.match(sql, /ON CONFLICT\(id\) DO UPDATE/);
@@ -43,9 +40,8 @@ test('production admin seed SQL applies to the migrated schema and verifies exac
     const roster = db.query('SELECT id,email,role,active,phone FROM emmiwood_admins ORDER BY id');
     assert.deepEqual(validateAdminRoster(roster), []);
     assert.deepEqual(roster.map(({ id, role }) => ({ id, role })), [
+      { id: 'admin-barro', role: 'manager' },
       { id: 'admin-isaiah', role: 'owner' },
-      { id: 'admin-kup-support', role: 'kup_support' },
-      { id: 'admin-recovery', role: 'manager' },
     ]);
   } finally {
     db.close();
@@ -57,7 +53,7 @@ test('production admin seed rejects missing, malformed, placeholder, and duplica
   assert.throws(() => productionAdminRosterFromEnv({ ...VALID_ENV, EMMIWOOD_OWNER_EMAIL: 'invalid' }), /valid email/);
   assert.throws(() => productionAdminRosterFromEnv({ ...VALID_ENV, EMMIWOOD_OWNER_PHONE: '6055550101' }), /E\.164/);
   assert.throws(() => productionAdminRosterFromEnv({ ...VALID_ENV, EMMIWOOD_OWNER_PHONE: '+16055550199' }), /placeholder/);
-  assert.throws(() => productionAdminRosterFromEnv({ ...VALID_ENV, EMMIWOOD_RECOVERY_PHONE: VALID_ENV.EMMIWOOD_OWNER_PHONE }), /phones must be unique/);
+  assert.throws(() => productionAdminRosterFromEnv({ ...VALID_ENV, EMMIWOOD_BARRO_PHONE: VALID_ENV.EMMIWOOD_OWNER_PHONE }), /phones must be unique/);
 });
 
 test('production admin seed precondition accepts only the untouched migration roster', () => {
