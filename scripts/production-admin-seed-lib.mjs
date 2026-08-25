@@ -4,8 +4,7 @@ import { PLACEHOLDER_ADMIN_PHONE, validateAdminRoster } from './release-prefligh
 
 const ADMIN_INPUTS = Object.freeze([
   { id: 'admin-isaiah', role: 'owner', label: 'OWNER' },
-  { id: 'admin-recovery', role: 'manager', label: 'RECOVERY' },
-  { id: 'admin-kup-support', role: 'kup_support', label: 'SUPPORT' },
+  { id: 'admin-barro', role: 'manager', label: 'BARRO' },
 ]);
 
 function required(env, name) {
