@@ -1,3 +1,5 @@
+import { runtimeReadiness } from './emmiwood-runtime.js';
+
 export const NOTIFICATION_PROVIDER_MOCK = 'mock';
 export const NOTIFICATION_PROVIDER_TWILIO = 'twilio';
 export const NOTIFICATION_PROVIDER_RESEND = 'resend';
@@ -10,6 +12,7 @@ export const KUP_SMS_BRAND = 'KUP Solutions';
 export const PRODUCTION_NOTIFICATION_SECRET_NAMES = Object.freeze([
   'EMMIWOOD_NOTIFICATION_SECRET',
   'TWILIO_ACCOUNT_SID',
+  'TWILIO_API_KEY_SID',
   'TWILIO_AUTH_TOKEN',
   'TWILIO_FROM_NUMBER',
 ]);
@@ -22,6 +25,7 @@ export const DEFERRED_EMAIL_SECRET_NAMES = Object.freeze([
 
 const PROCESSOR_SECRET_NAMES = Object.freeze(['EMMIWOOD_NOTIFICATION_SECRET']);
 const SMS_SECRET_NAMES = Object.freeze(['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM_NUMBER']);
+const PRODUCTION_SMS_SECRET_NAMES = Object.freeze(['TWILIO_ACCOUNT_SID', 'TWILIO_API_KEY_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM_NUMBER']);
 const EMAIL_SECRET_NAMES = DEFERRED_EMAIL_SECRET_NAMES;
 
 function missingNames(env, names) {
@@ -29,7 +33,8 @@ function missingNames(env, names) {
 }
 
 function hasSmsSecrets(env) {
-  return Boolean(env?.TWILIO_ACCOUNT_SID && env?.TWILIO_AUTH_TOKEN && env?.TWILIO_FROM_NUMBER);
+  const base = Boolean(env?.TWILIO_ACCOUNT_SID && env?.TWILIO_AUTH_TOKEN && env?.TWILIO_FROM_NUMBER);
+  return base && (env?.ENVIRONMENT !== 'production' || Boolean(env?.TWILIO_API_KEY_SID));
 }
 
 function hasEmailSecrets(env) {
@@ -58,10 +63,11 @@ export function notificationProvider(env, channel = 'sms') {
 export function notificationReadiness(env) {
   const production = env?.ENVIRONMENT === 'production';
   const processorMissing = missingNames(env, PROCESSOR_SECRET_NAMES);
-  const smsMissing = missingNames(env, SMS_SECRET_NAMES);
+  const smsMissing = missingNames(env, production ? PRODUCTION_SMS_SECRET_NAMES : SMS_SECRET_NAMES);
   const emailMissing = missingNames(env, EMAIL_SECRET_NAMES);
   const smsProvider = notificationProvider(env, 'sms');
   const emailProvider = notificationProvider(env, 'email');
+  const configuration = runtimeReadiness(env);
 
   if (!production) {
     // Preview may run exact-ID Twilio smoke once secrets are bound; without secrets, mock is ready.
@@ -82,12 +88,13 @@ export function notificationReadiness(env) {
         missing: [],
         deferred: true,
       },
+      configuration,
     };
   }
 
   return {
     // SMS-only v1: email secrets must not block customer SMS or admin SMS OTP.
-    ready: processorMissing.length === 0 && smsMissing.length === 0,
+    ready: processorMissing.length === 0 && smsMissing.length === 0 && configuration.ready,
     environment: 'production',
     exactIdOnly: false,
     processor: { ready: processorMissing.length === 0, missing: processorMissing },
@@ -98,6 +105,7 @@ export function notificationReadiness(env) {
       missing: emailMissing,
       deferred: true,
     },
+    configuration,
   };
 }
 

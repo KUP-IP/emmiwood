@@ -36,6 +36,7 @@ function twilioEnv(db, extra = {}) {
     DB: db,
     ENVIRONMENT: 'production',
     TWILIO_ACCOUNT_SID: 'sid',
+    TWILIO_API_KEY_SID: 'SKkey',
     TWILIO_AUTH_TOKEN: 'token',
     TWILIO_FROM_NUMBER: '+16050000000',
     EMMIWOOD_AUTH_RESPONSE_FLOOR_MS: '1',

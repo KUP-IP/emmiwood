@@ -15,3 +15,5 @@ npm run dev
 ```
 
 The zero UUID in `wrangler.toml` is intentionally non-deployable. Replace it only after creating the dedicated Emmiwood D1 database. Production credentials and deployment remain gated.
+
+Production appointment writes fail closed unless `EMMIWOOD_BOOKING_WRITES_ENABLED` is explicitly `true`. See [`docs/RELEASE.md`](docs/RELEASE.md) for the staged preflight, administrator seed, deployment, cutover, and rollback contract.

@@ -13,6 +13,14 @@ import {
   renderSms,
 } from './emmiwood-notifications.js';
 
+const PRODUCTION_RUNTIME = Object.freeze({
+  ENVIRONMENT: 'production',
+  EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.example',
+  EMMIWOOD_BOOKING_WRITES_ENABLED: 'false',
+  EMMIWOOD_RELEASE_SHA: 'a'.repeat(40),
+  TWILIO_API_KEY_SID: 'SKconfigured',
+});
+
 test('preview uses mock delivery while incomplete production credentials fail closed', () => {
   assert.equal(notificationProvider({ ENVIRONMENT: 'preview' }), NOTIFICATION_PROVIDER_MOCK);
   assert.equal(notificationProvider({ ENVIRONMENT: 'production', TWILIO_ACCOUNT_SID: 'sid' }), NOTIFICATION_PROVIDER_UNCONFIGURED);
@@ -42,7 +50,7 @@ test('complete Twilio credentials activate live SMS on preview for controlled sm
 
 test('production readiness reports missing names without exposing values', () => {
   const incomplete = notificationReadiness({
-    ENVIRONMENT: 'production',
+    ...PRODUCTION_RUNTIME,
     EMMIWOOD_NOTIFICATION_SECRET: 'super-secret-sentinel',
     RESEND_API_KEY: 'super-secret-sentinel',
     EMAIL_FROM: 'super-secret-sentinel',
@@ -54,7 +62,7 @@ test('production readiness reports missing names without exposing values', () =>
   assert.equal(JSON.stringify(incomplete).includes('super-secret-sentinel'), false);
 
   const smsOnly = notificationReadiness({
-    ENVIRONMENT: 'production',
+    ...PRODUCTION_RUNTIME,
     EMMIWOOD_NOTIFICATION_SECRET: 'configured',
     TWILIO_ACCOUNT_SID: 'configured',
     TWILIO_AUTH_TOKEN: 'configured',
@@ -67,7 +75,7 @@ test('production readiness reports missing names without exposing values', () =>
   assert.deepEqual(smsOnly.email.missing, ['RESEND_API_KEY', 'EMAIL_FROM']);
 
   const complete = notificationReadiness({
-    ENVIRONMENT: 'production',
+    ...PRODUCTION_RUNTIME,
     EMMIWOOD_NOTIFICATION_SECRET: 'configured',
     TWILIO_ACCOUNT_SID: 'configured',
     TWILIO_AUTH_TOKEN: 'configured',
@@ -79,6 +87,37 @@ test('production readiness reports missing names without exposing values', () =>
   assert.equal(complete.sms.provider, NOTIFICATION_PROVIDER_TWILIO);
   assert.equal(complete.email.provider, NOTIFICATION_PROVIDER_RESEND);
   assert.equal(complete.email.deferred, true);
+  assert.deepEqual(complete.configuration.bookingWrites, { enabled: false, configured: true, valid: true });
+  assert.deepEqual(complete.configuration.publicOrigin, { configured: true, valid: true, value: 'https://emmiwood.example' });
+  assert.deepEqual(complete.configuration.release, { configured: true, valid: true, value: 'a'.repeat(40) });
+});
+
+test('production readiness fails closed on missing or invalid runtime configuration', () => {
+  const credentials = {
+    ENVIRONMENT: 'production',
+    EMMIWOOD_NOTIFICATION_SECRET: 'configured',
+    TWILIO_ACCOUNT_SID: 'configured',
+    TWILIO_API_KEY_SID: 'SKconfigured',
+    TWILIO_AUTH_TOKEN: 'configured',
+    TWILIO_FROM_NUMBER: 'configured',
+  };
+  const missing = notificationReadiness(credentials);
+  assert.equal(missing.ready, false);
+  assert.equal(missing.configuration.bookingWrites.enabled, false);
+  assert.equal(missing.configuration.bookingWrites.valid, false);
+  assert.equal(missing.configuration.publicOrigin.valid, false);
+  assert.equal(missing.configuration.release.valid, false);
+
+  const invalid = notificationReadiness({
+    ...credentials,
+    EMMIWOOD_PUBLIC_ORIGIN: 'http://emmiwood.example/path',
+    EMMIWOOD_BOOKING_WRITES_ENABLED: 'yes',
+    EMMIWOOD_RELEASE_SHA: 'short',
+  });
+  assert.equal(invalid.ready, false);
+  assert.equal(invalid.configuration.bookingWrites.valid, false);
+  assert.equal(invalid.configuration.publicOrigin.valid, false);
+  assert.equal(invalid.configuration.release.valid, false);
 });
 
 test('reminders are due exactly 24 hours before eligible appointments', () => {
@@ -99,7 +138,7 @@ test('notification processor readiness is authenticated and fails closed before 
       VALUES('blocked-1','emmiwood','sms','booking_confirmation','+16055550100','{}','twilio','queued',0)`);
     const env = {
       DB: db,
-      ENVIRONMENT: 'production',
+      ...PRODUCTION_RUNTIME,
       EMMIWOOD_NOTIFICATION_SECRET: 'secret',
     };
     const unauthorized = await onRequestGet({ env, request: new Request('https://example.com/api/emmiwood/internal/notifications') });
@@ -150,7 +189,7 @@ test('preview processor rejects bulk processing without exact notification id', 
 test('SMS-only production credentials satisfy readiness without Resend', async () => {
   const { onRequestGet } = await import('../api/emmiwood/internal/notifications.js');
   const env = {
-    ENVIRONMENT: 'production',
+    ...PRODUCTION_RUNTIME,
     EMMIWOOD_NOTIFICATION_SECRET: 'secret',
     TWILIO_ACCOUNT_SID: 'sid',
     TWILIO_AUTH_TOKEN: 'token',
@@ -172,6 +211,13 @@ test('complete production credentials activate Twilio', () => {
   assert.equal(notificationProvider({
     ENVIRONMENT: 'production',
     TWILIO_ACCOUNT_SID: 'sid',
+    TWILIO_AUTH_TOKEN: 'token',
+    TWILIO_FROM_NUMBER: '+16050000000',
+  }), NOTIFICATION_PROVIDER_UNCONFIGURED);
+  assert.equal(notificationProvider({
+    ENVIRONMENT: 'production',
+    TWILIO_ACCOUNT_SID: 'sid',
+    TWILIO_API_KEY_SID: 'SKkey',
     TWILIO_AUTH_TOKEN: 'token',
     TWILIO_FROM_NUMBER: '+16050000000',
   }), NOTIFICATION_PROVIDER_TWILIO);
@@ -272,7 +318,7 @@ test('notification worker retries transient failures, then records terminal fail
       VALUES('retry-1','emmiwood','email','admin_login_code','owner@example.com','{"code":"123456"}','resend','queued',0)`);
     const env = {
       DB: db,
-      ENVIRONMENT: 'production',
+      ...PRODUCTION_RUNTIME,
       EMMIWOOD_NOTIFICATION_SECRET: 'secret',
       TWILIO_ACCOUNT_SID: 'sid',
       TWILIO_AUTH_TOKEN: 'token',
@@ -306,7 +352,7 @@ test('notification worker resolves rows queued before production credentials wer
       VALUES('recovered-1','emmiwood','sms','booking_confirmation','+16055550100','{}','unconfigured','queued',0)`);
     const env = {
       DB: db,
-      ENVIRONMENT: 'production',
+      ...PRODUCTION_RUNTIME,
       EMMIWOOD_NOTIFICATION_SECRET: 'secret',
       TWILIO_ACCOUNT_SID: 'sid',
       TWILIO_AUTH_TOKEN: 'token',
@@ -338,7 +384,7 @@ test('notification worker persists provider delivery identifiers', async () => {
              ('untouched-1','emmiwood','email','admin_login_code','other@example.com','{"code":"654321"}','resend','queued',0)`);
     const env = {
       DB: db,
-      ENVIRONMENT: 'production',
+      ...PRODUCTION_RUNTIME,
       EMMIWOOD_NOTIFICATION_SECRET: 'secret',
       TWILIO_ACCOUNT_SID: 'sid',
       TWILIO_AUTH_TOKEN: 'token',

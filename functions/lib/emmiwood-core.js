@@ -6,6 +6,7 @@ import {
   rescheduleAppointment as rescheduleBooking,
 } from './emmiwood-booking.js';
 import { appointmentSmsStatements, KUP_APPOINTMENT_SMS_CONSENT_VERSION } from './emmiwood-notifications.js';
+import { bookingWriteState } from './emmiwood-runtime.js';
 
 export const SHOP_ID = 'emmiwood';
 export const SHOP_TIME_ZONE = 'America/Chicago';
@@ -46,6 +47,14 @@ export class EmmiwoodError extends Error {
     this.code = code;
     this.status = status;
   }
+}
+
+export function requireBookingWrites(env = {}) {
+  const state = bookingWriteState(env);
+  if (!state.enabled) {
+    throw new EmmiwoodError('booking_paused', 'Online booking is temporarily paused.', 503);
+  }
+  return state;
 }
 
 
@@ -236,6 +245,7 @@ export async function slots(env, { serviceId, date, barberId = 'first', now = Ma
 }
 
 export async function book(env, input, adminId = null) {
+  requireBookingWrites(env);
   await bootstrap(env);
   const service = await env.DB.prepare('SELECT * FROM emmiwood_services WHERE id=? AND active=1').bind(input.serviceId).first();
   if (!service) throw new EmmiwoodError('service_not_found', 'Service is unavailable.', 404);
@@ -295,6 +305,7 @@ export async function managedAppointment(env, manageToken) {
 }
 
 export async function cancelAppointment(env, manageToken, adminId = null, now = Math.floor(Date.now() / 1000)) {
+  requireBookingWrites(env);
   const appointment = await managedAppointment(env, manageToken);
   if (appointment.status !== 'booked') throw new EmmiwoodError('not_changeable', 'This appointment is no longer active.', 409);
   const policy = await shopPolicy(env);
@@ -326,6 +337,7 @@ export async function cancelAppointment(env, manageToken, adminId = null, now = 
 }
 
 export async function rescheduleAppointment(env, manageToken, input, adminId = null, now = Math.floor(Date.now() / 1000)) {
+  requireBookingWrites(env);
   const appointment = await managedAppointment(env, manageToken);
   if (appointment.status !== 'booked') throw new EmmiwoodError('not_changeable', 'This appointment is no longer active.', 409);
   const policy = await shopPolicy(env);

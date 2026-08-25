@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { book, cancelAppointment, normalizePhone, rescheduleAppointment, slots, zonedEpoch } from './emmiwood-core.js';
+import { bookingWriteState } from './emmiwood-runtime.js';
 import { setupEmmiwoodTestD1 } from './emmiwood-test-d1.js';
 
 test('browser mutations reject foreign origins while allowing same-origin and non-browser calls', async () => {
@@ -11,6 +12,58 @@ test('browser mutations reject foreign origins while allowing same-origin and no
     () => requireSameOrigin(new Request('https://emmiwood.example/api/emmiwood/appointments', { method: 'POST', headers: { origin: 'https://attacker.example' } })),
     { code: 'forbidden_origin', status: 403 },
   );
+});
+
+test('booking writes fail closed before any database operation in production and explicit preview freezes', async () => {
+  let databaseOperations = 0;
+  const blockedDb = {
+    prepare() {
+      databaseOperations += 1;
+      throw new Error('database must not be touched while booking writes are frozen');
+    },
+  };
+
+  assert.deepEqual(bookingWriteState({ ENVIRONMENT: 'production' }), {
+    enabled: false,
+    configured: false,
+    valid: false,
+  });
+  assert.deepEqual(bookingWriteState({ ENVIRONMENT: 'preview' }), {
+    enabled: true,
+    configured: false,
+    valid: true,
+  });
+  assert.equal(bookingWriteState({ ENVIRONMENT: 'production', EMMIWOOD_BOOKING_WRITES_ENABLED: 'true' }).enabled, true);
+  assert.equal(bookingWriteState({ ENVIRONMENT: 'preview', EMMIWOOD_BOOKING_WRITES_ENABLED: 'false' }).enabled, false);
+  assert.deepEqual(bookingWriteState({ ENVIRONMENT: 'production', EMMIWOOD_BOOKING_WRITES_ENABLED: 'yes' }), {
+    enabled: false,
+    configured: true,
+    valid: false,
+  });
+
+  await assert.rejects(
+    () => book({ DB: blockedDb, ENVIRONMENT: 'production' }, {}),
+    { code: 'booking_paused', status: 503 },
+  );
+  await assert.rejects(
+    () => cancelAppointment({ DB: blockedDb, ENVIRONMENT: 'preview', EMMIWOOD_BOOKING_WRITES_ENABLED: 'false' }, 'token'),
+    { code: 'booking_paused', status: 503 },
+  );
+  await assert.rejects(
+    () => rescheduleAppointment({ DB: blockedDb, ENVIRONMENT: 'preview', EMMIWOOD_BOOKING_WRITES_ENABLED: 'invalid' }, 'token', {}),
+    { code: 'booking_paused', status: 503 },
+  );
+
+  const { cancelAdminAppointment, rescheduleAdminAppointment } = await import('./emmiwood-admin.js');
+  await assert.rejects(
+    () => cancelAdminAppointment({ DB: blockedDb, ENVIRONMENT: 'production' }, 'appointment', { id: 'admin' }),
+    { code: 'booking_paused', status: 503 },
+  );
+  await assert.rejects(
+    () => rescheduleAdminAppointment({ DB: blockedDb, ENVIRONMENT: 'preview', EMMIWOOD_BOOKING_WRITES_ENABLED: 'false' }, 'appointment', {}, { id: 'admin' }),
+    { code: 'booking_paused', status: 503 },
+  );
+  assert.equal(databaseOperations, 0);
 });
 
 
@@ -197,4 +250,3 @@ test('legacy appointment-texts-v1 consent is stored but does not enqueue SMS', a
     db.close();
   }
 });
-
