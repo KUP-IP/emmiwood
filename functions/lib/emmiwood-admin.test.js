@@ -51,9 +51,13 @@ function mockTwilioFetch(calls, sid = 'SM-admin-1') {
   };
 }
 
-test('owner role can enter shop-edit operations', async () => {
-  const admin = await requireAdmin(envForRole('owner'), request, EDIT_ROLES);
-  assert.equal(admin.role, 'owner');
+test('owner and manager accounts can administer and retain support visibility', async () => {
+  for (const role of ['owner', 'manager']) {
+    const editor = await requireAdmin(envForRole(role), request, EDIT_ROLES);
+    const supportReader = await requireAdmin(envForRole(role), request);
+    assert.equal(editor.role, role);
+    assert.equal(supportReader.role, role);
+  }
 });
 
 test('KUP support remains a separate read/support boundary', async () => {

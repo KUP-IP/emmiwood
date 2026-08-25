@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-08-21
+Last updated: 2026-08-25
 
 ## Locked decisions
 
@@ -10,7 +10,7 @@ Last updated: 2026-08-21
 4. The GitHub repository is public so branch protection can be enforced without a paid private-repository plan.
 5. Version one is SMS-only for customer communication. Customer email is not collected in booking or operator-created appointments, and Resend provisioning is deferred.
 6. SMS delivery will use a dedicated Emmiwood Twilio sender under a **KUP-managed Twilio account**. Delivery remains disabled until account setup, sender compliance, and one controlled synthetic test are complete.
-7. KUP receives permanent read-only `kup_support` access. That role must remain excluded from all mutation operations.
+7. Production administration uses two individual SMS-OTP accounts: Isaiah is the primary `owner`; Barro is `manager` with full administration access. Both handle support through their own accounts. No shared or third support login is seeded. The optional `kup_support` role remains read-only if introduced later.
 8. GitHub CodeQL remains deferred by explicit decision. Existing CI security tests and root/client high-severity dependency-audit gates remain required.
 9. Canonical product home (identity consolidation, 2026-07-21):
    - Local checkout: `/Users/keepup/Developer/emmiwood`
@@ -62,6 +62,6 @@ Last updated: 2026-08-21
 - Customer email collection is removed from public and operator booking forms.
 - KUP-managed Twilio account and dedicated Emmiwood sender `+16052503489` are live (see `docs/twilio-number-split.md`).
 - GitHub repository is public with enforceable branch protections.
-- Production admin auth is SMS OTP to allowlisted phones (Issue #17 remaining: production login after A2P VERIFIED; recovery/second phone).
+- Production admin auth is SMS OTP to the two allowlisted individual phones (Issue #17 remaining: production login after A2P VERIFIED).
 - Resend is decoupled from `notificationReadiness` / release preflight for SMS-only v1.
 - Launch gates (hardened): **Preview-GO** (code+policy on preview, SMS smoke with exact outbox ID) is separate from **Prod-GO** (dedicated prod Pages/D1, secrets, origin) and **Commercial-GO**. Scheduler and `EMMIWOOD_NOTIFICATION_URL` stay unset until VERIFIED + spend GO.

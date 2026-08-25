@@ -71,8 +71,7 @@ const READY = {
 
 const ADMIN_ROSTER = [
   { id: 'admin-isaiah', email: 'owner@example.com', role: 'owner', active: 1, phone: '+16055550101' },
-  { id: 'admin-recovery', email: 'recovery@example.com', role: 'manager', active: 1, phone: '+16055550102' },
-  { id: 'admin-kup-support', email: 'support@example.com', role: 'kup_support', active: 1, phone: '+16055550103' },
+  { id: 'admin-barro', email: 'barro@example.com', role: 'manager', active: 1, phone: '+16055550102' },
 ];
 
 const DEPLOY_READY = {
@@ -168,8 +167,8 @@ test('admin roster rejects placeholder, duplicate, missing, and unexpected activ
   assert.deepEqual(validateAdminRoster(ADMIN_ROSTER), []);
   assert.match(validateAdminRoster(ADMIN_ROSTER.map((admin, index) => index === 0 ? { ...admin, phone: '+16055550199' } : admin)).join('\n'), /placeholder/i);
   assert.match(validateAdminRoster(ADMIN_ROSTER.map((admin, index) => index === 1 ? { ...admin, phone: ADMIN_ROSTER[0].phone } : admin)).join('\n'), /unique/i);
-  assert.match(validateAdminRoster(ADMIN_ROSTER.filter((admin) => admin.id !== 'admin-recovery')).join('\n'), /admin-recovery/i);
-  assert.match(validateAdminRoster([...ADMIN_ROSTER, { id: 'unexpected', email: 'extra@example.com', role: 'staff', active: 1, phone: '+16055550104' }]).join('\n'), /exactly 3/i);
+  assert.match(validateAdminRoster(ADMIN_ROSTER.filter((admin) => admin.id !== 'admin-barro')).join('\n'), /admin-barro/i);
+  assert.match(validateAdminRoster([...ADMIN_ROSTER, { id: 'unexpected', email: 'extra@example.com', role: 'staff', active: 1, phone: '+16055550104' }]).join('\n'), /exactly 2/i);
 });
 
 test('cutover stage additionally requires both domains and a SHA-bound backup receipt', () => {
