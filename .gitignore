@@ -16,3 +16,6 @@ client/tsconfig.tsbuildinfo
 tmp-r*.png
 tmp-*-audit.mjs
 tmp-*-verify.mjs
+
+# Preview SMS suite receipts (may contain manage tokens / SIDs)
+scripts/.sms-receipts/
