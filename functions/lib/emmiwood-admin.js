@@ -1,4 +1,4 @@
-import { EmmiwoodError, SHOP_ID, book, bootstrap, hash, normalizePhone, requireSameOrigin, slots, token, validateDate } from './emmiwood-core.js';
+import { EmmiwoodError, SHOP_ID, book, bootstrap, hash, normalizePhone, requireBookingWrites, requireSameOrigin, slots, token, validateDate } from './emmiwood-core.js';
 import { cancelAppointment as cancelBooking, rescheduleAppointment as rescheduleBooking } from './emmiwood-booking.js';
 import {
   NOTIFICATION_PROVIDER_MOCK,
@@ -340,6 +340,7 @@ export async function createAdminAppointment(env, input, admin) {
 }
 
 export async function cancelAdminAppointment(env, id, admin) {
+  requireBookingWrites(env);
   const appointment = await appointmentById(env, id);
   if (appointment.status !== 'booked') throw new EmmiwoodError('not_changeable', 'This appointment is no longer active.', 409);
   const timestamp = now();
@@ -368,6 +369,7 @@ export async function cancelAdminAppointment(env, id, admin) {
 }
 
 export async function rescheduleAdminAppointment(env, id, input, admin) {
+  requireBookingWrites(env);
   const appointment = await appointmentById(env, id);
   if (appointment.status !== 'booked') throw new EmmiwoodError('not_changeable', 'This appointment is no longer active.', 409);
   const serviceId = input.serviceId || appointment.service_id;

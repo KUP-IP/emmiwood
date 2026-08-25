@@ -14,6 +14,7 @@ export const REQUIRED_EMMIWOOD_MIGRATIONS = Object.freeze([
 export const REQUIRED_PRODUCTION_SECRETS = Object.freeze([
   'EMMIWOOD_NOTIFICATION_SECRET',
   'TWILIO_ACCOUNT_SID',
+  'TWILIO_API_KEY_SID',
   'TWILIO_AUTH_TOKEN',
   'TWILIO_FROM_NUMBER',
 ]);
@@ -36,6 +37,10 @@ export const EXPECTED_PRODUCTION_RESOURCE = Object.freeze({
   pagesProject: 'emmiwood',
   databaseName: 'emmiwood-db',
 });
+
+export const PREFLIGHT_STAGES = Object.freeze(['provision', 'deploy', 'cutover']);
+export const PLACEHOLDER_ADMIN_PHONE = '+16055550199';
+export const REQUIRED_PRODUCTION_DOMAINS = Object.freeze(['emmiwood.com', 'www.emmiwood.com']);
 
 export function parsePendingMigrations(output = '') {
   const names = output.match(/\b\d{4}_[A-Za-z0-9._-]+\.sql\b/g) || [];
@@ -93,8 +98,31 @@ export function validateNotificationWorkflow(source = '') {
   return errors;
 }
 
+export function validateAdminRoster(admins = []) {
+  const errors = [];
+  const active = Array.isArray(admins) ? admins.filter((admin) => Number(admin?.active) === 1) : [];
+  const phones = active.map((admin) => String(admin?.phone || '').trim());
+  const owner = active.find((admin) => admin?.role === 'owner');
+  const recovery = active.find((admin) => admin?.id === 'admin-recovery' && admin?.role === 'manager');
+  const support = active.find((admin) => admin?.id === 'admin-kup-support' && admin?.role === 'kup_support');
+
+  if (!owner) errors.push('production admin roster requires an active owner');
+  if (!recovery) errors.push('production admin roster requires admin-recovery with manager role');
+  if (!support) errors.push('production admin roster requires admin-kup-support with kup_support role');
+  if (active.some((admin) => String(admin?.phone || '').trim() === PLACEHOLDER_ADMIN_PHONE)) {
+    errors.push(`production admin roster still contains placeholder phone ${PLACEHOLDER_ADMIN_PHONE}`);
+  }
+  if (phones.some((phone) => !/^\+[1-9]\d{7,14}$/.test(phone))) {
+    errors.push('every active production admin requires a valid E.164 phone');
+  }
+  if (new Set(phones).size !== phones.length) errors.push('active production admin phones must be unique');
+  if (active.length !== 3) errors.push(`production admin roster must contain exactly 3 active accounts; observed ${active.length}`);
+  return errors;
+}
+
 export function validateReleaseState(state) {
   const errors = [];
+  const stage = String(state.stage || 'provision');
   const expectedSha = String(state.expectedSha || '').trim();
   const head = String(state.head || '').trim();
   const upstreamHead = String(state.upstreamHead || '').trim();
@@ -105,6 +133,10 @@ export function validateReleaseState(state) {
   const actionSecretNames = new Set(Array.isArray(state.actionSecretNames) ? state.actionSecretNames : []);
   const actionVariables = state.actionVariables && typeof state.actionVariables === 'object' ? state.actionVariables : {};
   const schedulerState = String(state.schedulerState || 'configured');
+
+  if (!PREFLIGHT_STAGES.includes(stage)) {
+    errors.push(`preflight stage must be one of ${PREFLIGHT_STAGES.join(', ')}; observed ${stage}`);
+  }
 
   if (!/^[0-9a-f]{40}$/.test(expectedSha)) errors.push('expected SHA must be a full 40-character Git commit');
   if (head !== expectedSha) errors.push(`candidate HEAD ${head || '(missing)'} does not equal approved SHA ${expectedSha || '(missing)'}`);
@@ -119,8 +151,9 @@ export function validateReleaseState(state) {
     errors.push('migration 0018 or later is outside the approved release');
   }
 
-  if (JSON.stringify(pendingMigrations) !== JSON.stringify(REQUIRED_EMMIWOOD_MIGRATIONS)) {
-    errors.push(`production pending migrations must be exactly ${REQUIRED_EMMIWOOD_MIGRATIONS.join(', ')}; observed ${pendingMigrations.join(', ') || '(none)'}`);
+  const expectedPending = stage === 'provision' ? REQUIRED_EMMIWOOD_MIGRATIONS : [];
+  if (JSON.stringify(pendingMigrations) !== JSON.stringify(expectedPending)) {
+    errors.push(`production pending migrations for ${stage} must be exactly ${expectedPending.join(', ') || '(none)'}; observed ${pendingMigrations.join(', ') || '(none)'}`);
   }
 
   const missingSecrets = REQUIRED_PRODUCTION_SECRETS.filter((name) => !secretNames.has(name));
@@ -142,6 +175,15 @@ export function validateReleaseState(state) {
   } else if (schedulerState === 'enabled' && schedulerValue !== 'true') {
     errors.push(`${NOTIFICATION_SCHEDULER_VARIABLE} must be true for the enabled gate`);
   }
+  if (stage !== 'provision' && schedulerState !== 'disabled') {
+    errors.push(`${stage} preflight requires the notification workflow to be disabled`);
+  }
+  if (stage !== 'provision' && state.workflowState !== 'disabled_manually') {
+    errors.push(`${stage} preflight requires the GitHub notification workflow state disabled_manually; observed ${state.workflowState || '(missing)'}`);
+  }
+  if (stage !== 'provision' && Object.hasOwn(actionVariables, NOTIFICATION_PROCESSOR_VARIABLE)) {
+    errors.push(`${stage} preflight requires ${NOTIFICATION_PROCESSOR_VARIABLE} to remain absent until notification activation`);
+  }
 
   errors.push(...validateNotificationWorkflow(String(state.notificationWorkflow || '')));
 
@@ -153,9 +195,39 @@ export function validateReleaseState(state) {
     errors.push(`production resource databaseId must be a provisioned non-placeholder UUID; observed ${resource.databaseId || '(missing)'}`);
   }
 
+  if (stage === 'deploy' || stage === 'cutover') {
+    const runtime = state.runtime || {};
+    const bookingWrites = runtime.bookingWrites || {};
+    const expectedOrigin = String(state.expectedOrigin || (stage === 'cutover' ? 'https://emmiwood.com' : 'https://emmiwood.pages.dev'));
+    if (runtime.environment !== 'production') errors.push(`runtime environment must be production; observed ${runtime.environment || '(missing)'}`);
+    if (runtime.publicOrigin !== expectedOrigin) errors.push(`runtime public origin must be ${expectedOrigin}; observed ${runtime.publicOrigin || '(missing)'}`);
+    if (runtime.releaseSha !== expectedSha) errors.push(`runtime release SHA ${runtime.releaseSha || '(missing)'} does not equal approved SHA ${expectedSha || '(missing)'}`);
+    if (bookingWrites.configured !== true || bookingWrites.valid !== true || bookingWrites.enabled !== false) {
+      errors.push('booking writes must be explicitly configured, valid, and disabled');
+    }
+    if (state.pagesProductionBranch !== 'main') errors.push(`Pages production branch must be main; observed ${state.pagesProductionBranch || '(missing)'}`);
+    const deploymentSha = String(state.deploymentSha || '').toLowerCase();
+    if (deploymentSha.length < 7 || !expectedSha.startsWith(deploymentSha)) errors.push(`production deployment source ${deploymentSha || '(missing)'} does not match approved SHA ${expectedSha || '(missing)'}`);
+    errors.push(...validateAdminRoster(state.adminRoster));
+    if (Number(state.outboxQueuedCount) !== 0) errors.push(`production notification outbox must have zero queued rows; observed ${state.outboxQueuedCount ?? '(missing)'}`);
+  }
+
+  if (stage === 'cutover') {
+    const domains = new Set(Array.isArray(state.domains) ? state.domains : []);
+    const missingDomains = REQUIRED_PRODUCTION_DOMAINS.filter((domain) => !domains.has(domain));
+    if (missingDomains.length) errors.push(`production Pages project missing custom domain(s): ${missingDomains.join(', ')}`);
+    const receipt = state.backupReceipt || {};
+    if (receipt.exists !== true) errors.push('cutover requires a verified backup receipt');
+    if (receipt.approvedSha !== expectedSha) errors.push(`backup receipt SHA ${receipt.approvedSha || '(missing)'} does not equal approved SHA ${expectedSha || '(missing)'}`);
+    for (const name of ['previewSha256', 'productionSha256']) {
+      if (!/^[0-9a-f]{64}$/i.test(String(receipt[name] || ''))) errors.push(`backup receipt requires ${name}`);
+    }
+  }
+
   return {
     ok: errors.length === 0,
     errors,
+    stage,
     approvedSha: expectedSha,
     migrations: [...REQUIRED_EMMIWOOD_MIGRATIONS],
     secretsVerifiedByName: [...REQUIRED_PRODUCTION_SECRETS],

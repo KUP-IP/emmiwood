@@ -8,8 +8,9 @@
     "build": "npm --prefix client run build",
     "typecheck": "npm --prefix client run typecheck",
     "test:unit": "node --test functions/lib/emmiwood-booking.test.js functions/lib/emmiwood-notifications.test.js functions/lib/emmiwood-admin.test.js functions/lib/emmiwood-launch.test.js",
+    "test:release": "node --test scripts/release-preflight.test.mjs scripts/production-admin-seed.test.mjs",
     "test:e2e": "playwright test",
-    "test": "npm run test:unit && npm run typecheck && npm run build",
+    "test": "npm run test:unit && npm run test:release && npm run typecheck && npm run build",
     "db:migrate:local": "wrangler d1 migrations apply emmiwood-db --local",
     "release:preflight": "node scripts/release-preflight.mjs"
   },

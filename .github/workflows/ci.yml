@@ -34,8 +34,8 @@ jobs:
         run: npm run build
       - name: Migration rehearsal
         run: ./scripts/verify-migrations.sh
-      - name: Release preflight tests
-        run: node --test scripts/release-preflight.test.mjs
+      - name: Release safety tests
+        run: npm run test:release
       - name: Root dependency audit
         run: npm audit --audit-level=high
       - name: Client dependency audit
