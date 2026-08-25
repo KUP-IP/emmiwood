@@ -7,3 +7,10 @@ binding = "DB"
 database_name = "emmiwood-db"
 database_id = "a79f099e-396f-4466-801c-2458a0c2b3e2"
 migrations_dir = "migrations"
+
+# Production Pages deploy bindings (secrets still override). Keep preview deploys on wrangler.preview.toml only.
+[vars]
+ENVIRONMENT = "production"
+EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood.com"
+EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
+EMMIWOOD_NOTIFICATIONS_ENABLED = "true"
