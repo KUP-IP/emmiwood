@@ -63,8 +63,44 @@ curl -sS -X POST -H 'content-type: application/json' -H 'origin: https://emmiwoo
 
 Preview may still return `previewCode` in JSON when `ENVIRONMENT=preview`; live Twilio should also deliver when secrets are bound.
 
+**Do not treat `ok: true` or `previewCode` as handset proof.** PASS requires D1 `status=sent` + `provider_message_id` `SM…` and Messages/`chat.db` body match.
+
+## Wave C+ suite — five unique paths + self-verify
+
+Automated Preview suite (post–Red Team). Proves five distinct SMS paths with D1 + Twilio SID + `~/Library/Messages/chat.db` fingerprints.
+
+| Send | Case | Template |
+|------|------|----------|
+| 1 | T1 | `booking_confirmation` (&lt;24h book) |
+| 2 | T2 | `cancellation_confirmation` (same appt) |
+| 3 | T3 | `reschedule_confirmation` (confirmation quarantined) |
+| 4 | T4 | `appointment_reminder` (confirmation quarantined; `available_at` forced) |
+| 5 | T5 | `admin_login_code` (immediate admin path) |
+
+**Spend GO (required):**
+
+```bash
+cd /Users/keepup/Developer/emmiwood
+node scripts/sms-self-verify-suite.mjs --spend-go "OK to send 5 intentional SMS to +15078485517; abort on any extra."
+```
+
+Bearer: env `EMMIWOOD_NOTIFICATION_SECRET` or Keychain `api_key:emmiwood-notification` / `EMMIWOOD_NOTIFICATION_SECRET`.
+
+**Rules hard-coded in the harness:**
+
+- Scheduler stays off; exact-ID only for T1–T4; one POST per case; **no retry** on timeout.
+- T3/T4 quarantine sibling confirmation rows before send; inventory must be exactly one target `queued` UUID.
+- T5: preview `emmiwood_admins` must already include the test E.164; API `ok`/`previewCode` ignored.
+- Cleanup cancels open suite appts and auto-quarantines leftover `queued` rows (never processes them).
+- Receipt under `scripts/.sms-receipts/` (gitignored).
+
+**Non-claims:** not Prod-GO; not scheduler enablement; T4 does **not** prove T−24h reminder scheduling (forced `available_at` only).
+
+Helpers: [`scripts/sms-self-verify-lib.mjs`](sms-self-verify-lib.mjs), runner [`scripts/sms-self-verify-suite.mjs`](sms-self-verify-suite.mjs).
+
 ## Explicitly out of this smoke
 
 - Flipping `EMMIWOOD_NOTIFICATIONS_ENABLED=true`
 - Bulk POST without `?id=`
 - Production Pages/D1 cutover
+- Claiming reminder timing or Prod-GO from this suite
