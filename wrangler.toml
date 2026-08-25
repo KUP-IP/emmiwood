@@ -5,5 +5,5 @@ pages_build_output_dir = "client/dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "emmiwood-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "a79f099e-396f-4466-801c-2458a0c2b3e2"
 migrations_dir = "migrations"
