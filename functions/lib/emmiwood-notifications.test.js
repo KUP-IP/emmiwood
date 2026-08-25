@@ -5,6 +5,9 @@ import {
   NOTIFICATION_PROVIDER_UNCONFIGURED,
   NOTIFICATION_PROVIDER_TWILIO,
   NOTIFICATION_PROVIDER_RESEND,
+  appointmentSmsStatements,
+  barberReminderAvailableAt,
+  barberSmsStatements,
   deliverNotification,
   manageAppointmentUrl,
   notificationProvider,
@@ -400,6 +403,113 @@ test('notification worker persists provider delivery identifiers', async () => {
     assert.deepEqual(db.query("SELECT status,attempt_count FROM emmiwood_notification_outbox WHERE id='untouched-1'"), [{ status: 'queued', attempt_count: 0 }]);
   } finally {
     globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+
+test('barber reminder lead is T-15m and skips when start is too soon', () => {
+  const now = 1_000_000;
+  assert.equal(barberReminderAvailableAt(now + 20 * 60, now), now + 5 * 60);
+  assert.equal(barberReminderAvailableAt(now + 10 * 60, now), null);
+});
+
+test('renderSms staff templates include customer details and STOP/HELP', () => {
+  const body = renderSms('barber_booking_notice', {
+    shopName: 'Emmiwood Barbers',
+    serviceName: 'Signature Haircut',
+    when: 'Wed, Aug 26, 11:00 AM',
+    customerName: 'Guest',
+    customerPhone: '+16055550199',
+    optOut: 'Reply STOP to opt out. Reply HELP for help.',
+  });
+  assert.match(body, /new booking/);
+  assert.match(body, /Customer Guest \+16055550199/);
+  assert.match(body, /STOP/);
+  assert.match(body, /HELP/);
+});
+
+test('barberSmsStatements no-ops without phone; queues notice + 15m reminder with phone', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const env = { DB: db, ENVIRONMENT: 'preview' };
+  const start = Math.floor(Date.now() / 1000) + 3600;
+  try {
+    assert.deepEqual(barberSmsStatements(env, {
+      shopId: 'emmiwood', appointmentId: null, barberPhone: null, event: 'booked',
+      startAt: start, serviceName: 'Cut', barberName: 'Barro', customerName: 'G', customerPhone: '+1',
+      now: start - 3600,
+    }), []);
+
+    const stmts = barberSmsStatements(env, {
+      shopId: 'emmiwood', appointmentId: null, barberPhone: '+15078485517', event: 'booked',
+      startAt: start, serviceName: 'Cut', barberName: 'Barro', customerName: 'G', customerPhone: '+16055550199',
+      now: start - 3600,
+    });
+    assert.equal(stmts.length, 2);
+    await db.batch(stmts);
+    assert.deepEqual(
+      db.query("SELECT template,recipient,status FROM emmiwood_notification_outbox ORDER BY template"),
+      [
+        { template: 'barber_booking_notice', recipient: '+15078485517', status: 'queued' },
+        { template: 'barber_reminder_15m', recipient: '+15078485517', status: 'queued' },
+      ],
+    );
+    assert.deepEqual(
+      db.query("SELECT available_at FROM emmiwood_notification_outbox WHERE template='barber_reminder_15m'"),
+      [{ available_at: start - 15 * 60 }],
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test('guest supersession scopes away from barber_*; barber path cancels and re-queues staff rows', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const env = { DB: db, ENVIRONMENT: 'preview', EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.example' };
+  const start = Math.floor(Date.now() / 1000) + 48 * 3600;
+  const later = start + 3600;
+  const appointmentId = 'appt-staff-1';
+  try {
+    db.exec(`INSERT INTO emmiwood_customers(id,shop_id,name,phone) VALUES('c-staff','emmiwood','G','+16055550199');
+      INSERT INTO emmiwood_appointments(id,shop_id,barber_id,service_id,customer_id,start_at,end_at,claim_end_at,status,manage_token_hash)
+      VALUES('${appointmentId}','emmiwood','barro','signature','c-staff',${start},${start + 2400},${start + 3000},'booked','hash-staff-1');`);
+    await db.batch([
+      ...appointmentSmsStatements(env, {
+        shopId: 'emmiwood', appointmentId, recipient: '+16055550199', smsConsent: true,
+        smsConsentVersion: 'kup-appointment-texts-v1', event: 'booked', startAt: start,
+        serviceName: 'Cut', barberName: 'Barro', manageToken: 'tok', now: start - 30 * 3600,
+      }),
+      ...barberSmsStatements(env, {
+        shopId: 'emmiwood', appointmentId, barberPhone: '+15078485517', event: 'booked',
+        startAt: start, serviceName: 'Cut', barberName: 'Barro', customerName: 'G', customerPhone: '+16055550199',
+        now: start - 30 * 3600,
+      }),
+    ]);
+    await db.batch([
+      ...appointmentSmsStatements(env, {
+        shopId: 'emmiwood', appointmentId, recipient: '+16055550199', smsConsent: true,
+        smsConsentVersion: 'kup-appointment-texts-v1', event: 'rescheduled', startAt: later,
+        previousStartAt: start, serviceName: 'Cut', barberName: 'Barro', manageToken: 'tok', now: start - 30 * 3600,
+      }),
+      ...barberSmsStatements(env, {
+        shopId: 'emmiwood', appointmentId, barberPhone: '+15078485517', event: 'rescheduled',
+        startAt: later, previousStartAt: start, serviceName: 'Cut', barberName: 'Barro',
+        customerName: 'G', customerPhone: '+16055550199', now: start - 30 * 3600,
+      }),
+    ]);
+    const rows = db.query("SELECT template,status FROM emmiwood_notification_outbox ORDER BY template,status");
+    assert.deepEqual(rows, [
+      { template: 'appointment_reminder', status: 'cancelled' },
+      { template: 'appointment_reminder', status: 'queued' },
+      { template: 'barber_booking_notice', status: 'cancelled' },
+      { template: 'barber_reminder_15m', status: 'cancelled' },
+      { template: 'barber_reminder_15m', status: 'queued' },
+      { template: 'barber_reschedule_notice', status: 'queued' },
+      { template: 'booking_confirmation', status: 'cancelled' },
+      { template: 'reschedule_confirmation', status: 'queued' },
+    ]);
+  } finally {
     db.close();
   }
 });

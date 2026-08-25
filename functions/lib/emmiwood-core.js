@@ -5,7 +5,7 @@ import {
   cancelAppointment as cancelBooking,
   rescheduleAppointment as rescheduleBooking,
 } from './emmiwood-booking.js';
-import { appointmentSmsStatements, KUP_APPOINTMENT_SMS_CONSENT_VERSION } from './emmiwood-notifications.js';
+import { appointmentSmsStatements, barberSmsStatements, KUP_APPOINTMENT_SMS_CONSENT_VERSION } from './emmiwood-notifications.js';
 import { bookingWriteState } from './emmiwood-runtime.js';
 
 export const SHOP_ID = 'emmiwood';
@@ -261,6 +261,8 @@ export async function book(env, input, adminId = null) {
   const claimEnd = end + service.buffer_minutes * 60;
   const smsConsent = Boolean(input.smsConsent);
   const notificationNow = Number(input.now ?? Math.floor(Date.now() / 1000));
+  const customerName = String(input.name).trim();
+  const barberRow = await env.DB.prepare('SELECT phone FROM emmiwood_barbers WHERE id=?').bind(chosen.barberId).first();
   const extraStatements = [
     env.DB.prepare("INSERT INTO emmiwood_events(id,shop_id,appointment_id,admin_id,event_type,detail_json) VALUES(?,?,?,?, 'booked',?)").bind(crypto.randomUUID(), SHOP_ID, id, adminId, JSON.stringify({ start: chosen.start, barberId: chosen.barberId })),
     ...appointmentSmsStatements(env, {
@@ -276,6 +278,18 @@ export async function book(env, input, adminId = null) {
       manageToken,
       now: notificationNow,
     }),
+    ...barberSmsStatements(env, {
+      shopId: SHOP_ID,
+      appointmentId: id,
+      barberPhone: barberRow?.phone,
+      event: 'booked',
+      startAt: chosen.start,
+      serviceName: service.name,
+      barberName: chosen.barberName,
+      customerName,
+      customerPhone: phone,
+      now: notificationNow,
+    }),
   ];
   await reserveAppointment(env.DB, {
     id, shopId: SHOP_ID, barberId: chosen.barberId, serviceId: input.serviceId, service,
@@ -284,7 +298,7 @@ export async function book(env, input, adminId = null) {
     notes: input.notes || '', adminId, extraStatements,
     customer: {
       id: customerId,
-      name: String(input.name).trim(),
+      name: customerName,
       phone,
       email: input.email?.trim(),
       smsConsent,
@@ -295,7 +309,7 @@ export async function book(env, input, adminId = null) {
   return { id, manageToken, start: chosen.start, barberName: chosen.barberName, serviceName: service.name };
 }
 
-const MANAGE_SELECT = `SELECT a.*,c.name customer_name,c.phone,c.email,c.sms_consent,c.sms_consent_version,b.name barber_name,s.name service_name,s.price_cents,s.duration_minutes,s.buffer_minutes
+const MANAGE_SELECT = `SELECT a.*,c.name customer_name,c.phone,c.email,c.sms_consent,c.sms_consent_version,b.name barber_name,b.phone barber_phone,s.name service_name,s.price_cents,s.duration_minutes,s.buffer_minutes
   FROM emmiwood_appointments a JOIN emmiwood_customers c ON c.id=a.customer_id JOIN emmiwood_barbers b ON b.id=a.barber_id JOIN emmiwood_services s ON s.id=a.service_id`;
 
 export async function managedAppointment(env, manageToken) {
@@ -324,6 +338,18 @@ export async function cancelAppointment(env, manageToken, adminId = null, now = 
       barberName: appointment.barber_name,
       now,
     }),
+    ...barberSmsStatements(env, {
+      shopId: SHOP_ID,
+      appointmentId: appointment.id,
+      barberPhone: appointment.barber_phone,
+      event: 'cancelled',
+      startAt: appointment.start_at,
+      serviceName: appointment.service_name,
+      barberName: appointment.barber_name,
+      customerName: appointment.customer_name,
+      customerPhone: appointment.phone,
+      now,
+    }),
   ];
   try {
     await cancelBooking(env.DB, { appointmentId: appointment.id, startAt: appointment.start_at, now, changeCutoffMinutes: policy.change_cutoff_minutes, isAdmin: Boolean(adminId), extraStatements });
@@ -349,6 +375,7 @@ export async function rescheduleAppointment(env, manageToken, input, adminId = n
   const service = await env.DB.prepare('SELECT * FROM emmiwood_services WHERE id=?').bind(serviceId).first();
   const end = chosen.start + service.duration_minutes * 60;
   const claimEnd = end + service.buffer_minutes * 60;
+  const barberRow = await env.DB.prepare('SELECT phone FROM emmiwood_barbers WHERE id=?').bind(chosen.barberId).first();
   await rescheduleBooking(env.DB, {
     appointmentId: appointment.id, barberId: chosen.barberId, serviceId, service,
     startAt: chosen.start, endAt: end, claimEndAt: claimEnd, now,
@@ -367,6 +394,19 @@ export async function rescheduleAppointment(env, manageToken, input, adminId = n
         serviceName: service.name,
         barberName: chosen.barberName,
         manageToken,
+        now,
+      }),
+      ...barberSmsStatements(env, {
+        shopId: SHOP_ID,
+        appointmentId: appointment.id,
+        barberPhone: barberRow?.phone,
+        event: 'rescheduled',
+        startAt: chosen.start,
+        previousStartAt: appointment.start_at,
+        serviceName: service.name,
+        barberName: chosen.barberName,
+        customerName: appointment.customer_name,
+        customerPhone: appointment.phone,
         now,
       }),
     ],

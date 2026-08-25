@@ -27,7 +27,7 @@ npm audit --audit-level=high
 npm audit --prefix client --audit-level=high
 ```
 
-The pre-provision fixture expects migrations `0001`–`0009` to be pending on a new production D1 database:
+The pre-provision fixture expects migrations `0001`–`0010` to be pending on a new production D1 database:
 
 ```bash
 npm run release:preflight -- \
@@ -105,6 +105,10 @@ npm run release:preflight -- \
 ```
 
 Only after HTTPS, origin, authentication cookies, catalog, slots, D1, and domain ownership verify may a separate gate enable production booking writes.
+
+## Staff / barber SMS
+
+Assigned barbers with `emmiwood_barbers.phone` receive operational SMS (`barber_booking_notice`, `barber_cancellation_notice`, `barber_reschedule_notice`, `barber_reminder_15m` at T−15m ±5m). Guest consent does not gate staff rows. Before enabling the notification scheduler: inventory due `queued=0`, A2P staff GO recorded, and exact-ID smoke complete. See `docs/a2p-staff-schedule-sms-go-2026-08-25.md`.
 
 ## Delivery and automation
 
