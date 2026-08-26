@@ -449,3 +449,89 @@ export function renderEmail(template, payload) {
   if (template === 'admin_login_code') return `Your Emmiwood Barbers sign-in code is ${payload.code}. It expires in ten minutes.`;
   return payload.text || 'Emmiwood Barbers account update.';
 }
+
+const PROCESSOR_MAX_ATTEMPTS = 3;
+
+export function retryDelaySeconds(attempt) {
+  return Math.min(3600, 60 * (2 ** Math.max(0, Number(attempt) - 1)));
+}
+
+/**
+ * Deliver due queued outbox rows (optionally scoped to one appointment).
+ * Used by the internal processor and by booking mutations for near-immediate SMS.
+ */
+export async function processQueuedNotifications(env, {
+  notificationId = null,
+  appointmentId = null,
+  limit = 50,
+} = {}) {
+  const readiness = notificationReadiness(env);
+  if (!readiness.ready) {
+    return { ok: false, ready: false, readiness, processed: 0, results: [] };
+  }
+
+  let pending;
+  if (notificationId) {
+    pending = await env.DB.prepare(`SELECT * FROM emmiwood_notification_outbox
+      WHERE id=? AND status='queued' AND available_at<=unixepoch() AND attempt_count<? LIMIT 1`)
+      .bind(notificationId, PROCESSOR_MAX_ATTEMPTS).all();
+  } else if (appointmentId) {
+    pending = await env.DB.prepare(`SELECT * FROM emmiwood_notification_outbox
+      WHERE appointment_id=? AND status='queued' AND available_at<=unixepoch() AND attempt_count<?
+      ORDER BY available_at,created_at LIMIT ?`)
+      .bind(appointmentId, PROCESSOR_MAX_ATTEMPTS, limit).all();
+  } else {
+    pending = await env.DB.prepare(`SELECT * FROM emmiwood_notification_outbox
+      WHERE status='queued' AND available_at<=unixepoch() AND attempt_count<?
+      ORDER BY available_at,created_at LIMIT ?`).bind(PROCESSOR_MAX_ATTEMPTS, limit).all();
+  }
+
+  const results = [];
+  for (const row of pending.results || []) {
+    const attempt = Number(row.attempt_count || 0) + 1;
+    const resolvedProvider = row.provider === NOTIFICATION_PROVIDER_UNCONFIGURED
+      ? notificationProvider(env, row.channel)
+      : row.provider;
+    try {
+      const delivery = await deliverNotification(env, { ...row, provider: resolvedProvider });
+      if (delivery.status === 'sent') {
+        await env.DB.prepare(`UPDATE emmiwood_notification_outbox
+          SET status='sent',provider=?,sent_at=unixepoch(),last_attempt_at=unixepoch(),attempt_count=?,provider_message_id=?,error=NULL
+          WHERE id=?`).bind(resolvedProvider, attempt, delivery.providerMessageId || null, row.id).run();
+      }
+      results.push({
+        id: row.id,
+        status: delivery.status,
+        provider: delivery.provider,
+        providerMessageId: delivery.providerMessageId || null,
+        attempt,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const terminal = attempt >= PROCESSOR_MAX_ATTEMPTS;
+      const delay = retryDelaySeconds(attempt);
+      await env.DB.prepare(`UPDATE emmiwood_notification_outbox
+        SET status=?,provider=?,attempt_count=?,last_attempt_at=unixepoch(),available_at=CASE WHEN ? THEN available_at ELSE unixepoch()+? END,error=?
+        WHERE id=?`).bind(terminal ? 'failed' : 'queued', resolvedProvider, attempt, terminal ? 1 : 0, delay, message.slice(0, 500), row.id).run();
+      results.push({
+        id: row.id,
+        status: terminal ? 'failed' : 'retrying',
+        attempt,
+        retryInSeconds: terminal ? null : delay,
+        error: message,
+      });
+    }
+  }
+
+  return { ok: true, ready: true, readiness, processed: results.length, results };
+}
+
+/** Best-effort immediate flush after book/cancel/reschedule (does not throw). */
+export async function flushDueAppointmentNotifications(env, appointmentId) {
+  if (!appointmentId) return { ok: false, processed: 0, results: [] };
+  try {
+    return await processQueuedNotifications(env, { appointmentId, limit: 20 });
+  } catch {
+    return { ok: false, processed: 0, results: [] };
+  }
+}

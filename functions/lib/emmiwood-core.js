@@ -5,7 +5,7 @@ import {
   cancelAppointment as cancelBooking,
   rescheduleAppointment as rescheduleBooking,
 } from './emmiwood-booking.js';
-import { appointmentSmsStatements, barberSmsStatements, KUP_APPOINTMENT_SMS_CONSENT_VERSION } from './emmiwood-notifications.js';
+import { appointmentSmsStatements, barberSmsStatements, flushDueAppointmentNotifications, KUP_APPOINTMENT_SMS_CONSENT_VERSION } from './emmiwood-notifications.js';
 import { bookingWriteState } from './emmiwood-runtime.js';
 
 export const SHOP_ID = 'emmiwood';
@@ -306,6 +306,7 @@ export async function book(env, input, adminId = null) {
       smsConsentAt: smsConsent ? Math.floor(Date.now() / 1000) : null,
     },
   });
+  await flushDueAppointmentNotifications(env, id);
   return { id, manageToken, start: chosen.start, barberName: chosen.barberName, serviceName: service.name };
 }
 
@@ -359,6 +360,7 @@ export async function cancelAppointment(env, manageToken, adminId = null, now = 
     }
     throw error;
   }
+  await flushDueAppointmentNotifications(env, appointment.id);
   return { ok: true };
 }
 
@@ -411,5 +413,6 @@ export async function rescheduleAppointment(env, manageToken, input, adminId = n
       }),
     ],
   });
+  await flushDueAppointmentNotifications(env, appointment.id);
   return managedAppointment(env, manageToken);
 }
