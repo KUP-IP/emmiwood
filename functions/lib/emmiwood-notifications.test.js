@@ -513,3 +513,13 @@ test('guest supersession scopes away from barber_*; barber path cancels and re-q
     db.close();
   }
 });
+
+test('flushDueAppointmentNotifications skips on preview exact-id-only', async () => {
+  const { flushDueAppointmentNotifications } = await import('./emmiwood-notifications.js');
+  const result = await flushDueAppointmentNotifications(
+    { ENVIRONMENT: 'preview', DB: { prepare() { throw new Error('should not query'); } } },
+    'appt-1',
+  );
+  assert.equal(result.skipped, 'exact_id_only');
+  assert.equal(result.processed, 0);
+});

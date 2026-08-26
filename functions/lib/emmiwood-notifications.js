@@ -526,10 +526,16 @@ export async function processQueuedNotifications(env, {
   return { ok: true, ready: true, readiness, processed: results.length, results };
 }
 
-/** Best-effort immediate flush after book/cancel/reschedule (does not throw). */
+/** Best-effort immediate flush after book/cancel/reschedule (does not throw).
+ * Preview stays exact-ID-only: mutations queue rows; the suite/processor sends with ?id=.
+ */
 export async function flushDueAppointmentNotifications(env, appointmentId) {
   if (!appointmentId) return { ok: false, processed: 0, results: [] };
   try {
+    const readiness = notificationReadiness(env);
+    if (readiness.exactIdOnly) {
+      return { ok: true, skipped: 'exact_id_only', processed: 0, results: [] };
+    }
     return await processQueuedNotifications(env, { appointmentId, limit: 20 });
   } catch {
     return { ok: false, processed: 0, results: [] };
