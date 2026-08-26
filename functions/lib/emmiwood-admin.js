@@ -5,6 +5,7 @@ import {
   appointmentSmsStatements,
   barberSmsStatements,
   deliverNotification,
+  flushDueAppointmentNotifications,
   notificationProvider,
   notificationStatement,
 } from './emmiwood-notifications.js';
@@ -378,6 +379,7 @@ export async function cancelAdminAppointment(env, id, admin) {
       }),
     ],
   });
+  await flushDueAppointmentNotifications(env, appointment.id);
   return { ok: true };
 }
 
@@ -442,5 +444,6 @@ export async function rescheduleAdminAppointment(env, id, input, admin) {
       }),
     ],
   });
+  await flushDueAppointmentNotifications(env, appointment.id);
   return appointmentById(env, id);
 }
