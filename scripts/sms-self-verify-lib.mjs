@@ -13,8 +13,9 @@ export const REPO_ROOT = join(__dirname, '..');
 
 export const DEFAULT_TEST_PHONE = '+15078485517';
 export const DEFAULT_FROM_FALLBACK = '+16052503489';
-export const WWW_ORIGIN = 'https://www.emmiwood.com';
 export const PREVIEW_ORIGIN = 'https://emmiwood-barbers-preview.pages.dev';
+/** Guest booking APIs for the preview suite — preview Pages host after cutover (not www/production). */
+export const WWW_ORIGIN = process.env.EMMIWOOD_SUITE_BOOKING_ORIGIN || PREVIEW_ORIGIN;
 export const NOTIFICATIONS_PATH = '/api/emmiwood/internal/notifications';
 export const CONSENT_VERSION = 'kup-appointment-texts-v1';
 export const D1_NAME = 'emmiwood-standalone-preview-db';

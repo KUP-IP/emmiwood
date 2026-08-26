@@ -10,4 +10,6 @@ migrations_dir = "migrations"
 
 [vars]
 ENVIRONMENT = "preview"
-EMMIWOOD_PUBLIC_ORIGIN = "https://www.emmiwood.com"
+EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood-barbers-preview.pages.dev"
+EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
+EMMIWOOD_NOTIFICATIONS_ENABLED = "false"
