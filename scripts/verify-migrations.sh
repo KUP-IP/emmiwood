@@ -53,7 +53,7 @@ OWNER_PHONE_COUNT="$(sqlite3 "$DB_FILE" "SELECT count(*) FROM emmiwood_admins WH
 ELIGIBILITY_COUNT="$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM emmiwood_barber_services;')"
 AVAILABILITY_COUNT="$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM emmiwood_availability WHERE active=1;')"
 
-[[ "$MIGRATION_COUNT" -eq 9 ]]
+[[ "$MIGRATION_COUNT" -eq 10 ]]
 [[ "$TABLE_COUNT" -eq 15 ]]
 [[ "$INDEX_COUNT" -ge 5 ]]
 [[ "$SERVICE_COUNT" -eq 5 ]]
@@ -75,7 +75,7 @@ VERIFIED_HASH="$(hash_dump "$DB_FILE")"
 
 SECOND_OUTPUT="$(cd "$REHEARSAL_DIR" && "$WRANGLER" d1 migrations apply emmiwood-db --local --persist-to "$STATE_DIR" 2>&1)"
 grep -q "No migrations to apply" <<<"$SECOND_OUTPUT"
-[[ "$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM d1_migrations;')" -eq 9 ]]
+[[ "$(sqlite3 "$DB_FILE" 'SELECT count(*) FROM d1_migrations;')" -eq 10 ]]
 
 sqlite3 "$DB_FILE" "UPDATE emmiwood_shops SET name='rollback-probe' WHERE id='emmiwood';"
 [[ "$(hash_dump "$DB_FILE")" != "$VERIFIED_HASH" ]]
