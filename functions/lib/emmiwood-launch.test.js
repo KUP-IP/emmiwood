@@ -250,3 +250,38 @@ test('legacy appointment-texts-v1 consent is stored but does not enqueue SMS', a
     db.close();
   }
 });
+
+test('barber phone queues staff SMS without guest consent; john without phone queues none', async () => {
+  const db = setupEmmiwoodTestD1();
+  const date = nextBookableDate();
+  const start = zonedEpoch(date, 540);
+  const env = { DB: db, ENVIRONMENT: 'preview', EMMIWOOD_BOOKING_WRITES_ENABLED: 'true' };
+  try {
+    db.exec("UPDATE emmiwood_barbers SET phone='+15078485517' WHERE id='barro'");
+    await book(env, {
+      serviceId: 'signature', barberId: 'barro', date, start, now: start - 5 * 3600,
+      name: 'Staff Only Guest', phone: '6055550188',
+    });
+    assert.deepEqual(
+      db.query("SELECT template,recipient FROM emmiwood_notification_outbox ORDER BY template"),
+      [
+        { template: 'barber_booking_notice', recipient: '+15078485517' },
+        { template: 'barber_reminder_15m', recipient: '+15078485517' },
+      ],
+    );
+
+    const johnStart = zonedEpoch(date, 600);
+    await book(env, {
+      serviceId: 'signature', barberId: 'john', date, start: johnStart, now: start - 5 * 3600,
+      name: 'John Guest', phone: '6055550189', smsConsent: true,
+      smsConsentVersion: 'kup-appointment-texts-v1',
+    });
+    assert.equal(
+      db.query("SELECT count(*) c FROM emmiwood_notification_outbox WHERE recipient='+15078485517' AND template LIKE 'barber_%' AND appointment_id IN (SELECT id FROM emmiwood_appointments WHERE barber_id='john')")[0].c,
+      0,
+    );
+    assert.ok(db.query("SELECT count(*) c FROM emmiwood_notification_outbox WHERE template='booking_confirmation'")[0].c >= 1);
+  } finally {
+    db.close();
+  }
+});

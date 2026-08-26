@@ -5,8 +5,16 @@ export const NOTIFICATION_PROVIDER_TWILIO = 'twilio';
 export const NOTIFICATION_PROVIDER_RESEND = 'resend';
 export const NOTIFICATION_PROVIDER_UNCONFIGURED = 'unconfigured';
 export const REMINDER_LEAD_SECONDS = 24 * 60 * 60;
+// Barber T-15m reminder lead (workflow cron every 5m → accept ±5m delivery jitter).
+export const BARBER_REMINDER_LEAD_SECONDS = 15 * 60;
 export const KUP_APPOINTMENT_SMS_CONSENT_VERSION = 'kup-appointment-texts-v1';
 export const KUP_SMS_BRAND = 'KUP Solutions';
+export const BARBER_SMS_TEMPLATES = Object.freeze([
+  'barber_booking_notice',
+  'barber_cancellation_notice',
+  'barber_reschedule_notice',
+  'barber_reminder_15m',
+]);
 
 /** v1 production gate: processor + SMS only. Resend/email secrets are deferred. */
 export const PRODUCTION_NOTIFICATION_SECRET_NAMES = Object.freeze([
@@ -148,6 +156,13 @@ export function reminderAvailableAt(startAt, now = Math.floor(Date.now() / 1000)
   return start - REMINDER_LEAD_SECONDS;
 }
 
+export function barberReminderAvailableAt(startAt, now = Math.floor(Date.now() / 1000)) {
+  const start = Number(startAt);
+  const current = Number(now);
+  if (!Number.isFinite(start) || !Number.isFinite(current) || start - current < BARBER_REMINDER_LEAD_SECONDS) return null;
+  return start - BARBER_REMINDER_LEAD_SECONDS;
+}
+
 export function notificationStatement(env, {
   id = crypto.randomUUID(),
   shopId,
@@ -187,9 +202,10 @@ export function appointmentSmsStatements(env, {
     const reason = event === 'cancelled'
       ? 'Unsent appointment update superseded by cancellation.'
       : 'Unsent appointment update superseded by reschedule.';
+    // Guest-only supersede — never cancel barber_* rows (staff path owns those).
     statements.push(env.DB.prepare(`UPDATE emmiwood_notification_outbox
       SET status='cancelled',error=?
-      WHERE appointment_id=? AND channel='sms' AND status='queued'`)
+      WHERE appointment_id=? AND channel='sms' AND status='queued' AND template NOT LIKE 'barber_%'`)
       .bind(reason, appointmentId));
   }
 
@@ -246,6 +262,98 @@ export function appointmentSmsStatements(env, {
         when,
         manageUrl,
         optOut: 'Reply STOP to opt out.',
+      },
+    }));
+  }
+
+  return statements;
+}
+
+/**
+ * Operational SMS to the assigned barber when `barberPhone` is a non-empty E.164.
+ * Independent of guest SMS consent. Statement order on cancel/reschedule:
+ * supersede barber_* → enqueue notice (+ T−15m reminder when booked/rescheduled).
+ */
+export function barberSmsStatements(env, {
+  shopId,
+  appointmentId,
+  barberPhone,
+  event,
+  startAt,
+  previousStartAt = null,
+  serviceName,
+  barberName,
+  customerName,
+  customerPhone,
+  shopName = 'Emmiwood Barbers',
+  now = Math.floor(Date.now() / 1000),
+}) {
+  const recipient = String(barberPhone || '').trim();
+  if (!recipient) return [];
+
+  const statements = [];
+  if (event === 'cancelled' || event === 'rescheduled') {
+    const reason = event === 'cancelled'
+      ? 'Unsent barber notice superseded by cancellation.'
+      : 'Unsent barber notice superseded by reschedule.';
+    statements.push(env.DB.prepare(`UPDATE emmiwood_notification_outbox
+      SET status='cancelled',error=?
+      WHERE appointment_id=? AND channel='sms' AND status='queued' AND template LIKE 'barber_%'`)
+      .bind(reason, appointmentId));
+  }
+
+  const templateByEvent = {
+    booked: 'barber_booking_notice',
+    cancelled: 'barber_cancellation_notice',
+    rescheduled: 'barber_reschedule_notice',
+  };
+  const template = templateByEvent[event];
+  if (!template) throw new Error(`Unsupported barber notification event: ${event}`);
+
+  const when = formatSmsWhen(startAt);
+  const basePayload = {
+    appointmentId,
+    start: startAt,
+    previousStart: previousStartAt,
+    serviceName,
+    barberName,
+    shopName,
+    when,
+    customerName: customerName || '',
+    customerPhone: customerPhone || '',
+    optOut: 'Reply STOP to opt out. Reply HELP for help.',
+  };
+
+  statements.push(notificationStatement(env, {
+    shopId,
+    appointmentId,
+    channel: 'sms',
+    template,
+    recipient,
+    payload: basePayload,
+  }));
+
+  const reminderAt = (event === 'booked' || event === 'rescheduled')
+    ? barberReminderAvailableAt(startAt, now)
+    : null;
+  if (reminderAt != null) {
+    statements.push(notificationStatement(env, {
+      shopId,
+      appointmentId,
+      channel: 'sms',
+      template: 'barber_reminder_15m',
+      recipient,
+      availableAt: reminderAt,
+      payload: {
+        appointmentId,
+        start: startAt,
+        serviceName,
+        barberName,
+        shopName,
+        when,
+        customerName: customerName || '',
+        customerPhone: customerPhone || '',
+        optOut: 'Reply STOP to opt out. Reply HELP for help.',
       },
     }));
   }
@@ -319,12 +427,20 @@ export function renderSms(template, payload) {
   else if (payload.barberName) detail = ` with ${payload.barberName}`;
   if (payload.when) detail += detail ? ` · ${payload.when}` : ` ${payload.when}`;
   const manage = payload.manageUrl ? ` Manage/cancel: ${payload.manageUrl}` : '';
+  const customerBits = [payload.customerName, payload.customerPhone].filter(Boolean).join(' ').trim();
+  const customer = customerBits ? ` Customer ${customerBits}.` : '';
+  let staffDetail = payload.serviceName ? ` ${payload.serviceName}` : '';
+  if (payload.when) staffDetail += staffDetail ? ` · ${payload.when}` : ` ${payload.when}`;
   switch (template) {
     case 'admin_login_code': return `${KUP_SMS_BRAND}: your sign-in code is ${payload.code}. It expires in ten minutes.`;
     case 'booking_confirmation': return `${KUP_SMS_BRAND}: appointment confirmed at ${shop}.${detail}.${manage}${optOut}`;
     case 'appointment_reminder': return `${KUP_SMS_BRAND} reminder at ${shop}:${detail || ' tomorrow'}.${manage}${optOut}`;
     case 'cancellation_confirmation': return `${KUP_SMS_BRAND}: appointment cancelled at ${shop}.${detail}.${optOut}`;
     case 'reschedule_confirmation': return `${KUP_SMS_BRAND}: appointment rescheduled at ${shop}.${detail}.${manage}${optOut}`;
+    case 'barber_booking_notice': return `${KUP_SMS_BRAND}: new booking at ${shop}.${staffDetail}.${customer}${optOut}`;
+    case 'barber_cancellation_notice': return `${KUP_SMS_BRAND}: booking cancelled at ${shop}.${staffDetail}.${customer}${optOut}`;
+    case 'barber_reschedule_notice': return `${KUP_SMS_BRAND}: booking rescheduled at ${shop}.${staffDetail}.${customer}${optOut}`;
+    case 'barber_reminder_15m': return `${KUP_SMS_BRAND}: starting soon at ${shop}.${staffDetail}.${customer}${optOut}`;
     default: return `${KUP_SMS_BRAND} appointment update at ${shop}.${optOut}`;
   }
 }

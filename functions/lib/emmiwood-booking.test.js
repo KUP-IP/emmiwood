@@ -58,6 +58,7 @@ function setup() {
   db.exec(readFileSync(`${ROOT}migrations/0003_production_hardening.sql`, 'utf8'));
   db.exec(readFileSync(`${ROOT}migrations/0008_cancel_until_start.sql`, 'utf8'));
   db.exec(readFileSync(`${ROOT}migrations/0009_no_min_booking_notice.sql`, 'utf8'));
+  db.exec(readFileSync(`${ROOT}migrations/0010_barber_phone.sql`, 'utf8'));
   return db;
 }
 

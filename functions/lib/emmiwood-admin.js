@@ -3,6 +3,7 @@ import { cancelAppointment as cancelBooking, rescheduleAppointment as reschedule
 import {
   NOTIFICATION_PROVIDER_MOCK,
   appointmentSmsStatements,
+  barberSmsStatements,
   deliverNotification,
   notificationProvider,
   notificationStatement,
@@ -324,7 +325,7 @@ export { EDIT_ROLES };
 
 async function appointmentById(env, id) {
   const row = await env.DB.prepare(`SELECT a.*,c.name customer_name,c.phone,c.email,c.sms_consent,c.sms_consent_version,
-    s.duration_minutes,s.buffer_minutes,s.name service_name,b.name barber_name
+    s.duration_minutes,s.buffer_minutes,s.name service_name,b.name barber_name,b.phone barber_phone
     FROM emmiwood_appointments a
     JOIN emmiwood_customers c ON c.id=a.customer_id
     JOIN emmiwood_services s ON s.id=a.service_id
@@ -363,6 +364,18 @@ export async function cancelAdminAppointment(env, id, admin) {
         barberName: appointment.barber_name,
         now: timestamp,
       }),
+      ...barberSmsStatements(env, {
+        shopId: SHOP_ID,
+        appointmentId: appointment.id,
+        barberPhone: appointment.barber_phone,
+        event: 'cancelled',
+        startAt: appointment.start_at,
+        serviceName: appointment.service_name,
+        barberName: appointment.barber_name,
+        customerName: appointment.customer_name,
+        customerPhone: appointment.phone,
+        now: timestamp,
+      }),
     ],
   });
   return { ok: true };
@@ -388,6 +401,7 @@ export async function rescheduleAdminAppointment(env, id, input, admin) {
   const endAt = chosen.start + service.duration_minutes * 60;
   const claimEndAt = endAt + service.buffer_minutes * 60;
   const timestamp = now();
+  const barberRow = await env.DB.prepare('SELECT phone FROM emmiwood_barbers WHERE id=?').bind(chosen.barberId).first();
   await rescheduleBooking(env.DB, {
     appointmentId: appointment.id,
     barberId: chosen.barberId,
@@ -411,6 +425,19 @@ export async function rescheduleAdminAppointment(env, id, input, admin) {
         previousStartAt: appointment.start_at,
         serviceName: service.name,
         barberName: chosen.barberName,
+        now: timestamp,
+      }),
+      ...barberSmsStatements(env, {
+        shopId: SHOP_ID,
+        appointmentId: appointment.id,
+        barberPhone: barberRow?.phone,
+        event: 'rescheduled',
+        startAt: chosen.start,
+        previousStartAt: appointment.start_at,
+        serviceName: service.name,
+        barberName: chosen.barberName,
+        customerName: appointment.customer_name,
+        customerPhone: appointment.phone,
         now: timestamp,
       }),
     ],
