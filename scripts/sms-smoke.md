@@ -67,7 +67,7 @@ Preview may still return `previewCode` in JSON when `ENVIRONMENT=preview`; live 
 
 ## Wave C+ suite — five unique paths + self-verify
 
-Automated Preview suite (post–Red Team). Proves five distinct SMS paths with D1 + Twilio SID + `~/Library/Messages/chat.db` fingerprints.
+Automated Preview suite (post–Red Team). Proves five distinct SMS paths with D1 + Twilio SID + `~/Library/Messages/chat.db` fingerprints. Guest booking/manage calls hit `https://emmiwood-barbers-preview.pages.dev` (override with `EMMIWOOD_SUITE_BOOKING_ORIGIN` if needed)—not production `www` after cutover.
 
 | Send | Case | Template |
 |------|------|----------|
