@@ -6,6 +6,7 @@ client/dist/
 .env
 playwright-report/
 test-results/
+.deploy/
 .DS_Store
 
 client/tsconfig.tsbuildinfo

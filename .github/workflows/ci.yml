@@ -15,7 +15,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,6 +32,16 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Exact-artifact browser gate
+        run: npm run test:e2e:isolated
+      - name: Brand source and artifact contract
+        run: npm run test:brand && node scripts/brand-assets-check.mjs .deploy/pages/static
+      - name: Firefox and WebKit critical-flow smoke
+        run: npm run test:e2e:cross-browser
+      - name: Safe-live read-only contract
+        run: npm run test:e2e:live:contract
       - name: Migration rehearsal
         run: ./scripts/verify-migrations.sh
       - name: Release safety tests
@@ -40,3 +50,13 @@ jobs:
         run: npm audit --audit-level=high
       - name: Client dependency audit
         run: npm audit --prefix client --audit-level=high
+      - name: Preserve browser and artifact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emmiwood-release-evidence
+          path: |
+            playwright-report/
+            test-results/
+            .deploy/pages/artifact-manifest.json
+          retention-days: 14

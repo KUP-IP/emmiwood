@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-08-25
+Last updated: 2026-08-28
 
 ## Locked decisions
 
@@ -11,7 +11,7 @@ Last updated: 2026-08-25
 5. Version one is SMS-only for customer communication. Customer email is not collected in booking or operator-created appointments, and Resend provisioning is deferred.
 6. SMS delivery will use a dedicated Emmiwood Twilio sender under a **KUP-managed Twilio account**. Delivery remains disabled until account setup, sender compliance, and one controlled synthetic test are complete.
 7. Production administration uses two individual SMS-OTP accounts: Isaiah is the primary `owner`; Barro is `manager` with full administration access. Both handle support through their own accounts. No shared or third support login is seeded. The optional `kup_support` role remains read-only if introduced later.
-8. GitHub CodeQL remains deferred by explicit decision. Existing CI security tests and root/client high-severity dependency-audit gates remain required.
+8. GitHub CodeQL remains deferred by explicit decision. No CodeQL workflow is kept while it is deferred: a comments-only workflow is not a valid disabled workflow and creates a zero-job failure on every `main` push. Existing CI security tests and root/client high-severity dependency-audit gates remain required. Reintroducing CodeQL requires a later explicit decision and a complete, runnable workflow.
 9. Canonical product home (identity consolidation, 2026-07-21):
    - Local checkout: `/Users/keepup/Developer/emmiwood`
    - GitHub: `KUP-IP/emmiwood` (do not rename the repo or local folder to include `.com`; alias residue is intentional)
