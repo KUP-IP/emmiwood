@@ -7,7 +7,7 @@
     "dev": "wrangler pages dev client/dist --persist-to .wrangler/state --port 8788",
     "dev:e2e": "npm run e2e:prepare && wrangler pages dev ./static --cwd .deploy/pages --persist-to state --port ${EMMIWOOD_E2E_PORT:-8788} --binding ENVIRONMENT=preview --binding EMMIWOOD_PUBLIC_ORIGIN=http://localhost:${EMMIWOOD_E2E_PORT:-8788} --binding EMMIWOOD_BOOKING_WRITES_ENABLED=true --binding EMMIWOOD_NOTIFICATIONS_ENABLED=false",
     "build": "npm --prefix client run build",
-    "typecheck": "npm --prefix client run typecheck",
+    "typecheck": "npm --prefix client run typecheck && tsc -p tsconfig.e2e.json",
     "test:unit": "node --test functions/lib/emmiwood-booking.test.js functions/lib/emmiwood-notifications.test.js functions/lib/emmiwood-admin.test.js functions/lib/emmiwood-launch.test.js",
     "test:release": "node --test scripts/release-preflight.test.mjs scripts/production-admin-seed.test.mjs",
     "e2e:prepare": "node scripts/prepare-e2e-artifact.mjs",
@@ -25,6 +25,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.62.1",
+    "@types/node": "^22.20.1",
     "typescript": "5.9.3",
     "wrangler": "^4.125.0"
   },

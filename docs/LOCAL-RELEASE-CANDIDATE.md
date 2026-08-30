@@ -87,6 +87,9 @@ is disabled throughout the local lane.
 
 Reproduce the machine gates from a clean checkout:
 
+`npm run typecheck` covers both the application and the Playwright configurations
+and browser specifications through `tsconfig.e2e.json`.
+
 ```sh
 npm test
 npm run test:e2e:live:contract
