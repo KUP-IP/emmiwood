@@ -26,7 +26,9 @@ const COPY: Record<InfoKind, { title: string; description: string; eyebrow: stri
       <p>Optional appointment confirmation and reminder texts are sent by <strong>KUP Solutions</strong>, not by Emmiwood Barbers as a separate messaging brand. Program details: <a href="https://kup.solutions/sms/privacy" target="_blank" rel="noreferrer">SMS privacy</a> · <a href="https://kup.solutions/sms/terms" target="_blank" rel="noreferrer">SMS terms</a>.</p>
       <p>We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes. Consent is optional and is not required to complete a booking.</p>
       <h2>Access</h2>
-      <p>Authorized Emmiwood staff may access booking data to run the shop. KUP Solutions hosts the booking technology and sends opted-in appointment texts.</p>
+      <p>Authorized Emmiwood staff may access booking data to run the shop. KUP Solutions hosts the booking technology and sends opted-in appointment texts. Infrastructure vendors process data only as needed to provide those services.</p>
+      <h2>Retention</h2>
+      <p>Booking records are retained for shop operations, customer support, security, and legal requirements, then removed or minimized when no longer needed.</p>
       <h2>Contact</h2>
       <p>Questions about a booking: call the shop at {EMMIWOOD_PHONE_LABEL}. Questions about appointment texts: <a href="mailto:isaiah@kup.solutions">isaiah@kup.solutions</a>.</p>
     </>,
@@ -60,8 +62,9 @@ export default function EmmiwoodInfoPage({ kind }: { kind: InfoKind }) {
   const copy = COPY[kind];
   return <div className="emmiwood ew-app-surface">
     <EmmiwoodMeta title={copy.title} description={copy.description} path={`/emmiwood/${kind}`} noindex={kind === 'chair-rental'} />
+    <a className="ew-skip" href="#info-main" onClick={() => requestAnimationFrame(() => document.getElementById('info-main')?.focus())}>Skip to content</a>
     <EmmiwoodAppHeader />
-    <main className="ew-info-page"><article><span className="ew-eyebrow">{copy.eyebrow}</span><h1>{copy.title.split(' | ')[0]}.</h1>{copy.body}</article></main>
+    <main id="info-main" tabIndex={-1} className="ew-info-page"><article><span className="ew-eyebrow">{copy.eyebrow}</span><h1>{copy.title.split(' | ')[0]}.</h1>{copy.body}</article></main>
     <footer className="ew-app-footer"><span>1118 S Minnesota Ave · Sioux Falls</span><a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a></footer>
   </div>;
 }

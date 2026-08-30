@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { emmiwoodApi } from './api';
 import {
   addDays,
@@ -7,6 +7,7 @@ import {
   INITIAL_TIMES_PER_PERIOD,
   prettyDate,
   prettyTime,
+  slotDate,
 } from './availability';
 import type { Slot } from './types';
 
@@ -23,6 +24,7 @@ export function AvailabilityBrowser({
   selectedSlot,
   onSelect,
   onDateChange,
+  onRefresh,
   autoFind = true,
   notice = '',
 }: {
@@ -32,6 +34,7 @@ export function AvailabilityBrowser({
   selectedSlot?: Slot;
   onSelect: (slot: Slot, date: string) => void;
   onDateChange?: (date: string) => void;
+  onRefresh?: () => void;
   autoFind?: boolean;
   notice?: string;
 }) {
@@ -43,6 +46,12 @@ export function AvailabilityBrowser({
   const [message, setMessage] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const requestId = useRef(0);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const instanceId = useId();
+  const dateChangeRef = useRef(onDateChange);
+  useEffect(() => { dateChangeRef.current = onDateChange; }, [onDateChange]);
+  const refreshRef = useRef(onRefresh);
+  useEffect(() => { refreshRef.current = onRefresh; }, [onRefresh]);
 
   const fetchDays = useCallback(async (startDate: string, count: number) => {
     const dates = Array.from({ length: count }, (_, index) => addDays(startDate, index)).filter((date) => date <= maxDate);
@@ -74,11 +83,12 @@ export function AvailabilityBrowser({
 
   const selectDate = useCallback((date: string) => {
     setSelectedDate(date);
-    onDateChange?.(date);
-  }, [onDateChange]);
+    dateChangeRef.current?.(date);
+  }, []);
 
   const findNext = useCallback(async () => {
     const currentRequest = ++requestId.current;
+    refreshRef.current?.();
     setBusy(true);
     setMessage(`Searching all ${horizonDays} bookable days…`);
     setExpanded({});
@@ -100,6 +110,7 @@ export function AvailabilityBrowser({
       }
       if (currentRequest !== requestId.current) return;
       setDays(lastBatch);
+      if (lastBatch[0]) selectDate(lastBatch[0].date);
       if (unavailableCount) {
         const firstUsable = lastBatch.find((day) => !day.unavailable);
         if (firstUsable) selectDate(firstUsable.date);
@@ -117,7 +128,9 @@ export function AvailabilityBrowser({
   }, [fetchDays, horizonDays, maxDate, selectDate, today]);
 
   const loadFromDate = useCallback(async (date: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < today || date > maxDate) return;
     const currentRequest = ++requestId.current;
+    refreshRef.current?.();
     setBusy(true);
     setMessage(`Checking ${prettyDate(date, true)} and nearby days…`);
     setExpanded({});
@@ -138,7 +151,7 @@ export function AvailabilityBrowser({
     } finally {
       if (currentRequest === requestId.current) setBusy(false);
     }
-  }, [fetchDays, selectDate]);
+  }, [fetchDays, selectDate, today, maxDate]);
 
   useEffect(() => {
     requestId.current += 1;
@@ -154,6 +167,18 @@ export function AvailabilityBrowser({
   const activeTimeCount = Object.values(groups).reduce((total, slots) => total + slots.length, 0);
 
   const hasDays = days.length > 0;
+
+  function moveDayFocus(index: number, key: string) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key) || !days.length) return;
+    const targetIndex = key === 'Home'
+      ? 0
+      : key === 'End'
+        ? days.length - 1
+        : (index + (key === 'ArrowRight' ? 1 : -1) + days.length) % days.length;
+    const target = days[targetIndex];
+    selectDate(target.date);
+    requestAnimationFrame(() => tabRefs.current[targetIndex]?.focus());
+  }
 
   return <section className={`ew-availability-browser${hasDays ? ' has-days' : ''}${busy ? ' is-busy' : ''}`} aria-label="Appointment availability">
     <div className="ew-availability-controls">
@@ -171,27 +196,28 @@ export function AvailabilityBrowser({
     <div className="ew-slot-status" aria-live="polite">{busy ? <><span className="ew-spinner" aria-hidden="true" />{message}</> : notice || message}</div>
 
     {!busy && days.length > 0 && <div className="ew-day-tabs" role="tablist" aria-label="Available days">
-      {days.map((day) => {
+      {days.map((day, index) => {
         const curatedCount = Object.values(groupSlots(day.slots)).reduce((total, slots) => total + slots.length, 0);
         const selected = day.date === selectedDate;
-        return <button key={day.date} type="button" role="tab" aria-selected={selected} className={`${selected ? 'selected ' : ''}${day.unavailable ? 'unavailable' : ''}`.trim()} onClick={() => selectDate(day.date)}>
+        const tabId = `${instanceId}-day-tab-${day.date}`;
+        return <button key={day.date} ref={(element) => { tabRefs.current[index] = element; }} id={tabId} type="button" role="tab" tabIndex={selected ? 0 : -1} aria-selected={selected} aria-controls={`${instanceId}-day-panel`} className={`${selected ? 'selected ' : ''}${day.unavailable ? 'unavailable' : ''}`.trim()} onClick={() => selectDate(day.date)} onKeyDown={(event) => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); moveDayFocus(index, event.key); } }}>
           <span>{prettyDate(day.date)}</span>
           <strong>{day.unavailable ? 'Try again' : curatedCount ? `${curatedCount} times` : 'No openings'}</strong>
         </button>;
       })}
     </div>}
 
-    {!busy && activeDay && <div className="ew-day-panel" role="tabpanel" aria-label={`Openings on ${prettyDate(activeDay.date, true)}`}>
+    {!busy && activeDay && <div id={`${instanceId}-day-panel`} className="ew-day-panel" role="tabpanel" aria-labelledby={`${instanceId}-day-tab-${activeDay.date}`}>
       <header><div><span className="ew-eyebrow">Choose a start time</span><h3>{prettyDate(activeDay.date, true)}</h3></div><small>Times shown in Central Time</small></header>
       {activeDay.unavailable ? <div className="ew-empty ew-availability-error"><strong>Couldn't check this day.</strong><p>Retry this date or pick another. Your selections stay as they are.</p><button className="ew-button secondary" type="button" onClick={() => void loadFromDate(activeDay.date)}>Retry {prettyDate(activeDay.date)}</button></div> : activeDay.slots.length === 0 ? <div className="ew-empty"><strong>No openings this day.</strong><p>Pick a nearby day or jump to another date.</p></div> : <div className="ew-period-list">
         {(Object.entries(groups) as Array<[keyof typeof groups, Slot[]]>).filter(([, slots]) => slots.length).map(([period, periodSlots]) => {
-          const key = `${activeDay.date}-${period}`;
+          const key = `${instanceId}-${activeDay.date}-${period}`;
           const isExpanded = Boolean(expanded[key]);
           const shown = isExpanded ? periodSlots : periodSlots.slice(0, INITIAL_TIMES_PER_PERIOD);
           return <section className="ew-time-period" key={period} aria-labelledby={`${key}-heading`}>
             <div className="ew-time-period-head"><h4 id={`${key}-heading`}>{period}</h4><span>{periodSlots.length} {periodSlots.length === 1 ? 'time' : 'times'}</span></div>
             <div className="ew-slot-grid">
-              {shown.map((opening) => <button type="button" key={`${opening.barberId}-${opening.start}`} className={selectedSlot?.start === opening.start && selectedSlot?.barberId === opening.barberId ? 'selected' : ''} onClick={() => onSelect(opening, activeDay.date)}>
+              {shown.map((opening) => <button type="button" key={`${opening.barberId}-${opening.start}`} aria-pressed={selectedSlot?.start === opening.start && selectedSlot?.barberId === opening.barberId} className={selectedSlot?.start === opening.start && selectedSlot?.barberId === opening.barberId ? 'selected' : ''} onClick={() => onSelect(opening, activeDay.date)}>
                 <strong>{prettyTime(opening.start)}</strong>{barberId === 'first' && <small>{opening.barberName}</small>}
               </button>)}
             </div>
@@ -201,6 +227,6 @@ export function AvailabilityBrowser({
       </div>}
     </div>}
 
-    {selectedSlot && <div className="ew-selected-slot ew-selected-slot-inline" role="status"><span>Selected appointment</span><strong>{prettyDate(selectedDate, true)} at {prettyTime(selectedSlot.start)}</strong><small>{selectedSlot.barberName}</small></div>}
+    {selectedSlot && <div className="ew-selected-slot ew-selected-slot-inline" role="status"><span>Selected appointment</span><strong>{prettyDate(slotDate(selectedSlot.start), true)} at {prettyTime(selectedSlot.start)}</strong><small>{selectedSlot.barberName}</small></div>}
   </section>;
 }

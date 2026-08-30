@@ -10,7 +10,7 @@ import {
   slotDate,
 } from './availability';
 import { BARBER_DETAILS, EMMIWOOD_CONSENT_VERSION, EMMIWOOD_PHONE_LABEL, KUP_SMS_PRIVACY_URL, KUP_SMS_TERMS_URL, money } from './content';
-import type { Appointment, Catalog, Slot } from './types';
+import type { Appointment, Catalog, Service, Slot } from './types';
 
 const hasService = (catalog: Catalog, id?: string | null) => Boolean(id && catalog.services.some((service) => service.id === id));
 const hasBarber = (catalog: Catalog, id?: string | null) => id === 'first' || Boolean(id && catalog.barbers.some((barber) => barber.id === id));
@@ -50,8 +50,10 @@ export function BookingFlow({
   const stageHeadingRef = useRef<HTMLHeadingElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  const mutationBusyRef = useRef(false);
+  const mutationServiceRef = useRef<Service>();
 
-  const service = catalog.services.find((item) => item.id === serviceId);
+  const service = catalog.services.find((item) => item.id === serviceId) || (busy ? mutationServiceRef.current : undefined);
   const eligibleBarbers = useMemo(() => {
     const ids = new Set(catalog.eligibility.filter((item) => item.service_id === serviceId).map((item) => item.barber_id));
     return catalog.barbers.filter((barber) => ids.has(barber.id));
@@ -59,11 +61,19 @@ export function BookingFlow({
   const barberName = barberId === 'first' ? 'First available' : catalog.barbers.find((barber) => barber.id === barberId)?.name || 'Selected barber';
 
   useEffect(() => {
-    if (barberId !== 'first' && !eligibleBarbers.some((barber) => barber.id === barberId)) setBarberId('first');
-  }, [barberId, eligibleBarbers]);
+    if (stage === 'confirmed' || busy || mutationBusyRef.current) return;
+    const barberUnavailable = barberId !== 'first' && !eligibleBarbers.some((barber) => barber.id === barberId);
+    const slotUnavailable = Boolean(slot && !eligibleBarbers.some((barber) => barber.id === slot.barberId));
+    if (!service || barberUnavailable || slotUnavailable || (!eligibleBarbers.length && stage !== 'choose')) {
+      if (!service) setServiceId(catalog.services[0]?.id || '');
+      if (barberUnavailable) setBarberId('first');
+      setSlot(undefined);
+      // Keep guest details, but return to a complete, navigable step after live menu changes.
+      setStage('choose');
+    }
+  }, [barberId, busy, catalog.services, eligibleBarbers, service, slot, stage]);
 
   useEffect(() => {
-    if (stage === 'confirmed') return;
     const frame = requestAnimationFrame(() => {
       // focusVisible:false keeps the a11y focus target without a persistent clay ring after stage changes
       stageHeadingRef.current?.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
@@ -72,6 +82,7 @@ export function BookingFlow({
   }, [stage]);
 
   function continueFromChoose() {
+    if (!service || !eligibleBarbers.length) return;
     track('booking_choose_complete', { serviceId, barberId });
     setSlot(undefined);
     setAvailabilityNotice('');
@@ -106,7 +117,9 @@ export function BookingFlow({
   }
 
   async function confirmBooking() {
-    if (!slot || !service) return;
+    if (!slot || !service || mutationBusyRef.current) return;
+    mutationBusyRef.current = true;
+    mutationServiceRef.current = service;
     setBusy(true);
     setMessage('Securing your appointment…');
     try {
@@ -136,16 +149,18 @@ export function BookingFlow({
         setMessage((error as Error).message);
       }
     } finally {
+      mutationBusyRef.current = false;
+      mutationServiceRef.current = undefined;
       setBusy(false);
     }
   }
 
   if (stage === 'confirmed' && confirmation) {
     return (
-      <section className="ew-confirmation" aria-labelledby="ew-confirmed-title" role="status">
+      <section className="ew-confirmation" aria-labelledby="ew-confirmed-title">
         <div className="ew-confirmation-mark" aria-hidden="true">✓</div>
         <span className="ew-eyebrow">Appointment confirmed</span>
-        <h1 id="ew-confirmed-title">You’re on the books.</h1>
+        <h1 id="ew-confirmed-title" ref={stageHeadingRef} tabIndex={-1}>You’re on the books.</h1>
         <div className="ew-confirmation-when" aria-label="Appointment time">
           <span className="ew-eyebrow">When</span>
           <strong>{prettyDateTime(confirmation.start)}</strong>
@@ -164,10 +179,18 @@ export function BookingFlow({
     );
   }
 
+  if (!catalog.services.length && !busy) {
+    return <section className="ew-booking-shell" aria-labelledby="booking-title">
+      <header className="ew-booking-header"><h1 id="booking-title" tabIndex={-1}>Book your appointment.</h1></header>
+      <div className="ew-empty" role="status"><h2>Online booking is unavailable.</h2><p>No services are available to book right now. Refresh the menu or call the shop for help.</p></div>
+      <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Refresh services</a><a className="ew-link" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a><a className="ew-link" href="/emmiwood">Back to the shop</a></div>
+    </section>;
+  }
+
   return (
     <section className="ew-booking-shell" aria-labelledby="booking-title">
       <header className="ew-booking-header">
-        <div><span className="ew-eyebrow">Appointments</span><h1 id="booking-title">Book your appointment.</h1></div>
+        <div><span className="ew-eyebrow">Appointments</span><h1 id="booking-title" tabIndex={-1}>Book your appointment.</h1></div>
         <span className="ew-live"><i aria-hidden="true" /> Live openings</span>
       </header>
 
@@ -231,8 +254,9 @@ export function BookingFlow({
             </button>
           )}
           <div className="ew-choose-dock">
+            {service && !eligibleBarbers.length && <p className="ew-system-note" role="status">No barber is available for this service. Choose another service or call the shop.</p>}
             <div className="ew-booking-context" aria-label="Current booking selection"><span><small>Service</small><strong>{service?.name}</strong></span><span><small>Barber</small><strong>{barberName}</strong></span><span><small>Total</small><strong>{service ? `${service.duration_minutes} min · ${money(service.price_cents)}` : ''}</strong></span></div>
-            <div className="ew-stage-actions"><button className="ew-button" type="button" onClick={continueFromChoose}>Find openings</button></div>
+            <div className="ew-stage-actions"><button className="ew-button" type="button" disabled={!service || !eligibleBarbers.length} onClick={continueFromChoose}>Find openings</button></div>
           </div>
         </div>
       )}
@@ -247,7 +271,11 @@ export function BookingFlow({
             horizonDays={catalog.shop.horizon_days}
             selectedSlot={slot}
             onSelect={chooseSlot}
-            onDateChange={setDate}
+            onRefresh={() => setSlot(undefined)}
+            onDateChange={(nextDate) => {
+              setDate(nextDate);
+              if (slot && slotDate(slot.start) !== nextDate) setSlot(undefined);
+            }}
             notice={availabilityNotice}
           />
           <div className="ew-time-dock">
@@ -294,7 +322,7 @@ export function BookingFlow({
           <div className="ew-policy-note"><strong>Change policy</strong><p>Book any open slot on the schedule—including the next one while you wait. Cancel or reschedule online any time before your appointment starts.</p></div>
           <p className={`ew-form-message${message ? (busy || message.startsWith('Securing') ? '' : ' is-error') : ' is-empty'}`} role={message && !busy ? 'alert' : undefined} aria-live="polite">{message}</p>
           <div className="ew-review-dock">
-            <div className="ew-stage-actions"><button className="ew-link-button" type="button" onClick={() => setStage('details')}>Edit details</button><button className="ew-button" type="button" disabled={busy} onClick={() => void confirmBooking()}>{busy ? 'Securing appointment…' : `Confirm · ${money(service.price_cents)}`}</button></div>
+            <div className="ew-stage-actions"><button className="ew-link-button" type="button" disabled={busy} onClick={() => setStage('details')}>Edit details</button><button className="ew-button" type="button" disabled={busy} onClick={() => void confirmBooking()}>{busy ? 'Securing appointment…' : `Confirm · ${money(service.price_cents)}`}</button></div>
           </div>
         </div>
       )}
@@ -308,32 +336,57 @@ export function ManagePanel({ initialAppointment, horizonDays = 30 }: { initialA
   const [slot, setSlot] = useState<Slot>();
   const [busy, setBusy] = useState(false);
   const [showAvailability, setShowAvailability] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [availabilityVersion, setAvailabilityVersion] = useState(0);
+  const [availabilityNotice, setAvailabilityNotice] = useState('');
+  const [messageKind, setMessageKind] = useState<'idle' | 'info' | 'success' | 'error'>(initialAppointment ? 'idle' : 'info');
+  const mutationBusyRef = useRef(false);
 
   async function reschedule() {
-    if (!slot || !appointment) return;
+    if (!slot || !appointment || appointment.status !== 'booked' || mutationBusyRef.current) return;
+    mutationBusyRef.current = true;
     setBusy(true);
+    setMessageKind('info');
+    setMessage('Moving your appointment…');
     try {
       setAppointment(await emmiwoodApi.reschedule({ date: slotDate(slot.start), start: slot.start, barberId: appointment.barber_id }));
       setSlot(undefined);
       setShowAvailability(false);
       setMessage('Appointment rescheduled.');
+      setMessageKind('success');
     } catch (error) {
-      setMessage((error as Error).message);
+      if (error instanceof EmmiwoodApiError && error.code === 'slot_taken') {
+        setSlot(undefined);
+        setAvailabilityVersion((value) => value + 1);
+        setAvailabilityNotice('That opening was just booked. Your current appointment is still reserved—choose another time.');
+        setMessage('That opening was just booked. Your current appointment is still reserved.');
+      } else {
+        setMessage((error as Error).message);
+      }
+      setMessageKind('error');
     } finally {
+      mutationBusyRef.current = false;
       setBusy(false);
     }
   }
 
   async function cancel() {
-    if (!confirm('Cancel this appointment?')) return;
+    if (!appointment || appointment.status !== 'booked' || mutationBusyRef.current) return;
+    mutationBusyRef.current = true;
+    setShowCancelDialog(false);
     setBusy(true);
+    setMessageKind('info');
+    setMessage('Cancelling your appointment…');
     try {
       await emmiwoodApi.cancel();
       setAppointment((current) => current ? { ...current, status: 'cancelled' } : current);
-      setMessage('Appointment cancelled.');
+      setMessage('');
+      setMessageKind('idle');
     } catch (error) {
       setMessage((error as Error).message);
+      setMessageKind('error');
     } finally {
+      mutationBusyRef.current = false;
       setBusy(false);
     }
   }
@@ -349,15 +402,42 @@ export function ManagePanel({ initialAppointment, horizonDays = 30 }: { initialA
           {appointment.price_cents != null && <strong>{money(appointment.price_cents)}</strong>}
         </div>
         {appointment.status === 'booked' && <div className="ew-manage-grid">
-          <section><span className="ew-eyebrow">Reschedule</span><h3>Find another time.</h3><p className="ew-reschedule-copy">Compare nearby openings without giving up your current time—it stays reserved until a move succeeds.</p>{!showAvailability ? <button className="ew-button secondary" type="button" onClick={() => setShowAvailability(true)}>Find another time</button> : <><AvailabilityBrowser serviceId={appointment.service_id} barberId={appointment.barber_id} horizonDays={horizonDays} selectedSlot={slot} onSelect={(nextSlot) => setSlot(nextSlot)} /><div className="ew-stage-actions"><button className="ew-link-button" type="button" onClick={() => { setShowAvailability(false); setSlot(undefined); }}>Keep current time</button><button className="ew-button" type="button" disabled={!slot || busy} onClick={() => void reschedule()}>{slot ? `Move to ${prettyDateTime(slot.start)}` : 'Choose a new time'}</button></div></>}</section>
-          <section className="ew-cancel-zone"><span className="ew-eyebrow">Cancel</span><h3>Release this chair time.</h3><p>Cancel anytime before your appointment starts so the chair frees up for the shop.</p><button className="ew-danger-button" type="button" onClick={() => void cancel()}>Cancel appointment</button></section>
+          <section><span className="ew-eyebrow">Reschedule</span><h3>Find another time.</h3><p className="ew-reschedule-copy">Compare nearby openings without giving up your current time—it stays reserved until a move succeeds.</p>{!showAvailability ? <button className="ew-button secondary" type="button" onClick={() => { setShowAvailability(true); setAvailabilityNotice(''); }}>Find another time</button> : <><AvailabilityBrowser key={availabilityVersion} serviceId={appointment.service_id} barberId={appointment.barber_id} horizonDays={horizonDays} selectedSlot={slot} onSelect={(nextSlot) => { setSlot(nextSlot); setAvailabilityNotice(''); }} onRefresh={() => setSlot(undefined)} onDateChange={() => setSlot(undefined)} notice={availabilityNotice} /><div className="ew-stage-actions"><button className="ew-link-button" type="button" disabled={busy} onClick={() => { setShowAvailability(false); setSlot(undefined); setAvailabilityNotice(''); }}>Keep current time</button><button className="ew-button" type="button" disabled={!slot || busy} onClick={() => void reschedule()}>{busy ? 'Moving appointment…' : slot ? `Move to ${prettyDateTime(slot.start)}` : 'Choose a new time'}</button></div></>}</section>
+          <section className="ew-cancel-zone"><span className="ew-eyebrow">Cancel</span><h3>Release this chair time.</h3><p>Cancel anytime before your appointment starts so the chair frees up for the shop.</p><button className="ew-danger-button" type="button" disabled={busy} onClick={() => setShowCancelDialog(true)}>Cancel appointment</button></section>
         </div>}
         {appointment.status === 'cancelled' && <div className="ew-manage-cancelled" role="status">
           <p>This appointment is cancelled. The chair time is open again.</p>
           <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book another appointment</a><a className="ew-link" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a></div>
         </div>}
-        <p className={`ew-form-message${!(busy || message) ? ' is-empty' : ''}`} aria-live="polite">{busy ? 'Working…' : message}</p>
+        <p className={`ew-form-message${!(busy || message) ? ' is-empty' : ''}${messageKind === 'error' ? ' is-error' : ''}`} role={messageKind === 'error' ? 'alert' : 'status'} aria-live={messageKind === 'error' ? 'assertive' : 'polite'}>{message}</p>
+        {showCancelDialog && <CancelAppointmentDialog appointment={appointment} busy={busy} onKeep={() => setShowCancelDialog(false)} onConfirm={() => void cancel()} />}
       </>}
     </section>
   );
+}
+
+function CancelAppointmentDialog({ appointment, busy, onKeep, onConfirm }: { appointment: Appointment; busy: boolean; onKeep: () => void; onConfirm: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const keepRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.showModal();
+    keepRef.current?.focus();
+    return () => {
+      if (dialog.open) dialog.close();
+      requestAnimationFrame(() => {
+        if (returnFocus?.isConnected && !returnFocus.matches(':disabled')) returnFocus.focus();
+      });
+    };
+  }, []);
+
+  return <dialog ref={dialogRef} className="ew-cancel-dialog" role="alertdialog" aria-modal="true" aria-labelledby="ew-cancel-title" aria-describedby="ew-cancel-description" onCancel={(event) => { event.preventDefault(); if (!busy) onKeep(); }} onClose={() => { if (!busy) onKeep(); }}>
+    <span className="ew-eyebrow">Confirm cancellation</span>
+    <h2 id="ew-cancel-title">Release this appointment?</h2>
+    <p id="ew-cancel-description">{appointment.service_name} with {appointment.barber_name} on {prettyDateTime(appointment.start_at)}. This action cannot be undone.</p>
+    <div className="ew-stage-actions"><button ref={keepRef} className="ew-button secondary" type="button" disabled={busy} onClick={onKeep}>Keep appointment</button><button className="ew-danger-button" type="button" disabled={busy} onClick={onConfirm}>{busy ? 'Cancelling…' : 'Cancel appointment'}</button></div>
+  </dialog>;
 }

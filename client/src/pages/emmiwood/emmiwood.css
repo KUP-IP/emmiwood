@@ -1,3 +1,4 @@
+body { margin:0; }
 .emmiwood {
   --walnut:#4a3024;
   --walnut-deep:#251812;
@@ -639,7 +640,8 @@
   text-transform:uppercase;
 }
 .ew-brand>span {
-  width:auto;
+  flex:0 0 38px;
+  width:38px;
   min-width:38px;
   height:38px;
   padding:0 .45rem;
@@ -650,6 +652,18 @@
   color:#fff;
   font:700 .72rem/1 "Space Grotesk",sans-serif;
   letter-spacing:.06em;
+}
+.ew-brand>span img {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.ew-hero-brand-lockup {
+  width:min(100%,680px);
+  height:auto;
+  margin:0 0 clamp(1.5rem,3vw,2.5rem);
+  border-radius:2px;
 }
 .ew-public .ew-button,.ew-app-surface .ew-button {
   min-height:52px;
@@ -863,7 +877,7 @@
 .ew-live i { width:9px; height:9px; border-radius:50%; background:#1d9f5d; box-shadow:0 0 0 5px rgba(29,159,93,.12); }
 /* Single divider: header already has border-bottom — do not double with border-top here */
 .ew-progress { display:grid; grid-template-columns:repeat(4,1fr); margin:1.25rem 0 2rem; padding:0; border-top:0; border-bottom:1px solid var(--ew-line); list-style:none; }
-.ew-progress li { display:flex; align-items:center; gap:.55rem; padding:.8rem .25rem; color:#767a79; font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.ew-progress li { display:flex; align-items:center; gap:.55rem; padding:.8rem .25rem; color:#626665; font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
 .ew-progress li span { width:25px; height:25px; display:grid; place-items:center; border:1px solid #a7aaa7; border-radius:50%; }
 .ew-progress li.current { color:var(--ew-signal); }
 .ew-progress li.current span { border-color:var(--ew-signal); background:var(--ew-signal); color:#fff; }
@@ -1009,7 +1023,7 @@
 .ew-consent a { color:var(--ew-signal); text-decoration:underline; }
 .ew-review-list,.ew-receipt { margin:0; border-top:1px solid var(--ew-line); }
 .ew-review-list>div,.ew-receipt>div { display:grid; grid-template-columns:130px 1fr; gap:1rem; padding:1rem 0; border-bottom:1px solid var(--ew-line); }
-.ew-review-list dt,.ew-receipt dt { color:#767a79; font-size:.67rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+.ew-review-list dt,.ew-receipt dt { color:#626665; font-size:.67rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
 .ew-review-list dd,.ew-receipt dd { margin:0; font-weight:700; }
 .ew-review-list dd small { display:block; margin-top:.2rem; color:#666b69; font-weight:400; }
 .ew-policy-note { margin-top:1.25rem; padding:1rem; border-left:4px solid var(--ew-signal); background:#fff; }
@@ -1198,7 +1212,7 @@
 .ewa-workspace .ewa-heading h1,.ewa-workspace .ewa-panel h1 { margin:.35rem 0 0; color:var(--ew-black); font-size:clamp(1.4rem,2.4vw,1.75rem); letter-spacing:-.02em; line-height:1.15; }
 .ewa-workspace .ewa-panel h2 { margin:.35rem 0 0; color:var(--ew-black); font-size:clamp(1.15rem,2vw,1.4rem); letter-spacing:-.02em; line-height:1.2; }
 .ewa-shop-nav { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 1.25rem; }
-.ewa-shop-nav button { min-height:40px; padding:.45rem .85rem; border:1px solid #c6c6c0; background:#fff; color:#343938; font-size:.78rem; font-weight:700; cursor:pointer; }
+.ewa-shop-nav button { min-height:44px; padding:.45rem .85rem; border:1px solid #c6c6c0; background:#fff; color:#343938; font-size:.78rem; font-weight:700; cursor:pointer; }
 .ewa-shop-nav button.active { border-color:var(--ew-black); background:var(--ew-black); color:var(--ew-ivory); }
 .ewa-hours-groups { display:grid; gap:1.25rem; }
 .ewa-hours-group h2 { margin:0 0 .55rem; color:var(--ew-black); font-size:1.15rem; }
@@ -1234,7 +1248,7 @@
 .ewa-resource-list article>div:first-child { min-width:0; display:grid; gap:.25rem; }
 .ewa-resource-list article span { overflow-wrap:anywhere; color:#666b68; font-size:.8rem; }
 .ewa-resource-list article>div:last-child,.ewa-card-actions { display:flex; flex-wrap:wrap; gap:.75rem; }
-.ewa-resource-list button,.ewa-card-actions button { min-height:40px; border:0; border-bottom:1px solid currentColor; background:transparent; color:var(--ew-signal-deep); font-weight:700; cursor:pointer; }
+.ewa-resource-list button,.ewa-card-actions button { min-height:44px; border:0; border-bottom:1px solid currentColor; background:transparent; color:var(--ew-signal-deep); font-weight:700; cursor:pointer; }
 .ewa-resource-list button.danger,.ewa-card-actions button.danger { color:#9d2e21; }
 .ewa-eligibility { margin-top:1.25rem; }
 .ewa-eligibility-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; background:#cacbc5; }
@@ -1272,15 +1286,17 @@
 .ewa-activity-list span { color:#696e6b; font-size:.75rem; }
 
 @media (max-width:1000px) {
-  .ewa-workspace .ewa-shell { grid-template-columns:1fr; }
-  .ewa-workspace .ewa-nav { position:sticky; top:72px; z-index:20; flex-direction:row; overflow-x:visible; padding:.55rem; border-right:0; border-bottom:1px solid #c6c6c0; }
+  .ewa-workspace .ewa-shell { grid-template-columns:1fr; grid-template-rows:auto 1fr; }
+  .ewa-workspace .ewa-nav { position:sticky; top:0; align-self:start; z-index:20; flex-direction:row; overflow-x:visible; padding:.55rem; border-right:0; border-bottom:1px solid #c6c6c0; }
   .ewa-workspace .ewa-nav button { flex:1 1 0; }
-  .ewa-workspace .ewa-nav button { flex:0 0 auto; border-left:0; border-bottom:3px solid transparent; white-space:nowrap; }
+  .ewa-workspace .ewa-nav button { flex:1 1 0; border-left:0; border-bottom:3px solid transparent; white-space:nowrap; }
   .ewa-workspace .ewa-nav button.active { border-bottom-color:var(--ew-signal); }
   .ewa-message-columns { grid-template-columns:1fr; }
 }
 @media (max-width:700px) {
-  .ewa-workspace .ewa-top>div span { display:none; }
+  .ewa-workspace .ewa-top { flex-wrap:wrap; gap:.5rem; }
+  .ewa-workspace .ewa-top>div { width:100%; min-width:0; justify-content:space-between; }
+  .ewa-workspace .ewa-top>div span { display:block; max-width:calc(100% - 6rem); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .ewa-workspace .ewa-main { padding:.6rem; }
   .ewa-workspace .ewa-heading,.ewa-workspace .ewa-panel-head { align-items:flex-start; flex-direction:column; gap:.8rem; }
   .ewa-workspace .ewa-heading h1,.ewa-workspace .ewa-panel h1 { font-size:1.45rem; }
@@ -1745,8 +1761,8 @@
 .ew-first-available { margin-top:1.25rem; border-radius:16px; }
 
 @keyframes ew-card-reveal {
-  from { opacity:.15; transform:translateY(28px) scale(.985); }
-  to { opacity:1; transform:translateY(0) scale(1); }
+  from { transform:translateY(28px) scale(.985); }
+  to { transform:translateY(0) scale(1); }
 }
 @supports (animation-timeline:view()) {
   .ew-service-card,.ew-barber-card {
@@ -1823,7 +1839,7 @@
 .ew-booking-context { display:grid; grid-template-columns:1.35fr 1fr .8fr; margin:0 0 1.5rem; border:1px solid var(--ew-line); border-radius:16px; overflow:hidden; background:#fff; box-shadow:0 12px 30px rgba(17,16,14,.06); }
 .ew-booking-context>span { min-width:0; display:grid; gap:.25rem; padding:.9rem 1rem; border-right:1px solid var(--ew-line); }
 .ew-booking-context>span:last-child { border-right:0; }
-.ew-booking-context small { color:#737775; font-size:.62rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+.ew-booking-context small { color:#626665; font-size:.62rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
 .ew-booking-context strong { overflow:hidden; color:var(--ew-black); font:700 .95rem/1.15 "Space Grotesk",sans-serif; text-overflow:ellipsis; white-space:nowrap; }
 .ew-availability-browser { min-width:0; display:grid; gap:1rem; }
 .ew-availability-controls { display:grid; grid-template-columns:minmax(220px,1fr) minmax(280px,1.2fr); align-items:end; gap:.85rem; padding:1rem; border:1px solid var(--ew-line); border-radius:18px; background:#f2ece3; box-shadow:0 14px 34px rgba(17,16,14,.07); }
@@ -1867,7 +1883,7 @@
 .ew-time-period { padding:1rem; border:1px solid #ded7ce; border-radius:16px; background:#fbf8f3; }
 .ew-time-period-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:.75rem; }
 .ew-time-period-head h4 { margin:0; font:700 1rem/1 "Space Grotesk",sans-serif; }
-.ew-time-period-head span { color:#707472; font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.ew-time-period-head span { color:#626665; font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
 .ew-availability-browser .ew-slot-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.55rem; }
 .ew-availability-browser .ew-slot-grid button { min-height:54px; display:grid; place-content:center; gap:.12rem; padding:.55rem; border:1px solid #a5a19a; border-radius:11px; background:#fff; color:var(--ew-black); cursor:pointer; box-shadow:0 5px 12px rgba(17,16,14,.04); transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
 .ew-availability-browser .ew-slot-grid button:hover { transform:translateY(-2px); border-color:var(--ew-signal); box-shadow:0 9px 18px rgba(17,16,14,.08); }
@@ -1877,6 +1893,7 @@
 .ew-day-tabs button strong { min-height:1em; }
 .ew-day-tabs button.unavailable { border-style:dashed; background:#f8f4ee; }
 .ew-day-tabs button.unavailable strong { color:var(--ew-signal-deep); }
+.ew-day-tabs button.selected.unavailable strong { color:#fff; opacity:1; }
 .ew-availability-error .ew-button { margin-top:.75rem; }
 .ew-selected-slot { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:1rem; padding:1rem; border:1px solid var(--ew-gold); border-radius:16px; background:#fff7e8; }
 .ew-selected-slot span { color:#766849; font-size:.65rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
@@ -2137,10 +2154,11 @@
     min-height:40px;
   }
   .ew-site-header .ew-brand>span {
-    width:auto;
+    flex:0 0 36px;
+    width:36px;
     min-width:36px;
     height:36px;
-    padding:0 .4rem;
+    padding:0;
     font-size:.7rem;
     letter-spacing:.06em;
   }
@@ -3200,7 +3218,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   border-bottom:1px solid var(--ew-line);
 }
 .ew-confirmation-receipt dt {
-  color:#767a79;
+  color:#626665;
   font-size:.67rem;
   font-weight:700;
   letter-spacing:.12em;
@@ -3430,6 +3448,29 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   font-weight:600;
   line-height:1.4;
 }
+
+.ew-danger-button:disabled,
+.ew-link-button:disabled,
+.ew-button:disabled { cursor:not-allowed; opacity:.58; }
+
+.ew-cancel-dialog {
+  width:min(560px,calc(100% - 2rem));
+  max-height:calc(100dvh - 2rem);
+  padding:clamp(1.5rem,4vw,2.75rem);
+  border:1px solid var(--ew-line);
+  background:#fffaf3;
+  color:var(--ew-black);
+  box-shadow:0 28px 90px rgba(0,0,0,.42);
+}
+.ew-cancel-dialog::backdrop { background:rgba(8,10,11,.72); backdrop-filter:blur(3px); }
+.ew-cancel-dialog h2 { margin:.6rem 0 1rem; font-size:clamp(2rem,5vw,3.5rem); line-height:1; }
+.ew-cancel-dialog p { color:#565c59; line-height:1.55; }
+.ew-cancel-dialog .ew-stage-actions { justify-content:flex-end; margin-top:1.75rem; }
+
+@media (max-width:640px) {
+  .ew-cancel-dialog .ew-stage-actions { align-items:stretch; flex-direction:column; }
+  .ew-cancel-dialog .ew-stage-actions button { width:100%; }
+}
 .ew-form-message.is-info {
   display:block;
   min-height:0;
@@ -3468,7 +3509,8 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 .ew-app-header .ew-brand>span,
 .ewa-auth .ewa-login-card .ew-brand>span,
 .ewa-workspace .ewa-top .ew-brand>span {
-  width:auto;
+  flex:0 0 42px;
+  width:42px;
   min-width:42px;
   height:42px;
   padding:0 .5rem;
@@ -3477,7 +3519,18 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   color:#fff;
   font:700 .78rem/1 "Space Grotesk",sans-serif;
   letter-spacing:.08em;
+  overflow:hidden;
+  padding:0;
+  border-color:#cfa454;
+  border-radius:9px;
+  background:#050505;
 }
+
+.ew-public .ew-link,
+.ew-public .ew-site-footer a,
+.ew-public .ew-mobile-jump a,
+.ew-app-surface .ew-link,
+.ew-app-surface .ew-link-button { min-height:44px; display:inline-flex; align-items:center; }
 
 @media (max-width:760px) {
   .ew-shop-section .ew-shop-statement { padding:2.15rem 1.1rem 1.35rem; }
@@ -3495,15 +3548,17 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   .ew-app-header .ew-brand>span,
   .ewa-auth .ewa-login-card .ew-brand>span,
   .ewa-workspace .ewa-top .ew-brand>span {
-    width:auto;
+    flex:0 0 36px;
+    width:36px;
     min-width:36px;
     height:36px;
-    padding:0 .4rem;
+    padding:0;
     font-size:.7rem;
     letter-spacing:.06em;
   }
   .ew-public .ew-site-header .ew-brand,
   .ew-app-header .ew-brand { font-size:.82rem; }
+  .ew-hero-brand-lockup { width:min(100%,520px); margin-bottom:1.35rem; }
   .ew-public #services .ew-service-card { gap:.5rem; }
   .ew-public #services .ew-service-meta { padding-top:.5rem; font-size:.78rem; }
 }
@@ -3868,4 +3923,3 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
     transition:none!important;
   }
 }
-
