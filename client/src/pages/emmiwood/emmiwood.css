@@ -1421,7 +1421,9 @@ body { margin:0; }
 
 .ew-today-card {
   width:100%;
+  min-width:0;
   display:grid;
+  grid-template-columns:minmax(0,1fr);
   gap:0;
   border:1px solid rgba(198,164,92,.52);
   background:var(--ew-paper);
@@ -1436,7 +1438,7 @@ body { margin:0; }
   padding:1.4rem;
   border-bottom:1px solid rgba(59,40,31,.16);
 }
-.ew-today-card>header>div { display:grid; gap:.25rem; text-align:right; }
+.ew-today-card>header>div { display:grid; grid-template-columns:minmax(0,1fr); max-width:100%; gap:.25rem; text-align:right; }
 .ew-today-card>header strong { color:var(--ew-crimson); font:400 1.75rem/1 Georgia,"Times New Roman",serif; }
 .ew-today-card>header small { color:#6f665f; }
 .ew-today-card .ew-eyebrow { color:var(--ew-crimson); }
@@ -1448,6 +1450,8 @@ body { margin:0; }
 .ew-hours-track strong { font-size:.76rem; letter-spacing:.06em; text-transform:uppercase; }
 .ew-hours-track span { margin-top:.2rem; font-size:.7rem; opacity:.82; }
 .ew-today-card .ew-next-opening {
+  min-width:0;
+  grid-template-columns:minmax(0,1fr);
   gap:.3rem;
   padding:1.15rem 1.4rem;
   border:0;
@@ -1455,7 +1459,7 @@ body { margin:0; }
   color:var(--ew-brown-deep);
 }
 .ew-today-card .ew-next-opening .ew-eyebrow { color:var(--ew-crimson); opacity:1; }
-.ew-today-card .ew-next-opening strong { font:400 1.45rem/1.05 Georgia,"Times New Roman",serif; }
+.ew-today-card .ew-next-opening strong { min-width:0; overflow-wrap:break-word; font:400 1.45rem/1.05 Georgia,"Times New Roman",serif; }
 .ew-today-card .ew-next-opening a { color:var(--ew-crimson); }
 .ew-today-actions { display:flex; align-items:center; padding:1rem 1.4rem 1.15rem; border-top:1px solid rgba(59,40,31,.12); }
 .ew-today-actions .ew-link {
@@ -1840,7 +1844,7 @@ body { margin:0; }
 .ew-booking-context>span { min-width:0; display:grid; gap:.25rem; padding:.9rem 1rem; border-right:1px solid var(--ew-line); }
 .ew-booking-context>span:last-child { border-right:0; }
 .ew-booking-context small { color:#626665; font-size:.62rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
-.ew-booking-context strong { overflow:hidden; color:var(--ew-black); font:700 .95rem/1.15 "Space Grotesk",sans-serif; text-overflow:ellipsis; white-space:nowrap; }
+.ew-booking-context strong { min-width:0; overflow-wrap:anywhere; color:var(--ew-black); font:700 .95rem/1.15 "Space Grotesk",sans-serif; white-space:normal; }
 .ew-availability-browser { min-width:0; display:grid; gap:1rem; }
 .ew-availability-controls { display:grid; grid-template-columns:minmax(220px,1fr) minmax(280px,1.2fr); align-items:end; gap:.85rem; padding:1rem; border:1px solid var(--ew-line); border-radius:18px; background:#f2ece3; box-shadow:0 14px 34px rgba(17,16,14,.07); }
 .ew-selected-date { min-height:78px; display:grid; align-content:center; gap:.2rem; padding:.65rem .8rem; border-left:4px solid var(--ew-signal); background:#fff; }
@@ -2080,7 +2084,7 @@ body { margin:0; }
 }
 .ew-today-card>header .ew-eyebrow { white-space:nowrap; color:var(--ew-crimson); }
 .ew-today-card>header>div { flex:1; min-width:0; }
-.ew-today-card>header small { white-space:nowrap; }
+.ew-today-card>header small { min-width:0; white-space:normal; overflow-wrap:break-word; }
 .ew-hours-visual {
   padding:0;
   border-bottom:1px solid var(--ew-today-line);
@@ -3921,5 +3925,19 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   .ew-mobile-book a,
   .ew-mobile-book a span {
     transition:none!important;
+  }
+}
+
+/* Narrow summaries preserve the complete service, barber, duration, and price. */
+@media (max-width:480px) {
+  .ew-choose-dock .ew-booking-context,
+  .ew-booking-context-sticky {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .ew-choose-dock .ew-booking-context>span:first-child,
+  .ew-booking-context-sticky>span:first-child {
+    grid-column:1 / -1;
+    border-right:0;
+    border-bottom:1px solid var(--ew-line);
   }
 }

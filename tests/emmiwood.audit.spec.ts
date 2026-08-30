@@ -37,6 +37,31 @@ async function noOverflow(page: Page) {
   const size = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: document.documentElement.clientWidth }));
   expect(size.scroll).toBeLessThanOrEqual(size.width + 1);
 }
+async function completeTextFits(page: Page, textSelector: string, containerSelector: string) {
+  const metrics = await page.locator(textSelector).evaluate((element, ancestorSelector) => {
+    const container = element.closest(ancestorSelector)!;
+    const elementBox = element.getBoundingClientRect();
+    const containerBox = container.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const style = getComputedStyle(element);
+    return {
+      text: element.textContent?.trim(),
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      whiteSpace: style.whiteSpace,
+      textOverflow: style.textOverflow,
+      elementInside: elementBox.left >= containerBox.left - 1 && elementBox.right <= containerBox.right + 1,
+      textInside: [...range.getClientRects()].every((rect) => rect.left >= elementBox.left - 1 && rect.right <= elementBox.right + 1 && rect.left >= containerBox.left - 1 && rect.right <= containerBox.right + 1),
+    };
+  }, containerSelector);
+  expect(metrics.text).toBeTruthy();
+  expect(metrics.elementInside, `${textSelector} must remain within its card`).toBe(true);
+  expect(metrics.textInside, `${textSelector} must show every text line, not clip it`).toBe(true);
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+  expect(metrics.whiteSpace).not.toBe('nowrap');
+  expect(metrics.textOverflow).not.toBe('ellipsis');
+}
 async function accessible(page: Page) {
   const result = await new AxeBuilder({ page }).analyze();
   expect(result.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
@@ -70,6 +95,16 @@ for (const width of [320, 430, 768, 1440]) {
       await page.goto(surface.path);
       await expect(page.getByRole('heading', { level: 1, name: surface.heading }).first()).toBeVisible();
       await noOverflow(page);
+      if (surface.name === 'public') {
+        await expect(page.locator('.ew-today-card .ew-next-opening>strong')).not.toHaveText('Checking the book…');
+        await completeTextFits(page, '.ew-today-card>header small', '.ew-today-card');
+        await completeTextFits(page, '.ew-today-card .ew-next-opening>strong', '.ew-today-card');
+      }
+      if (surface.name === 'booking') {
+        const total = page.locator('.ew-choose-dock .ew-booking-context>span:last-child strong');
+        await expect(total).toHaveText('35 min · $35');
+        await completeTextFits(page, '.ew-choose-dock .ew-booking-context>span:last-child strong', '.ew-booking-context>span');
+      }
       await screenshot(page, info, `${surface.name}-${width}`);
     }
   });

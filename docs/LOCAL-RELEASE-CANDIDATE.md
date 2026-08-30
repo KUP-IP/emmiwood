@@ -62,6 +62,11 @@ prove full WCAG conformance or every assistive-technology experience.
   no longer stretches to fill spare vertical space.
 - P2: cancelling the confirmation dialog failed to return keyboard focus; restore
   the connected, enabled trigger explicitly after the dialog unmounts.
+- P2: 320px public Today details/availability headlines clipped, and the booking
+  summary elided the total price. Text now wraps inside constrained card tracks;
+  narrow booking summaries use two rows. Text-range containment regressions cover
+  all four audit widths. The eight desktop/mobile reflow cases pass, and renewed
+  320px screenshots visibly show the full opening details and total price.
 
 P3 retained: John's initial-based profile placeholder; no approved portrait was
 provided. Do not substitute an invented person or photograph.
