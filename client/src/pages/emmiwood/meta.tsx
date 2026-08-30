@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const DEFAULT_ORIGIN = 'https://emmiwood.example';
+const DEFAULT_ORIGIN = 'https://www.emmiwood.com';
 
 function upsertMeta(selector: string, attributes: Record<string, string>) {
   let element = document.head.querySelector<HTMLMetaElement>(selector);
@@ -44,12 +44,12 @@ export function EmmiwoodMeta({
 
     upsertMeta('meta[name="description"]', { name: 'description', content: description });
     upsertMeta('meta[name="robots"]', { name: 'robots', content: noindex ? 'noindex,nofollow' : 'index,follow,max-image-preview:large' });
-    upsertMeta('meta[name="theme-color"]', { name: 'theme-color', content: '#101417' });
+    upsertMeta('meta[name="theme-color"]', { name: 'theme-color', content: '#050505' });
     upsertMeta('meta[property="og:type"]', { property: 'og:type', content: 'website' });
     upsertMeta('meta[property="og:url"]', { property: 'og:url', content: canonical });
     upsertMeta('meta[property="og:title"]', { property: 'og:title', content: title });
     upsertMeta('meta[property="og:description"]', { property: 'og:description', content: description });
-    const socialImage = `${origin}/emmiwood/og-emmiwood.png`;
+    const socialImage = `${origin}/emmiwood/brand/ewb-social-og-1200x630.png`;
     upsertMeta('meta[property="og:site_name"]', { property: 'og:site_name', content: 'Emmiwood Barbers' });
     upsertMeta('meta[property="og:image"]', { property: 'og:image', content: socialImage });
     upsertMeta('meta[property="og:image:secure_url"]', { property: 'og:image:secure_url', content: socialImage });
@@ -70,7 +70,11 @@ export function EmmiwoodMeta({
     document.head.querySelectorAll<HTMLLinkElement>(
       'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"], link[rel="manifest"], link[href*="fonts.googleapis.com"], link[href*="fonts.gstatic.com"], link[href*="isaiah-park"], link[imagesrcset*="isaiah-park"]',
     ).forEach((link) => link.remove());
-    upsertLink('link[rel="icon"]', { rel: 'icon', type: 'image/svg+xml', href: '/emmiwood/mark.svg' });
+    upsertLink('link[rel="icon"][sizes="32x32"]', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/emmiwood/brand/ewb-favicon-32.png' });
+    upsertLink('link[rel="icon"][sizes="16x16"]', { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/emmiwood/brand/ewb-favicon-16.png' });
+    upsertLink('link[rel="shortcut icon"]', { rel: 'shortcut icon', type: 'image/x-icon', href: '/emmiwood/brand/favicon.ico' });
+    upsertLink('link[rel="apple-touch-icon"]', { rel: 'apple-touch-icon', sizes: '180x180', href: '/emmiwood/brand/ewb-apple-touch-icon-180.png' });
+    upsertLink('link[rel="manifest"]', { rel: 'manifest', href: '/emmiwood/brand/manifest.webmanifest' });
 
     if (structured) {
       const script = document.createElement('script');

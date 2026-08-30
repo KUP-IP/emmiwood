@@ -6,6 +6,13 @@
   <title>SMS opt-in evidence | KUP Solutions</title>
   <meta name="description" content="How customers consent to optional KUP Solutions appointment texts on this KUP-hosted booking website." />
   <meta name="robots" content="index,follow" />
+  <meta name="theme-color" content="#050505" />
+  <link rel="canonical" href="https://www.emmiwood.com/emmiwood/opt-in-evidence/" />
+  <meta property="og:title" content="Appointment text opt-in | Emmiwood Barbers" />
+  <meta property="og:image" content="https://www.emmiwood.com/emmiwood/brand/ewb-social-og-1200x630.png" />
+  <link rel="icon" sizes="32x32" href="/emmiwood/brand/ewb-favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/emmiwood/brand/ewb-apple-touch-icon-180.png" />
+  <link rel="manifest" href="/emmiwood/brand/manifest.webmanifest" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height: 1.55; max-width: 42rem; margin: 2rem auto; padding: 0 1.25rem; color: #1a1a1a; }
     h1 { font-size: 1.5rem; }
@@ -15,9 +22,21 @@
     .mock input { margin-top: 0.25rem; }
     a { color: #5c4a2a; }
     .meta { color: #666; font-size: 0.95rem; }
+    * { box-sizing: border-box; } body { max-width:none; margin:0; padding:0; background:#f7f0e5; color:#15110f; } a { overflow-wrap:anywhere; }
+    a:focus-visible { outline:3px solid #9d2e21; outline-offset:3px; }
+    .top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; padding:1rem clamp(1rem,5vw,4rem); background:#050505; }
+    .top a { display:inline-flex; align-items:center; min-height:44px; color:#f2d49e; }
+    .brand { gap:.75rem; text-decoration:none; font-weight:700; } .brand img { width:44px; height:44px; border-radius:9px; }
+    main { max-width:780px; margin:2rem auto; padding:clamp(1rem,5vw,3rem); background:#fffaf3; border:1px solid #d8c9b7; }
+    h1,h2 { font-family:Georgia,serif; } h1 { font-size:clamp(2rem,7vw,3.5rem); line-height:1.1; }
+    .footer { padding:1.5rem; text-align:center; } .footer a { display:inline-flex; align-items:center; min-height:44px; }
+    .skip { position:absolute; top:-100px; left:1rem; padding:.75rem; background:#fffaf3; } .skip:focus { top:1rem; }
   </style>
 </head>
 <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top"><a class="brand" href="/emmiwood"><img src="/emmiwood/brand/ewb-app-icon-192.png" width="44" height="44" alt="" />Emmiwood Barbers</a><a href="/emmiwood/book">Book an appointment</a></header>
+  <main id="main" tabindex="-1">
   <p class="meta"><a href="https://kup.solutions/sms">KUP Solutions appointment texts</a> · this booking is for Emmiwood Barbers</p>
   <h1>Optional appointment text opt-in (website)</h1>
   <p>This page documents the customer SMS consent control shown during online booking at
@@ -49,5 +68,7 @@
 
   <h2>Staff portal codes (not marketing)</h2>
   <p>Separately, one-time staff sign-in codes may be sent by KUP Solutions only to allowlisted administrator mobile numbers for shop portal security. That is not a customer marketing program.</p>
+  </main>
+  <footer class="footer"><a href="/emmiwood">Back to Emmiwood Barbers</a> · <a href="tel:+16059006334">(605) 900-6334</a></footer>
 </body>
 </html>
