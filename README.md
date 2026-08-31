@@ -4,16 +4,18 @@ Standalone Emmiwood Barbers booking website and Cloudflare Pages Functions appli
 
 This repository was extracted from the abandoned `KUP-IP/kup.solutions` PR #92 at source commit `1ca43dc4db0d102eec3adebea741788d4142f1e5`. It has an independent application shell, package manifests, deployment name, D1 namespace, and migration sequence.
 
-## Local verification
+Cloud-first: develop from Cursor Cloud Agents, keep secrets in Cloudflare / GitHub / Cursor, deploy from `main` after CI. See [`docs/CLOUD.md`](docs/CLOUD.md).
+
+## Verify
 
 ```bash
-npm install
-npm --prefix client install
+npm ci
+npm ci --prefix client
 npm test
 npm run db:migrate:local
 npm run dev
 ```
 
-The zero UUID in `wrangler.toml` is intentionally non-deployable. Replace it only after creating the dedicated Emmiwood D1 database. Production credentials and deployment remain gated.
+`npm run dev` serves Functions with preview-like bindings on port 8788 (local D1 under `.wrangler/state`). Twilio unset → mock SMS. Optional `npm run dev:vars` writes gitignored `.dev.vars` from the environment (names in `.dev.vars.example`).
 
-Production appointment writes fail closed unless `EMMIWOOD_BOOKING_WRITES_ENABLED` is explicitly `true`. See [`docs/RELEASE.md`](docs/RELEASE.md) for the staged preflight, administrator seed, deployment, cutover, and rollback contract.
+Production `wrangler.toml` matches the live shop (`https://emmiwood.com`, booking writes and notifications enabled). Do not replace those vars with frozen-launch defaults. Production credentials never belong in git. D1 remotes are gated — see [`docs/CLOUD.md`](docs/CLOUD.md) and [`docs/RELEASE.md`](docs/RELEASE.md).

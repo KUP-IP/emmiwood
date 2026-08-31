@@ -1,6 +1,7 @@
 /**
  * Preview SMS self-verify helpers (Wave C+ suite).
- * Exact-ID processor + chat.db handset proof. No POST retries.
+ * Exact-ID processor + chat.db handset proof (Mac-only). Processor secret is env-first.
+ * No POST retries.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
@@ -46,9 +47,13 @@ export function keychainSecret(service, account) {
 }
 
 export function notificationSecret() {
-  return (
-    process.env.EMMIWOOD_NOTIFICATION_SECRET ||
-    keychainSecret('api_key:emmiwood-notification', 'EMMIWOOD_NOTIFICATION_SECRET')
+  const fromEnv = String(process.env.EMMIWOOD_NOTIFICATION_SECRET || '').trim();
+  if (fromEnv) return fromEnv;
+  if (process.platform === 'darwin') {
+    return keychainSecret('api_key:emmiwood-notification', 'EMMIWOOD_NOTIFICATION_SECRET');
+  }
+  throw new SuiteError(
+    'EMMIWOOD_NOTIFICATION_SECRET is required. Set it as a Cursor Runtime Secret or shell env. Keychain is Mac-only.',
   );
 }
 
@@ -421,6 +426,11 @@ export function findInboundSms({
   uniqueToken,
   limit = 20,
 }) {
+  if (process.platform !== 'darwin') {
+    throw new SuiteError(
+      'chat.db handset proof is Mac-only. Cloud agents can still use env EMMIWOOD_NOTIFICATION_SECRET for readiness, D1, and Twilio SID checks.',
+    );
+  }
   if (!existsSync(CHAT_DB)) {
     throw new SuiteError(`chat.db missing at ${CHAT_DB}`);
   }

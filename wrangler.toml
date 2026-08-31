@@ -2,16 +2,47 @@ name = "emmiwood"
 compatibility_date = "2026-07-01"
 pages_build_output_dir = "client/dist"
 
+# Production D1 (local persist uses this name; remote id is emmiwood-db).
 [[d1_databases]]
 binding = "DB"
 database_name = "emmiwood-db"
 database_id = "a79f099e-396f-4466-801c-2458a0c2b3e2"
 migrations_dir = "migrations"
 
-# Production Pages deploy bindings (secrets still override). Keep preview deploys on wrangler.preview.toml only.
+# Live production snapshot 2026-08-31 from `wrangler pages download config emmiwood`.
+# Git / Direct Upload production deploys use these vars. Local `npm run dev` overrides with --binding.
+# Do not put localhost or frozen-launch defaults here — they would clobber the live shop.
 [vars]
 ENVIRONMENT = "production"
-EMMIWOOD_PUBLIC_ORIGIN = "https://www.emmiwood.com"
-# Activation requires the separate production Ship Gates; a fresh deploy is frozen.
-EMMIWOOD_BOOKING_WRITES_ENABLED = "false"
+EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood.com"
+EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
+EMMIWOOD_NOTIFICATIONS_ENABLED = "true"
+
+# Explicit Pages production env for Git-connected builds and `wrangler pages deploy --branch main`.
+[env.production]
+[env.production.vars]
+ENVIRONMENT = "production"
+EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood.com"
+EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
+EMMIWOOD_NOTIFICATIONS_ENABLED = "true"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "emmiwood-db"
+database_id = "a79f099e-396f-4466-801c-2458a0c2b3e2"
+migrations_dir = "migrations"
+
+# Pages preview deployments (PR branches) once Git is connected. Until then, the Direct Upload
+# preview project still uses wrangler.preview.toml (different Pages project name).
+[env.preview]
+[env.preview.vars]
+ENVIRONMENT = "preview"
+EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood-barbers-preview.pages.dev"
+EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
 EMMIWOOD_NOTIFICATIONS_ENABLED = "false"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "emmiwood-standalone-preview-db"
+database_id = "b4a10012-e0c8-40f0-b203-31474393fb2a"
+migrations_dir = "migrations"

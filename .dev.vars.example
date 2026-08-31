@@ -1,0 +1,21 @@
+# Names only. Copy to gitignored `.dev.vars` via `npm run dev:vars` or Cursor Cloud start.
+# Values live in Cloudflare Pages, GitHub Actions, or Cursor Runtime Secrets — never commit them.
+# See docs/CLOUD.md for which plane owns each name.
+
+# Local wrangler pages dev flags (defaults written if unset)
+ENVIRONMENT=
+EMMIWOOD_PUBLIC_ORIGIN=
+EMMIWOOD_BOOKING_WRITES_ENABLED=
+EMMIWOOD_NOTIFICATIONS_ENABLED=
+
+# Optional local Twilio / processor (omit → mock SMS in non-production)
+EMMIWOOD_NOTIFICATION_SECRET=
+EMMIWOOD_RELEASE_SHA=
+TWILIO_ACCOUNT_SID=
+TWILIO_API_KEY_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
+
+# Vite build-time (Pages build env or Cursor env; not Pages Function secrets)
+VITE_GOOGLE_MAPS_API_KEY=
+VITE_EMMIWOOD_PUBLIC_ORIGIN=

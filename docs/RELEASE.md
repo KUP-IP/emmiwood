@@ -1,16 +1,19 @@
 # Standalone Emmiwood Release Runbook
 
+Cloud-first operations: Cursor Cloud Agents, GitHub Actions, and Cloudflare Pages. See [`docs/CLOUD.md`](CLOUD.md). Do not deploy from a laptop with frozen-launch `wrangler.toml` defaults — live production vars are committed.
+
 ## Safety invariants
 
 - Repository: `KUP-IP/emmiwood` only.
-- Preview Pages project: `emmiwood-barbers-preview` only.
+- Preview Pages project: `emmiwood-barbers-preview` only (Direct Upload until Git-connected cutover).
 - Preview D1 database: `emmiwood-standalone-preview-db` only.
 - Production Pages project: `emmiwood` only.
 - Production D1 database: `emmiwood-db` only.
-- Production must have `ENVIRONMENT=production`, an exact 40-character `EMMIWOOD_RELEASE_SHA`, and an HTTPS `EMMIWOOD_PUBLIC_ORIGIN` with no path.
-- Production appointment writes default closed. `EMMIWOOD_BOOKING_WRITES_ENABLED` must be exactly `true` or `false`; missing and invalid values stay closed.
+- Production must have `ENVIRONMENT=production`, an exact 40-character release SHA (`EMMIWOOD_RELEASE_SHA` or Pages `CF_PAGES_COMMIT_SHA`), and an HTTPS `EMMIWOOD_PUBLIC_ORIGIN` with no path.
+- `EMMIWOOD_BOOKING_WRITES_ENABLED` must be exactly `true` or `false`; missing and invalid values stay closed in production. Live production (2026-08-31) has writes and notifications **enabled** with origin `https://emmiwood.com`; `wrangler.toml` matches that snapshot.
 - Preview can be frozen with `EMMIWOOD_BOOKING_WRITES_ENABLED=false` without changing read-only catalog, slot, or dashboard access.
-- Keep the GitHub notification workflow manually disabled, `EMMIWOOD_NOTIFICATIONS_ENABLED=false`, and `EMMIWOOD_NOTIFICATION_URL` absent until the final activation gate.
+- Code deploys from `main` after CI `verify` when `EMMIWOOD_CLOUD_DEPLOY=true` (GitHub Actions Direct Upload, until a Git-connected Pages project exists). D1 migrations stay gated (`workflow_dispatch` confirmation `APPLY-REMOTE-MIGRATIONS`).
+- Live preflight from a Cloud Agent uses `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `EMMIWOOD_PREFLIGHT_NOTIFICATION_SECRET` (env). Do not use `wrangler login` or paste secrets into command arguments.
 - Every external mutation below requires its own Ship Gate. A prior gate does not authorize a later phase.
 
 Customer email and Resend are out of scope for version one. The operating decisions are recorded in `docs/DECISIONS.md`.
@@ -70,7 +73,7 @@ Provision dedicated resources, apply migrations, seed administrators, bind a dis
 - `EMMIWOOD_RELEASE_SHA=<exact approved SHA>`
 - notification workflow disabled and processor URL absent
 
-Then run the authenticated, read-only live preflight. Supply the notification secret through `EMMIWOOD_PREFLIGHT_NOTIFICATION_SECRET`; never place it in command arguments:
+Then run the authenticated, read-only live preflight from a Cloud Agent or any machine with env credentials. Supply the notification secret through `EMMIWOOD_PREFLIGHT_NOTIFICATION_SECRET`; never place it in command arguments:
 
 Live deploy/cutover preflight also requires `CLOUDFLARE_ACCOUNT_ID` and a read-authorized `CLOUDFLARE_API_TOKEN` in the environment. It reads the exact deployment ID from Wrangler, then requests raw project and deployment metadata from the Cloudflare API to verify the configured project production branch is `main`, the full 40-character commit SHA, project `emmiwood`, production environment, deployment source branch `main`, and successful deployment. Wrangler's abbreviated `Source` display is not accepted as full-SHA evidence. Missing credentials or provenance fail closed; do not paste credential values into logs or release receipts.
 

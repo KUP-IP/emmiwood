@@ -46,16 +46,25 @@ export function publicOriginState(env = {}) {
   return { configured: Boolean(value), valid, value };
 }
 
+const RELEASE_SHA_PATTERN = /^[0-9a-f]{40}$/;
+
+/** Production release identity: explicit Pages secret, or Git-connected `CF_PAGES_COMMIT_SHA`. */
+export function releaseShaState(env = {}) {
+  const explicit = String(env.EMMIWOOD_RELEASE_SHA || '').trim().toLowerCase();
+  const pagesCommit = String(env.CF_PAGES_COMMIT_SHA || '').trim().toLowerCase();
+  const value = explicit || pagesCommit;
+  return {
+    configured: Boolean(value),
+    valid: RELEASE_SHA_PATTERN.test(value),
+    value,
+  };
+}
+
 export function runtimeReadiness(env = {}) {
   const production = env.ENVIRONMENT === 'production';
   const bookingWrites = bookingWriteState(env);
   const publicOrigin = publicOriginState(env);
-  const releaseValue = String(env.EMMIWOOD_RELEASE_SHA || '').trim().toLowerCase();
-  const release = {
-    configured: Boolean(releaseValue),
-    valid: /^[0-9a-f]{40}$/.test(releaseValue),
-    value: releaseValue,
-  };
+  const release = releaseShaState(env);
   return {
     ready: production
       ? bookingWrites.configured && bookingWrites.valid && publicOrigin.valid && release.valid

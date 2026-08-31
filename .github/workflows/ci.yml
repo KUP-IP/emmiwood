@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
 jobs:
   verify:
@@ -60,3 +60,28 @@ jobs:
             test-results/
             .deploy/pages/artifact-manifest.json
           retention-days: 14
+
+  deploy:
+    name: Deploy production Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'KUP-IP/emmiwood' && vars.EMMIWOOD_CLOUD_DEPLOY == 'true'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci
+      - name: Install client dependencies
+        run: npm ci --prefix client
+      - name: Production build
+        run: npm run build
+      - name: Deploy Direct Upload production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy client/dist --project-name emmiwood --branch main --commit-hash "${{ github.sha }}"

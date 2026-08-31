@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-08-28
+Last updated: 2026-08-31
 
 ## Locked decisions
 
@@ -48,9 +48,11 @@ Last updated: 2026-08-28
 
 15. **A2P host origin (amended 2026-08-15):** Custom domains **`emmiwood.com` and `www.emmiwood.com`** are attached and **active** on Pages project `emmiwood-barbers-preview`. Canonical public origin remains **`https://www.emmiwood.com`**. Google Workspace MX (`smtp.google.com`) and site verification TXT stay at Namecheap.
 
+16. **Cloud-native development (2026-08-31):** Primary workspace is Cursor Cloud Agents. Secrets live in three planes — Cloudflare Pages (runtime/build), GitHub Actions (heartbeat + deploy/migrate token), Cursor Runtime Secrets (Wrangler token, processor secret). No local `.env` as source of truth. Production Pages `emmiwood` is Direct Upload with domains on that project; Git cannot be attached in place. `main` deploys via GitHub Actions after CI until an operator creates a **new** Git-connected Pages project and cuts domains over (`docs/CLOUD.md`). Live vars snapshot: origin `https://emmiwood.com`, booking writes `true`, notifications `true`. Apex-vs-www canonical redirect remains separate. D1 migrations stay gated. SMS handset proof stays Mac-only.
+
 ## Deferred
 
-- Dedicated production Pages project + D1 (separate from `emmiwood-barbers-preview`).
+- Git-connected Pages project + domain cutover from Direct Upload `emmiwood` (operator dashboard; see `docs/CLOUD.md`). Dedicated production Pages/D1 already exist.
 - Resend and customer-facing email support until a later product version.
 - GitHub CodeQL until a later explicit decision.
 - Google Calendar synchronization with bookings.
@@ -58,7 +60,7 @@ Last updated: 2026-08-28
 
 ## Implementation details
 
-- Cloudflare Pages project `emmiwood-barbers-preview`: custom-domain **production follows branch `review`**. `main` is the git trunk; do not assume a `main` Pages deploy updates www.emmiwood.com.
+- Cloudflare Pages project `emmiwood` currently serves `emmiwood.com` / `www.emmiwood.com` (Direct Upload). Preview project `emmiwood-barbers-preview` is pages.dev only until Git-connected cutover (`docs/CLOUD.md`).
 - Customer email collection is removed from public and operator booking forms.
 - KUP-managed Twilio account and dedicated Emmiwood sender `+16052503489` are live (see `docs/twilio-number-split.md`).
 - GitHub repository is public with enforceable branch protections.

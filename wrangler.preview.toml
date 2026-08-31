@@ -1,3 +1,5 @@
+# Direct Upload preview project (emmiwood-barbers-preview). Keep until a Git-connected
+# Pages project owns preview deployments via wrangler.toml [env.preview]. See docs/CLOUD.md.
 name = "emmiwood-barbers-preview"
 compatibility_date = "2026-07-01"
 pages_build_output_dir = "client/dist"
