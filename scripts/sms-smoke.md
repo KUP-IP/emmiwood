@@ -1,6 +1,6 @@
 # Preview SMS exact-ID smoke (Wave 2)
 
-**Gates:** notifications scheduler stays `EMMIWOOD_NOTIFICATIONS_ENABLED=false`. Non-production processor **requires** `?id=`. Never bulk-process on preview.
+**Gates:** **Preview** Pages notifications stay `false`; non-production processor **requires** `?id=`; never bulk-process on preview. Production GitHub heartbeat scheduler is **already enabled** (see `docs/HANDOFF.md`) — this smoke does not flip production.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@
 ## Set secrets (operator; values never committed)
 
 ```bash
-cd /Users/keepup/Developer/emmiwood
+cd /Users/keepup/Developer/emmiwood   # Cloud Agent: /workspace
 # Generate processor secret once; store in password manager.
 openssl rand -hex 32 | npx wrangler pages secret put EMMIWOOD_NOTIFICATION_SECRET --project-name emmiwood-barbers-preview
 npx wrangler pages secret put TWILIO_ACCOUNT_SID --project-name emmiwood-barbers-preview

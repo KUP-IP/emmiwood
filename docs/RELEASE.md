@@ -1,6 +1,8 @@
 # Standalone Emmiwood Release Runbook
 
-Cloud-first operations: Cursor Cloud Agents, GitHub Actions, and Cloudflare Pages. See [`docs/CLOUD.md`](CLOUD.md). Do not deploy from a laptop with frozen-launch `wrangler.toml` defaults — live production vars are committed.
+Cloud-first operations: Cursor Cloud Agents, GitHub Actions, and Cloudflare Pages. See [`docs/CLOUD.md`](CLOUD.md) and the handoff index [`docs/HANDOFF.md`](HANDOFF.md). Do not deploy from a laptop with frozen-launch `wrangler.toml` defaults — live production vars are committed.
+
+**Current production (2026-08-31):** domains already on Pages project `emmiwood`; origin `https://emmiwood.com`; writes and notifications enabled; Path A deploy on `main` live; heartbeat scheduler enabled. The **Cutover readiness** section below is the *historical* domain-transfer script — do not re-attach domains or add an apex→www redirect without a new GO.
 
 ## Safety invariants
 
@@ -89,7 +91,9 @@ npm run release:preflight -- \
 
 Deploy readiness requires: exact runtime SHA, production environment, pages.dev origin, frozen writes, `main` Pages branch, matching deployment source, no pending migrations, exactly two valid administrators, zero queued notifications, workflow manually disabled, and no processor URL variable.
 
-## Cutover readiness
+## Cutover readiness (historical)
+
+Domains **already live** on production project `emmiwood` (apex + www + pages.dev). Do not run this attach/redirect list again unless a new Path B or canonical-host GO says so. Kept for rollback forensics and `release:preflight --stage cutover`.
 
 Immediately before domain transfer:
 
@@ -123,7 +127,7 @@ Use separate gates for:
 
 1. One tagged synthetic booking and cancellation with SMS consent off; restore the freeze and verify no queued notification remains.
 2. One exact-ID production SMS; reconcile its provider SID to a terminal Twilio status before considering another send.
-3. Notification activation: set the processor URL and matching GitHub secret, enable the workflow, set `EMMIWOOD_NOTIFICATIONS_ENABLED=true`, and observe the readiness heartbeat and first scheduled run.
+3. Notification activation (done on production 2026-08-31): processor URL + GitHub secret, workflow enabled, `EMMIWOOD_NOTIFICATIONS_ENABLED=true`, heartbeat GET + process-queue running. To pause: set the GitHub variable `false` (Pages production var is separately `true` in `wrangler.toml`).
 
 ## Rollback
 

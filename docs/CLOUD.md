@@ -2,6 +2,8 @@
 
 Emmiwood develops and deploys from the cloud. A laptop is optional. Git hosting stays `KUP-IP/emmiwood`.
 
+Handoff index (live topology, branch strategy, residuals): [`HANDOFF.md`](HANDOFF.md).
+
 Live snapshot (2026-08-31, names and non-secret vars only):
 
 | Pages project | Git | Domains | Vars |
@@ -27,7 +29,7 @@ Production readiness SHA: `EMMIWOOD_RELEASE_SHA` **or** Git-connected Pages `CF_
 
 ## Cursor Cloud Agent
 
-1. Create an environment for `KUP-IP/emmiwood`. Repo `.cursor/environment.json` installs Node deps, Playwright Chromium, builds, migrates local D1, and starts `npm run dev`.
+1. Create an environment for `KUP-IP/emmiwood`. Committed [`.cursor/environment.json`](../.cursor/environment.json) is the **install/start/terminals template** (`npm ci`, Playwright Chromium, write `.dev.vars`, build, local D1, `npm run dev`). A Personal dashboard environment currently wins if Cursor recorded it that way (`environmentJsonPath` null) — keep the dashboard copy identical to this file.
 2. Dashboard secrets (not git):
 
    **Runtime Secrets:** `CLOUDFLARE_API_TOKEN` (Pages + D1 edit), `EMMIWOOD_NOTIFICATION_SECRET`, admin seed `EMMIWOOD_OWNER_*` / `EMMIWOOD_BARRO_*` only if the agent will run the seed script.
@@ -40,9 +42,9 @@ Production readiness SHA: `EMMIWOOD_RELEASE_SHA` **or** Git-connected Pages `CF_
 
 Existing Pages projects are **Direct Upload**. Cloudflare cannot attach Git to them. Two paths:
 
-### Path A — working now (GitHub Actions)
+### Path A — live SSOT (GitHub Actions Direct Upload)
 
-`ci.yml` job `deploy` runs on `main` after `verify` when GitHub variable `EMMIWOOD_CLOUD_DEPLOY` is `true`. Needs GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, environment `production`, then set `EMMIWOOD_CLOUD_DEPLOY=true`. Leave the variable unset until those secrets exist so `main` CI stays green.
+`ci.yml` job `deploy` runs on `main` after `verify` when GitHub variable `EMMIWOOD_CLOUD_DEPLOY` is `true`. Secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, environment `production`, and `EMMIWOOD_CLOUD_DEPLOY=true` are **in place** (2026-08-31: `main` deploy of `919bff7` succeeded). PRs run `verify` only.
 
 Disable this job after Path B is live so the site is not deployed twice.
 
@@ -64,13 +66,15 @@ Code may auto-deploy. Schema does not. Apply remotes only through:
 - GitHub Actions workflow **D1 remote migrations** (`workflow_dispatch`, confirmation phrase `APPLY-REMOTE-MIGRATIONS`)
 - Or a Cloud Agent / operator command: `npm run db:migrate:remote:preview` / `npm run db:migrate:remote:production` after an explicit GO
 
-## GitHub environments and secrets to create
+## GitHub environments and secrets (live)
+
+Names confirmed 2026-08-31 by job behavior (this Cloud Agent token cannot list Actions secrets). Do not recreate.
 
 | Name | Where |
 |---|---|
-| `EMMIWOOD_CLOUD_DEPLOY` | GitHub Actions **variable** `true` to enable Path A deploys after secrets exist |
+| `EMMIWOOD_CLOUD_DEPLOY` | GitHub Actions **variable** `true` — Path A deploy runs |
 | `CLOUDFLARE_API_TOKEN` | GitHub Actions secret (Pages + D1 edit); same token as Cursor |
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Actions secret or variable (`99ca43ae6713b1fc6be0c77047bc06d7`) |
-| Environment `production` | Protect `deploy` and production D1 migrate (required reviewers optional) |
+| Environment `production` | Used by `deploy` and production D1 migrate (no required-reviewer rules yet) |
 | Environment `preview` | Preview D1 migrate |
-| Existing heartbeat | `EMMIWOOD_NOTIFICATION_SECRET`, vars `EMMIWOOD_NOTIFICATION_URL`, `EMMIWOOD_NOTIFICATIONS_ENABLED` |
+| Heartbeat | secret `EMMIWOOD_NOTIFICATION_SECRET`; vars `EMMIWOOD_NOTIFICATION_URL`, `EMMIWOOD_NOTIFICATIONS_ENABLED` (process-queue step runs — treat as **enabled**) |

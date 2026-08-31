@@ -4,7 +4,7 @@ Standalone Emmiwood Barbers booking website and Cloudflare Pages Functions appli
 
 This repository was extracted from the abandoned `KUP-IP/kup.solutions` PR #92 at source commit `1ca43dc4db0d102eec3adebea741788d4142f1e5`. It has an independent application shell, package manifests, deployment name, D1 namespace, and migration sequence.
 
-Cloud-first: develop from Cursor Cloud Agents, keep secrets in Cloudflare / GitHub / Cursor, deploy from `main` after CI. See [`docs/CLOUD.md`](docs/CLOUD.md).
+Cloud-first: develop from Cursor Cloud Agents, keep secrets in Cloudflare / GitHub / Cursor, deploy from `main` after CI. Handoff SSOT: [`docs/HANDOFF.md`](docs/HANDOFF.md). Cloud ops: [`docs/CLOUD.md`](docs/CLOUD.md).
 
 ## Verify
 

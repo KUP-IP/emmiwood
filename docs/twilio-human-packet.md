@@ -1,8 +1,8 @@
 # Twilio human packet (KUP-managed Emmiwood sender)
 
-**Status:** Blocked on operator inputs  
-**Decision:** KUP-managed Twilio account + dedicated Emmiwood sender (locked 2026-07-22)  
-**Issue:** [#18](https://github.com/KUP-IP/emmiwood/issues/18)
+**Status:** Historical provisioning packet — **complete**. Sender `+16052503489` is live; see [`HANDOFF.md`](HANDOFF.md) and `docs/twilio-number-split.md`. Do not re-run as a blank intake.
+
+**Issue:** [#18](https://github.com/KUP-IP/emmiwood/issues/18) (closed by later A2P work; this file kept as provenance).
 
 ## Operator must supply
 

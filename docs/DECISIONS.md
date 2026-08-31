@@ -50,9 +50,16 @@ Last updated: 2026-08-31
 
 16. **Cloud-native development (2026-08-31):** Primary workspace is Cursor Cloud Agents. Secrets live in three planes — Cloudflare Pages (runtime/build), GitHub Actions (heartbeat + deploy/migrate token), Cursor Runtime Secrets (Wrangler token, processor secret). No local `.env` as source of truth. Production Pages `emmiwood` is Direct Upload with domains on that project; Git cannot be attached in place. `main` deploys via GitHub Actions after CI until an operator creates a **new** Git-connected Pages project and cuts domains over (`docs/CLOUD.md`). Live vars snapshot: origin `https://emmiwood.com`, booking writes `true`, notifications `true`. Apex-vs-www canonical redirect remains separate. D1 migrations stay gated. SMS handset proof stays Mac-only.
 
+17. **Handoff SSOT (2026-08-31 recon):** Path A is the locked deploy model for client handoff. Index: [`docs/HANDOFF.md`](HANDOFF.md). Amends older lines that still described pre-cutover topology:
+    - **#2 / #3 / #15 / #9 cutover sentence:** Custom domains `emmiwood.com` and `www.emmiwood.com` are attached to Pages project **`emmiwood`**, not `emmiwood-barbers-preview`. Preview project is `*.pages.dev` only. Dedicated production Pages + D1 already exist.
+    - **Runtime origin:** `https://emmiwood.com` (`wrangler.toml` + live Pages production vars). A2P citations and opt-in evidence may keep `https://www.emmiwood.com` (same project; both hosts 200). Apex→www redirect remains a **separate GO** (do not “fix” in this amendment).
+    - **#13 / #14 scheduler:** Production Pages `EMMIWOOD_NOTIFICATIONS_ENABLED=true`. GitHub Actions heartbeat **does** run the scheduled process-queue step (variable inferred `true` on 2026-08-31). Local `npm run dev` still binds notifications `false` and mock SMS. Non-production processor stays exact-`?id=` only. Do not disable the live scheduler in this amendment.
+    - **Implementation “launch gates” paragraph:** Processor URL and scheduler are **set** on production; remaining gates are D1 remote migrate, live SMS POST, Path B, and apex redirect — each still needs its own GO.
+    - **Cursor Cloud:** Effective environment may be a Personal dashboard snapshot; git [`.cursor/environment.json`](../.cursor/environment.json) is the install/start/terminals template and must stay in lockstep.
+
 ## Deferred
 
-- Git-connected Pages project + domain cutover from Direct Upload `emmiwood` (operator dashboard; see `docs/CLOUD.md`). Dedicated production Pages/D1 already exist.
+- Git-connected Pages project + domain cutover from Direct Upload `emmiwood` (Path B, operator dashboard; see `docs/CLOUD.md`). Out of handoff SSOT. Dedicated production Pages/D1 already exist.
 - Resend and customer-facing email support until a later product version.
 - GitHub CodeQL until a later explicit decision.
 - Google Calendar synchronization with bookings.
@@ -60,10 +67,10 @@ Last updated: 2026-08-31
 
 ## Implementation details
 
-- Cloudflare Pages project `emmiwood` currently serves `emmiwood.com` / `www.emmiwood.com` (Direct Upload). Preview project `emmiwood-barbers-preview` is pages.dev only until Git-connected cutover (`docs/CLOUD.md`).
+- Cloudflare Pages project `emmiwood` currently serves `emmiwood.com` / `www.emmiwood.com` (Direct Upload). Preview project `emmiwood-barbers-preview` is pages.dev only until Path B (`docs/CLOUD.md`, decision 17).
 - Customer email collection is removed from public and operator booking forms.
 - KUP-managed Twilio account and dedicated Emmiwood sender `+16052503489` are live (see `docs/twilio-number-split.md`).
 - GitHub repository is public with enforceable branch protections.
-- Production admin auth is SMS OTP to the two allowlisted individual phones (Issue #17 remaining: production login after A2P VERIFIED).
+- Production admin auth is SMS OTP to the two allowlisted individual phones (Issue #17 remaining: production login evidence).
 - Resend is decoupled from `notificationReadiness` / release preflight for SMS-only v1.
-- Launch gates (hardened): **Preview-GO** (code+policy on preview, SMS smoke with exact outbox ID) is separate from **Prod-GO** (dedicated prod Pages/D1, secrets, origin) and **Commercial-GO**. Scheduler and `EMMIWOOD_NOTIFICATION_URL` stay unset until VERIFIED + spend GO.
+- Production notification heartbeat and scheduler variables are live (decision 17). D1 remote migrate, live SMS POST, Path B, and apex→www redirect stay GO-gated.
