@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route, type TestInfo } from '@playwright/test';
+import { type Page, type Route, type TestInfo } from '@playwright/test';
+import { expect, test } from './e2e-server-ready';
 import type { Appointment, Catalog } from '../client/src/pages/emmiwood/types';
 
 const catalog: Catalog = {

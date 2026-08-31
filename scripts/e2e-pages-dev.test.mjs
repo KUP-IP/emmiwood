@@ -100,4 +100,17 @@ test('dev:e2e and Playwright configs keep the wrangler supervisor on the isolate
   const cross = readFileSync(resolve(root, 'playwright.cross-browser.config.ts'), 'utf8');
   assert.match(playwright, /retries: process\.env\.CI \? 2 : 0/);
   assert.match(cross, /retries: process\.env\.CI \? 2 : 0/);
+  for (const spec of [
+    'tests/emmiwood.spec.ts',
+    'tests/emmiwood.audit.spec.ts',
+    'tests/emmiwood.booking-audit.spec.ts',
+    'tests/emmiwood.admin-audit.spec.ts',
+    'tests/emmiwood.cross-browser.spec.ts',
+  ]) {
+    assert.match(readFileSync(resolve(root, spec), 'utf8'), /from '\.\/e2e-server-ready'/);
+  }
+  assert.doesNotMatch(
+    readFileSync(resolve(root, 'tests/emmiwood.live.spec.ts'), 'utf8'),
+    /e2e-server-ready/,
+  );
 });
