@@ -1,4 +1,0 @@
-# CodeQL upload is intentionally disabled.
-# GitHub code scanning is unavailable for this private repository on the current plan.
-# See private decision survey issue #13. Security gates remain in CI via unit tests,
-# fail-closed release checks, migration rehearsal, and root/client npm audit.

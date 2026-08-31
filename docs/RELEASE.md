@@ -72,6 +72,10 @@ Provision dedicated resources, apply migrations, seed administrators, bind a dis
 
 Then run the authenticated, read-only live preflight. Supply the notification secret through `EMMIWOOD_PREFLIGHT_NOTIFICATION_SECRET`; never place it in command arguments:
 
+Live deploy/cutover preflight also requires `CLOUDFLARE_ACCOUNT_ID` and a read-authorized `CLOUDFLARE_API_TOKEN` in the environment. It reads the exact deployment ID from Wrangler, then requests raw project and deployment metadata from the Cloudflare API to verify the configured project production branch is `main`, the full 40-character commit SHA, project `emmiwood`, production environment, deployment source branch `main`, and successful deployment. Wrangler's abbreviated `Source` display is not accepted as full-SHA evidence. Missing credentials or provenance fail closed; do not paste credential values into logs or release receipts.
+
+The credential-bearing readiness URL must be the exact notification endpoint on `https://emmiwood.pages.dev` for deploy or `https://www.emmiwood.com` for cutover. Redirects, embedded credentials, query strings, and other origins are refused before following them.
+
 ```bash
 npm run release:preflight -- \
   --stage deploy \
@@ -90,8 +94,8 @@ Immediately before domain transfer:
 2. Set preview booking writes to `false` and prove all guest and admin appointment mutations return `503 booking_paused` without changing D1.
 3. Export preview and production D1 databases.
 4. Record a JSON backup receipt containing `approvedSha`, `previewSha256`, and `productionSha256`.
-5. Change production public origin to `https://emmiwood.com` while production writes remain disabled.
-6. Attach `emmiwood.com` and `www.emmiwood.com` to production.
+5. Change production public origin to `https://www.emmiwood.com` while production writes remain disabled.
+6. Attach `emmiwood.com` and `www.emmiwood.com` to production, with apex redirecting to `www` while preserving the route and query string.
 
 Run:
 
@@ -100,7 +104,7 @@ npm run release:preflight -- \
   --stage cutover \
   --expected-sha "$APPROVED_SHA" \
   --scheduler-state disabled \
-  --readiness-url https://emmiwood.com/api/emmiwood/internal/notifications \
+  --readiness-url https://www.emmiwood.com/api/emmiwood/internal/notifications \
   --backup-receipt /absolute/path/to/backup-receipt.json
 ```
 

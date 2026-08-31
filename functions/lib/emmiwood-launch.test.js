@@ -74,12 +74,22 @@ test('customer mobile numbers normalize to E.164 and invalid values fail closed'
   assert.throws(() => normalizePhone('555-0142'), { code: 'invalid_phone', status: 422 });
 });
 
-function nextBookableDate() {
-  const date = new Date();
+function nextBookableDate(weekdays = [1, 2, 3, 4, 5, 6], from = new Date()) {
+  const date = new Date(from);
   date.setDate(date.getDate() + 5);
-  while (date.getDay() === 0) date.setDate(date.getDate() + 1);
+  while (!weekdays.includes(date.getDay())) date.setDate(date.getDate() + 1);
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
 }
+
+test('booking fixture selects an eligible weekday across every possible runner day', () => {
+  for (let offset = 0; offset < 7; offset++) {
+    const from = new Date(2026, 7, 24 + offset, 12);
+    for (const weekdays of [[1, 2, 3, 4, 5, 6], [1, 3, 5]]) {
+      const date = nextBookableDate(weekdays, from);
+      assert.ok(weekdays.includes(new Date(`${date}T12:00:00`).getDay()));
+    }
+  }
+});
 
 test('slot generation uses bounded D1 operations and filters claims and exceptions in memory', async () => {
   const db = setupEmmiwoodTestD1();
@@ -253,7 +263,8 @@ test('legacy appointment-texts-v1 consent is stored but does not enqueue SMS', a
 
 test('barber phone queues staff SMS without guest consent; john without phone queues none', async () => {
   const db = setupEmmiwoodTestD1();
-  const date = nextBookableDate();
+  // Both bookings need an eligible day: John works only Mon/Wed/Fri.
+  const date = nextBookableDate([1, 3, 5]);
   const start = zonedEpoch(date, 540);
   const env = { DB: db, ENVIRONMENT: 'preview', EMMIWOOD_BOOKING_WRITES_ENABLED: 'true' };
   try {

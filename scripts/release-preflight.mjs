@@ -8,11 +8,14 @@ import {
   EXPECTED_PRODUCTION_RESOURCE,
   NOTIFICATION_WORKFLOW_PATH,
   PREFLIGHT_STAGES,
+  fetchRuntimeReadiness,
+  fetchProductionDeployment,
   parseActionVariables,
   parseNameColumn,
   parsePendingMigrations,
   parseSecretNames,
   validateReleaseState,
+  validateReadinessTarget,
 } from './release-preflight-lib.mjs';
 
 function argument(name) {
@@ -52,35 +55,24 @@ function d1ResultSets(output) {
   return parsed.map((entry) => entry.results || []);
 }
 
-function pagesState(cwd) {
+async function pagesState(cwd) {
   const projects = parsedJson(run('npx', ['wrangler', 'pages', 'project', 'list', '--json'], cwd), 'Pages project list');
   const project = projects.find((entry) => entry?.['Project Name'] === EXPECTED_PRODUCTION_RESOURCE.pagesProject);
   if (!project) throw new Error(`Pages project ${EXPECTED_PRODUCTION_RESOURCE.pagesProject} does not exist`);
   const deployments = parsedJson(run('npx', ['wrangler', 'pages', 'deployment', 'list', '--project-name', EXPECTED_PRODUCTION_RESOURCE.pagesProject, '--environment', 'production', '--json'], cwd), 'Pages deployment list');
   const latest = deployments[0];
   if (!latest) throw new Error(`Pages project ${EXPECTED_PRODUCTION_RESOURCE.pagesProject} has no production deployment`);
+  // Wrangler's display-oriented Source column is abbreviated even with --json.
+  // Read the exact deployment by ID from the authenticated API; never expand a
+  // prefix using local Git and present that inference as Cloudflare evidence.
+  const provenance = await fetchProductionDeployment({
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+    apiToken: process.env.CLOUDFLARE_API_TOKEN,
+    deploymentId: latest.Id,
+  });
   return {
     domains: String(project['Project Domains'] || '').split(',').map((value) => value.trim()).filter(Boolean),
-    pagesProductionBranch: String(latest.Branch || ''),
-    deploymentSha: String(latest.Source || ''),
-  };
-}
-
-async function runtimeState(readinessUrl, secret) {
-  if (!readinessUrl) throw new Error('deploy and cutover preflight require --readiness-url');
-  if (!secret) throw new Error('deploy and cutover preflight require EMMIWOOD_PREFLIGHT_NOTIFICATION_SECRET');
-  const response = await fetch(readinessUrl, {
-    headers: { authorization: `Bearer ${secret}` },
-    signal: AbortSignal.timeout(10_000),
-  });
-  const body = await response.json();
-  const data = body?.data || {};
-  const configuration = data.configuration || {};
-  return {
-    environment: data.environment,
-    publicOrigin: configuration.publicOrigin?.value,
-    bookingWrites: configuration.bookingWrites,
-    releaseSha: configuration.release?.value,
+    ...provenance,
   };
 }
 
@@ -91,6 +83,7 @@ function readBackupReceipt(path) {
 }
 
 async function gatherLiveState(cwd, expectedSha, schedulerState, stage, options = {}) {
+  if (stage === 'deploy' || stage === 'cutover') validateReadinessTarget({ stage, ...options });
   const migrationOutput = run('npx', ['wrangler', 'd1', 'migrations', 'list', 'emmiwood-db', '--remote', '--env', 'production'], cwd);
   const secretOutput = run('npx', ['wrangler', 'pages', 'secret', 'list', '--project-name', 'emmiwood'], cwd);
   const actionSecretOutput = run('gh', ['secret', 'list', '--repo', 'KUP-IP/emmiwood', '--app', 'actions'], cwd);
@@ -112,12 +105,12 @@ async function gatherLiveState(cwd, expectedSha, schedulerState, stage, options 
     resource: readResource(cwd),
   };
   if (stage === 'deploy' || stage === 'cutover') {
-    const pages = pagesState(cwd);
+    const pages = await pagesState(cwd);
     const queryOutput = run('npx', ['wrangler', 'd1', 'execute', 'emmiwood-db', '--remote', '--env', 'production', '--command', "SELECT id,email,role,active,phone FROM emmiwood_admins ORDER BY id; SELECT COUNT(*) AS queued_count FROM emmiwood_notification_outbox WHERE status='queued';", '--json'], cwd);
     const [adminRoster, queueRows] = d1ResultSets(queryOutput);
     Object.assign(state, pages, {
       expectedOrigin: options.expectedOrigin,
-      runtime: await runtimeState(options.readinessUrl, process.env.EMMIWOOD_PREFLIGHT_NOTIFICATION_SECRET),
+      runtime: await fetchRuntimeReadiness({ stage, ...options, secret: process.env.EMMIWOOD_PREFLIGHT_NOTIFICATION_SECRET }),
       adminRoster,
       outboxQueuedCount: queueRows[0]?.queued_count,
     });
@@ -148,7 +141,7 @@ if (fixture) {
   }
   state = { ...JSON.parse(readFileSync(fixture, 'utf8')), expectedSha, schedulerState, stage };
 } else {
-  const expectedOrigin = argument('--expected-origin') || (stage === 'cutover' ? 'https://emmiwood.com' : 'https://emmiwood.pages.dev');
+  const expectedOrigin = argument('--expected-origin') || (stage === 'cutover' ? 'https://www.emmiwood.com' : 'https://emmiwood.pages.dev');
   const readinessUrl = argument('--readiness-url') || `${expectedOrigin}/api/emmiwood/internal/notifications`;
   state = await gatherLiveState(root, expectedSha, schedulerState, stage, {
     expectedOrigin,

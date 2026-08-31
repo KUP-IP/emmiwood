@@ -42,6 +42,75 @@ export const EXPECTED_PRODUCTION_RESOURCE = Object.freeze({
 export const PREFLIGHT_STAGES = Object.freeze(['provision', 'deploy', 'cutover']);
 export const PLACEHOLDER_ADMIN_PHONE = '+16055550199';
 export const REQUIRED_PRODUCTION_DOMAINS = Object.freeze(['emmiwood.com', 'www.emmiwood.com']);
+export const PREFLIGHT_ORIGINS = Object.freeze({
+  deploy: 'https://emmiwood.pages.dev',
+  cutover: 'https://www.emmiwood.com',
+});
+
+export function validateReadinessTarget({ stage, expectedOrigin = PREFLIGHT_ORIGINS[stage], readinessUrl }) {
+  const approvedOrigin = PREFLIGHT_ORIGINS[stage];
+  if (!approvedOrigin || expectedOrigin !== approvedOrigin) {
+    throw new Error('readiness expected origin must equal the approved HTTPS origin for its release stage');
+  }
+  let target;
+  try { target = new URL(readinessUrl); } catch { throw new Error('readiness URL must be a valid absolute HTTPS URL'); }
+  if (target.protocol !== 'https:' || target.username || target.password || target.origin !== approvedOrigin ||
+      target.pathname !== '/api/emmiwood/internal/notifications' || target.search || target.hash) {
+    throw new Error('readiness URL must be the credential-free HTTPS notification endpoint on the approved stage origin');
+  }
+  return target.href;
+}
+
+export async function fetchRuntimeReadiness(options, fetchImpl = globalThis.fetch) {
+  // Validate before attaching a credential or invoking any transport.
+  const target = validateReadinessTarget(options);
+  if (!options.secret) throw new Error('deploy and cutover preflight require EMMIWOOD_PREFLIGHT_NOTIFICATION_SECRET');
+  const response = await fetchImpl(target, {
+    headers: { authorization: `Bearer ${options.secret}` },
+    redirect: 'error',
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`readiness endpoint returned HTTP ${response.status}`);
+  const body = await response.json();
+  if (body?.ok !== true) throw new Error('readiness endpoint did not report success');
+  const data = body.data || {};
+  const configuration = data.configuration || {};
+  return {
+    environment: data.environment,
+    publicOrigin: configuration.publicOrigin?.value,
+    bookingWrites: configuration.bookingWrites,
+    releaseSha: configuration.release?.value,
+  };
+}
+
+export async function fetchProductionDeployment({ accountId, apiToken, deploymentId }, fetchImpl = globalThis.fetch) {
+  if (!/^[0-9a-f]{32}$/i.test(String(accountId || ''))) throw new Error('full deployment provenance requires CLOUDFLARE_ACCOUNT_ID');
+  if (!apiToken) throw new Error('full deployment provenance requires a read-authorized CLOUDFLARE_API_TOKEN');
+  if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(String(deploymentId || ''))) throw new Error('deployment provenance requires an exact Pages deployment UUID');
+  const projectUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/emmiwood`;
+  async function readProvenance(url) {
+    const response = await fetchImpl(url, {
+      headers: { authorization: `Bearer ${apiToken}` },
+      redirect: 'error',
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`Cloudflare deployment provenance returned HTTP ${response.status}`);
+    const body = await response.json();
+    if (body?.success !== true || !body.result || (Array.isArray(body.errors) && body.errors.length)) throw new Error('Cloudflare deployment provenance did not report success');
+    return body.result;
+  }
+  const project = await readProvenance(projectUrl);
+  if (project.name !== 'emmiwood' || project.production_branch !== 'main') {
+    throw new Error('Cloudflare project provenance requires emmiwood with configured production_branch main');
+  }
+  const deployment = await readProvenance(`${projectUrl}/deployments/${deploymentId}`);
+  const metadata = deployment.deployment_trigger?.metadata || {};
+  if (deployment.id !== deploymentId || deployment.project_name !== 'emmiwood' || deployment.environment !== 'production' || metadata.branch !== 'main' || deployment.latest_stage?.status !== 'success') {
+    throw new Error('Cloudflare deployment provenance must match the exact successful emmiwood production/main deployment');
+  }
+  if (!/^[0-9a-f]{40}$/i.test(String(metadata.commit_hash || ''))) throw new Error('Cloudflare deployment provenance requires a full 40-character commit_hash');
+  return { deploymentSha: metadata.commit_hash.toLowerCase(), pagesProductionBranch: project.production_branch, deploymentId };
+}
 
 export function parsePendingMigrations(output = '') {
   const names = output.match(/\b\d{4}_[A-Za-z0-9._-]+\.sql\b/g) || [];
@@ -197,7 +266,7 @@ export function validateReleaseState(state) {
   if (stage === 'deploy' || stage === 'cutover') {
     const runtime = state.runtime || {};
     const bookingWrites = runtime.bookingWrites || {};
-    const expectedOrigin = String(state.expectedOrigin || (stage === 'cutover' ? 'https://emmiwood.com' : 'https://emmiwood.pages.dev'));
+    const expectedOrigin = String(state.expectedOrigin || (stage === 'cutover' ? 'https://www.emmiwood.com' : 'https://emmiwood.pages.dev'));
     if (runtime.environment !== 'production') errors.push(`runtime environment must be production; observed ${runtime.environment || '(missing)'}`);
     if (runtime.publicOrigin !== expectedOrigin) errors.push(`runtime public origin must be ${expectedOrigin}; observed ${runtime.publicOrigin || '(missing)'}`);
     if (runtime.releaseSha !== expectedSha) errors.push(`runtime release SHA ${runtime.releaseSha || '(missing)'} does not equal approved SHA ${expectedSha || '(missing)'}`);
@@ -206,7 +275,7 @@ export function validateReleaseState(state) {
     }
     if (state.pagesProductionBranch !== 'main') errors.push(`Pages production branch must be main; observed ${state.pagesProductionBranch || '(missing)'}`);
     const deploymentSha = String(state.deploymentSha || '').toLowerCase();
-    if (deploymentSha.length < 7 || !expectedSha.startsWith(deploymentSha)) errors.push(`production deployment source ${deploymentSha || '(missing)'} does not match approved SHA ${expectedSha || '(missing)'}`);
+    if (!/^[0-9a-f]{40}$/.test(deploymentSha) || deploymentSha !== expectedSha) errors.push(`production deployment source ${deploymentSha || '(missing)'} must equal the exact 40-character approved SHA ${expectedSha || '(missing)'}`);
     errors.push(...validateAdminRoster(state.adminRoster));
     if (Number(state.outboxQueuedCount) !== 0) errors.push(`production notification outbox must have zero queued rows; observed ${state.outboxQueuedCount ?? '(missing)'}`);
   }

@@ -11,6 +11,8 @@ import {
   REQUIRED_ACTION_SECRETS,
   REQUIRED_EMMIWOOD_MIGRATIONS,
   REQUIRED_PRODUCTION_SECRETS,
+  fetchRuntimeReadiness,
+  fetchProductionDeployment,
   parseActionVariables,
   parseNameColumn,
   parsePendingMigrations,
@@ -18,6 +20,7 @@ import {
   validateAdminRoster,
   validateNotificationWorkflow,
   validateReleaseState,
+  validateReadinessTarget,
 } from './release-preflight-lib.mjs';
 
 const SHA = 'a'.repeat(40);
@@ -88,7 +91,7 @@ const DEPLOY_READY = {
     bookingWrites: { configured: true, valid: true, enabled: false },
   },
   pagesProductionBranch: 'main',
-  deploymentSha: SHA.slice(0, 7),
+  deploymentSha: SHA,
   adminRoster: ADMIN_ROSTER,
   outboxQueuedCount: 0,
 };
@@ -96,8 +99,8 @@ const DEPLOY_READY = {
 const CUTOVER_READY = {
   ...DEPLOY_READY,
   stage: 'cutover',
-  expectedOrigin: 'https://emmiwood.com',
-  runtime: { ...DEPLOY_READY.runtime, publicOrigin: 'https://emmiwood.com' },
+  expectedOrigin: 'https://www.emmiwood.com',
+  runtime: { ...DEPLOY_READY.runtime, publicOrigin: 'https://www.emmiwood.com' },
   domains: ['emmiwood.pages.dev', 'emmiwood.com', 'www.emmiwood.com'],
   backupReceipt: {
     exists: true,
@@ -161,6 +164,94 @@ test('deploy stage requires exact runtime, frozen writes, clean queue, roster, b
   assert.match(validateReleaseState({ ...DEPLOY_READY, outboxQueuedCount: 1 }).errors.join('\n'), /zero queued/i);
   assert.match(validateReleaseState({ ...DEPLOY_READY, workflowState: 'active' }).errors.join('\n'), /disabled_manually/i);
   assert.match(validateReleaseState({ ...DEPLOY_READY, actionVariables: { ...DEPLOY_READY.actionVariables, EMMIWOOD_NOTIFICATION_URL: 'https://example.test' } }).errors.join('\n'), /remain absent/i);
+});
+
+test('deployment provenance rejects abbreviated, malformed, and nonmatching SHAs', () => {
+  for (const deploymentSha of [SHA.slice(0, 7), SHA.slice(0, 39), `${SHA}a`, 'g'.repeat(40), 'b'.repeat(40), '']) {
+    assert.match(validateReleaseState({ ...DEPLOY_READY, deploymentSha }).errors.join('\n'), /exact 40-character approved SHA/);
+  }
+  assert.deepEqual(validateReleaseState({ ...DEPLOY_READY, deploymentSha: SHA }).errors, []);
+});
+
+test('readiness URLs fail closed before bearer transport for insecure or foreign targets', async () => {
+  const approved = 'https://emmiwood.pages.dev/api/emmiwood/internal/notifications';
+  let requests = 0;
+  const transport = async () => { requests++; throw new Error('transport must not run'); };
+  for (const readinessUrl of [
+    approved.replace('https:', 'http:'),
+    approved.replace('emmiwood.pages.dev', 'foreign.example'),
+    approved.replace('https://', 'https://user:password@'),
+    `${approved}?id=unexpected`, `${approved}#fragment`,
+    'https://emmiwood.pages.dev/other', '/relative',
+    'https://www.emmiwood.com/api/emmiwood/internal/notifications',
+  ]) {
+    await assert.rejects(fetchRuntimeReadiness({ stage: 'deploy', readinessUrl, secret: 'sentinel' }, transport), /readiness URL/);
+  }
+  await assert.rejects(fetchRuntimeReadiness({ stage: 'deploy', readinessUrl: approved, expectedOrigin: 'https://foreign.example', secret: 'sentinel' }, transport), /approved HTTPS origin/);
+  assert.equal(requests, 0);
+  assert.equal(validateReadinessTarget({ stage: 'deploy', readinessUrl: approved }), approved);
+  assert.equal(validateReadinessTarget({ stage: 'cutover', readinessUrl: 'https://www.emmiwood.com/api/emmiwood/internal/notifications' }), 'https://www.emmiwood.com/api/emmiwood/internal/notifications');
+});
+
+test('readiness uses redirect:error and never sends bearer to a redirect destination', async () => {
+  const calls = [];
+  await assert.rejects(fetchRuntimeReadiness({
+    stage: 'deploy', readinessUrl: 'https://emmiwood.pages.dev/api/emmiwood/internal/notifications', secret: 'sentinel',
+  }, async (url, options) => {
+    calls.push({ url, options });
+    assert.equal(options.redirect, 'error');
+    throw new TypeError('fetch failed: unexpected redirect');
+  }), /unexpected redirect/);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://emmiwood.pages.dev/api/emmiwood/internal/notifications');
+  assert.equal(calls[0].options.headers.authorization, 'Bearer sentinel');
+});
+
+test('readiness transport returns validated runtime evidence and rejects unsuccessful responses', async () => {
+  const options = { stage: 'deploy', readinessUrl: 'https://emmiwood.pages.dev/api/emmiwood/internal/notifications', secret: 'sentinel' };
+  const data = { environment: 'production', configuration: { publicOrigin: { value: DEPLOY_READY.runtime.publicOrigin }, bookingWrites: DEPLOY_READY.runtime.bookingWrites, release: { value: SHA } } };
+  assert.deepEqual(await fetchRuntimeReadiness(options, async () => ({ ok: true, json: async () => ({ ok: true, data }) })), DEPLOY_READY.runtime);
+  await assert.rejects(fetchRuntimeReadiness(options, async () => ({ ok: false, status: 503 })), /HTTP 503/);
+  await assert.rejects(fetchRuntimeReadiness(options, async () => ({ ok: true, json: async () => ({ ok: false, data }) })), /did not report success/);
+});
+
+test('raw deployment metadata establishes full SHA from the exact successful production/main deployment', async () => {
+  const options = { accountId: 'a'.repeat(32), apiToken: 'sentinel', deploymentId: '11111111-1111-4111-8111-111111111111' };
+  const deployment = { id: options.deploymentId, project_name: 'emmiwood', environment: 'production', latest_stage: { status: 'success' }, deployment_trigger: { metadata: { branch: 'main', commit_hash: SHA } } };
+  const project = { name: 'emmiwood', production_branch: 'main' };
+  const responseFor = (url, patchedDeployment = deployment) => ({ ok: true, json: async () => ({ success: true, result: url.includes('/deployments/') ? patchedDeployment : project }) });
+  const calls = [];
+  const transport = async (url, request) => {
+    calls.push({ url, request });
+    return responseFor(url);
+  };
+  assert.deepEqual(await fetchProductionDeployment(options, transport), { deploymentSha: SHA, pagesProductionBranch: 'main', deploymentId: options.deploymentId });
+  assert.equal(calls[0].url, `https://api.cloudflare.com/client/v4/accounts/${options.accountId}/pages/projects/emmiwood`);
+  assert.equal(calls[1].url, `https://api.cloudflare.com/client/v4/accounts/${options.accountId}/pages/projects/emmiwood/deployments/${options.deploymentId}`);
+  for (const call of calls) {
+    assert.equal(call.request.redirect, 'error');
+    assert.equal(call.request.headers.authorization, 'Bearer sentinel');
+  }
+  for (const patch of [{ id: 'wrong' }, { project_name: 'other' }, { environment: 'preview' }, { latest_stage: { status: 'failure' } }, { deployment_trigger: { metadata: { branch: 'other', commit_hash: SHA } } }]) {
+    await assert.rejects(fetchProductionDeployment(options, async (url) => responseFor(url, { ...deployment, ...patch })), /exact successful/);
+  }
+  await assert.rejects(fetchProductionDeployment(options, async (url) => responseFor(url, { ...deployment, deployment_trigger: { metadata: { branch: 'main', commit_hash: SHA.slice(0, 7) } } })), /full 40-character/);
+  for (const patch of [{ accountId: undefined }, { accountId: '../other' }, { apiToken: '' }, { deploymentId: '../other' }]) {
+    await assert.rejects(fetchProductionDeployment({ ...options, ...patch }, () => { throw new Error('unexpected transport'); }), /requires/);
+  }
+  await assert.rejects(fetchProductionDeployment(options, async (_url, request) => { assert.equal(request.redirect, 'error'); throw new TypeError('unexpected redirect'); }), /unexpected redirect/);
+});
+
+test('raw project configuration rejects wrong or missing production branch before deployment lookup', async () => {
+  const options = { accountId: 'a'.repeat(32), apiToken: 'sentinel', deploymentId: '11111111-1111-4111-8111-111111111111' };
+  for (const project of [{ name: 'other', production_branch: 'main' }, { name: 'emmiwood', production_branch: 'preview' }, { name: 'emmiwood' }]) {
+    let requests = 0;
+    await assert.rejects(fetchProductionDeployment(options, async () => {
+      requests++;
+      return { ok: true, json: async () => ({ success: true, result: project }) };
+    }), /configured production_branch main/);
+    assert.equal(requests, 1);
+  }
 });
 
 test('admin roster rejects placeholder, duplicate, missing, and unexpected active accounts', () => {

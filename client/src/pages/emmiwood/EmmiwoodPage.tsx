@@ -12,6 +12,7 @@ import {
   money,
 } from './content';
 import { EmmiwoodMeta } from './meta';
+import { EmmiwoodBrand } from './EmmiwoodAppHeader';
 import type { Catalog, Slot } from './types';
 import '@fontsource/outfit/400.css';
 import '@fontsource/outfit/500.css';
@@ -72,6 +73,7 @@ function shopClock(date: Date) {
 function NextOpening({ catalog }: { catalog: Catalog }) {
   const [opening, setOpening] = useState<Slot>();
   const [checked, setChecked] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const service = catalog.services[0];
 
   useEffect(() => {
@@ -87,7 +89,8 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
             break;
           }
         } catch {
-          break;
+          if (active) setUnavailable(true);
+          continue;
         }
       }
       if (active) setChecked(true);
@@ -110,8 +113,8 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
       </div>
     </>}
     {checked && !opening && <>
-      <strong>Call for today’s options.</strong>
-      <small>Walk-ins run noon–5, Monday through Saturday.</small>
+      <strong>{unavailable ? 'Online openings are temporarily unavailable.' : 'No online opening found this week.'}</strong>
+      <small>{unavailable ? 'Call the shop for current availability.' : 'Walk-ins run noon–5, Monday through Saturday.'}</small>
       <div className="ew-next-opening-links">
         <a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a>
         {directions}
@@ -215,26 +218,21 @@ export default function EmmiwoodPage() {
       path="/emmiwood"
       structured
     />
-    <a className="ew-skip" href="#main">Skip to content</a>
+    <a className="ew-skip" href="#main" onClick={() => requestAnimationFrame(() => document.getElementById('main')?.focus())}>Skip to content</a>
     <header className="ew-site-header">
-      <a className="ew-brand" href="#top" aria-label="Emmiwood home"><span>EWB</span><strong>Emmiwood</strong></a>
+      <a className="ew-brand" href="#top" aria-label="Emmiwood home"><EmmiwoodBrand /></a>
       <nav aria-label="Primary navigation"><a href="#services">Services</a><a href="#barbers">Barbers</a><a href="#visit">Visit</a></nav>
       <a className="ew-button" href="/emmiwood/book">Book an appointment</a>
     </header>
-    <nav className="ew-mobile-jump" aria-label="Page sections">
-      <a href="#services">Services</a>
-      <a href="#barbers">Barbers</a>
-      <a href="#visit">Visit</a>
-    </nav>
 
-    <main id="main">
+    <main id="main" tabIndex={-1}>
       <section className="ew-public-hero" id="top">
         <div className="ew-hero-atmosphere" aria-hidden="true" />
         <div className="ew-hero-main">
-          <span className="ew-eyebrow">Emmiwood · Sioux Falls</span>
+          <img className="ew-hero-brand-lockup" src="/emmiwood/brand/ewb-wordmark-transparent.png" width="704" height="216" alt="Emmiwood Barbers — cuts, fades, grooming" />
           <h1>Get the best <em>for less.</em></h1>
           <p>One of the best fades in town—plus beard work, customer service off the charts, and a shop built for gentlemen and kids. Clear prices. An unrushed consult. A finish that grows out clean.</p>
-          <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book an appointment</a><a className="ew-link" href="#services">Choose a service</a></div>
+          <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book an appointment</a></div>
         </div>
         <div className="ew-hero-booking"><TodayAtEmmiwood catalog={catalog} /></div>
       </section>
@@ -322,8 +320,8 @@ export default function EmmiwoodPage() {
     </main>
 
     <footer className="ew-site-footer">
-      <a className="ew-brand" href="#top"><span>EWB</span><strong>Emmiwood</strong></a>
-      <div><a href="/emmiwood/privacy">Privacy</a><a href="https://kup.solutions/sms/terms" rel="noreferrer">SMS terms</a><a href="/emmiwood/chair-rental">Chair rental</a><a href="/emmiwood/admin">Staff sign in</a></div>
+      <a className="ew-brand" href="#top" aria-label="Emmiwood home"><EmmiwoodBrand label="Emmiwood Barbers" /></a>
+      <div><a href="/emmiwood/privacy">Privacy</a><a href="/emmiwood/sms-terms">SMS terms</a><a href="/emmiwood/chair-rental">Chair rental</a><a href="/emmiwood/admin">Staff sign in</a></div>
       <p>© {new Date().getFullYear()} Emmiwood Barbers · Sioux Falls, South Dakota</p>
     </footer>
     <nav className="ew-mobile-book" aria-label="Mobile booking"><a href="/emmiwood/book"><span>Appointments</span><strong>Book now →</strong></a></nav>

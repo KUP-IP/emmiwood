@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ManagePanel } from './BookingFlow';
-import { emmiwoodApi } from './api';
+import { EmmiwoodApiError, emmiwoodApi } from './api';
 import { EMMIWOOD_PHONE_LABEL } from './content';
 import { EmmiwoodAppHeader } from './EmmiwoodAppHeader';
 import { EmmiwoodMeta } from './meta';
@@ -16,33 +16,37 @@ import './emmiwood.css';
 export default function EmmiwoodManagePage() {
   const [appointment, setAppointment] = useState<Appointment>();
   const [error, setError] = useState('');
+  const [terminalError, setTerminalError] = useState(false);
   const [ready, setReady] = useState(false);
   const [horizonDays, setHorizonDays] = useState(30);
+  const [retry, setRetry] = useState(0);
+  const [manageToken] = useState(() => new URLSearchParams(window.location.hash.replace(/^#/, '')).get('token') || '');
 
   useEffect(() => {
     let active = true;
     emmiwoodApi.catalog().then((catalog) => { if (active) setHorizonDays(catalog.shop.horizon_days); }).catch(() => undefined);
-    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const token = params.get('token');
-    const exchange = token ? emmiwoodApi.exchangeManage(token) : emmiwoodApi.manage();
+    setReady(false);
+    setError('');
+    if (manageToken) window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`);
+    const exchange = manageToken ? emmiwoodApi.exchangeManage(manageToken) : emmiwoodApi.manage();
     exchange.then((value) => {
       if (!active) return;
       setAppointment(value);
       setReady(true);
-      if (token) window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`);
     }).catch((reason: Error) => {
       if (!active) return;
       setError(reason.message);
+      setTerminalError(reason instanceof EmmiwoodApiError && ['appointment_not_found', 'token_required'].includes(reason.code || ''));
       setReady(true);
-      if (token) window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`);
     });
     return () => { active = false; };
-  }, []);
+  }, [manageToken, retry]);
 
   return <div className="emmiwood ew-app-surface">
     <EmmiwoodMeta title="Manage Appointment | Emmiwood Barbers" description="Private appointment management for Emmiwood Barbers guests." path="/emmiwood/manage" noindex />
+    <a className="ew-skip" href="#manage-content" onClick={() => requestAnimationFrame(() => document.getElementById('manage-content')?.focus())}>Skip to appointment management</a>
     <EmmiwoodAppHeader />
-    <main className="ew-manage-page">{!ready ? <div className="ew-loading" role="status"><span className="ew-spinner" />Opening your appointment…</div> : error ? <section className="ew-manage-panel ew-manage-empty has-error" aria-labelledby="manage-empty-title"><span className="ew-eyebrow">Appointment link</span><h1 id="manage-empty-title">This link isn&apos;t opening an appointment.</h1><p className="ew-manage-empty-lead">Use the private link from your confirmation text or email. If it expired, book again or call the shop.</p><p className="ew-manage-empty-detail" role="alert">{error}</p><div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book another appointment</a><a className="ew-link" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a></div></section> : <ManagePanel initialAppointment={appointment} horizonDays={horizonDays} />}</main>
+    <main id="manage-content" tabIndex={-1} className="ew-manage-page">{!ready ? <div className="ew-loading" role="status"><span className="ew-spinner" aria-hidden="true" />Opening your appointment…</div> : error ? <section className="ew-manage-panel ew-manage-empty has-error" aria-labelledby="manage-empty-title"><span className="ew-eyebrow">Appointment link</span><h1 id="manage-empty-title">Manage appointment.</h1><p className="ew-manage-empty-lead">{terminalError ? 'Use the private link you saved after booking or received by text. If it expired, book again or call the shop.' : 'We could not reach your appointment. Try opening it again—no appointment changes have been made.'}</p><p className="ew-manage-empty-detail" role="alert">{error}</p><div className="ew-actions">{!terminalError && <button className="ew-button secondary" type="button" onClick={() => setRetry((value) => value + 1)}>Try opening again</button>}<a className="ew-button" href="/emmiwood/book">Book another appointment</a><a className="ew-link" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a></div></section> : <ManagePanel initialAppointment={appointment} horizonDays={horizonDays} />}</main>
     <footer className="ew-app-footer"><span>1118 S Minnesota Ave · Sioux Falls</span><a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a></footer>
   </div>;
 }

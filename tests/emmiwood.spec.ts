@@ -1,6 +1,25 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+async function expectAccessible(page: Page) {
+  // Measure the settled UI, not an intermediate opacity frame on stage entry.
+  await page.evaluate(async () => {
+    await Promise.all(document.getAnimations().filter((animation) => {
+      const timing = animation.effect?.getComputedTiming();
+      return animation.playState === 'running' && timing && Number.isFinite(Number(timing.endTime));
+    }).map((animation) => animation.finished.catch(() => undefined)));
+  });
+  const report = await new AxeBuilder({ page }).analyze();
+  expect(report.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
+}
+
+test.afterEach(async ({ page }, info) => {
+  if (info.status !== 'passed' || page.url() === 'about:blank') return;
+  await expectAccessible(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expectAccessible(page);
+});
+
 async function expectNoPageOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -24,6 +43,7 @@ async function openBookingAtTime(page: Page) {
   await opening.click();
   await page.getByRole('button', { name: /^Confirm \d/ }).click();
   await expect(page.getByRole('heading', { name: 'Who should we expect?' })).toBeVisible();
+  await expectAccessible(page);
 }
 
 async function fillGuest(page: Page, suffix: string) {
@@ -47,9 +67,29 @@ test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', a
   }
   const publicHtml = await (await request.get('/emmiwood/')).text();
   expect(publicHtml).toContain('<title>Emmiwood Barbers');
+  for (const asset of [
+    '/emmiwood/brand/ewb-horizontal-header.webp',
+    '/emmiwood/brand/ewb-wordmark-transparent.png',
+    '/emmiwood/brand/ewb-app-icon-192.png',
+    '/emmiwood/brand/ewb-app-icon-512.png',
+    '/emmiwood/brand/ewb-maskable-512.png',
+    '/emmiwood/brand/ewb-favicon-16.png',
+    '/emmiwood/brand/ewb-favicon-32.png',
+    '/emmiwood/brand/ewb-favicon-48.png',
+    '/emmiwood/brand/ewb-apple-touch-icon-180.png',
+    '/emmiwood/brand/ewb-social-og-1200x630.png',
+    '/emmiwood/brand/favicon.ico',
+    '/emmiwood/brand/manifest.webmanifest',
+  ]) {
+    expect((await request.get(asset)).ok(), asset).toBeTruthy();
+  }
 
   const privacy = await (await request.get('/emmiwood/privacy/')).text();
   expect(privacy).toContain('Privacy notice');
+  expect(privacy).toContain('Retention');
+  for (const alias of ['/privacy/', '/privacy.html', '/emmiwood/privacy.html']) {
+    expect(await (await request.get(alias)).text(), alias).toBe(privacy);
+  }
   expect(privacy).toMatch(/do not share, sell/i);
   expect(privacy).toContain('KUP Solutions');
   expect(privacy).toContain('https://kup.solutions/sms/privacy');
@@ -81,6 +121,11 @@ test('public site is booking-first, specific, responsive, and accessible', async
   });
   await page.goto('/emmiwood', { waitUntil: 'networkidle' });
   expect(forbiddenRequests).toEqual([]);
+  const brandLockup = page.getByRole('img', { name: 'Emmiwood Barbers — cuts, fades, grooming' });
+  await expect(brandLockup).toBeVisible();
+  await expect(brandLockup).toHaveAttribute('src', '/emmiwood/brand/ewb-wordmark-transparent.png');
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/emmiwood/brand/manifest.webmanifest');
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/emmiwood/brand/ewb-apple-touch-icon-180.png');
   await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toBeVisible();
   await expect(page.getByText(/1118 S Minnesota Ave/)).toBeVisible();
   const today = page.getByRole('region', { name: 'Today at Emmiwood' });
@@ -181,6 +226,10 @@ test('public site is booking-first, specific, responsive, and accessible', async
   await expectNoPageOverflow(page);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload({ waitUntil: 'networkidle' });
+  const reducedMotionAccessibility = await new AxeBuilder({ page }).analyze();
+  expect(reducedMotionAccessibility.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath(`public-${testInfo.project.name}.png`), fullPage: true });
 });
 
@@ -248,6 +297,27 @@ test('availability browser survives one failed day without collapsing the week',
   await expect(page.getByText("Couldn't check this day.")).toBeVisible();
   await expect(page.getByRole('button', { name: /Retry/ })).toBeVisible();
   await expectNoPageOverflow(page);
+});
+
+test('changing the active day clears a stale selected time and supports arrow navigation', async ({ page }) => {
+  await page.goto('/emmiwood/book?service=signature&barber=barro', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Find openings' }).click();
+  const tabs = page.locator('.ew-day-tabs [role="tab"]');
+  await expect(tabs).toHaveCount(7);
+  const firstOpening = page.locator('.ew-day-panel .ew-slot-grid button').first();
+  await firstOpening.click();
+  await expect(page.getByRole('button', { name: /^Confirm \d/ })).toBeEnabled();
+  // The first opening may be on any weekday (including index 1 on Sundays).
+  const nextDay = page.locator('.ew-day-tabs [role="tab"][aria-selected="false"]').first();
+  const nextDayId = await nextDay.getAttribute('id');
+  await nextDay.click();
+  await expect(page.getByRole('button', { name: 'Confirm a time' })).toBeDisabled();
+  await expect(page.locator('.ew-selected-slot-inline')).toHaveCount(0);
+  const chosenIndex = await tabs.evaluateAll((elements, id) => elements.findIndex((element) => element.id === id), nextDayId);
+  await tabs.nth(chosenIndex).press('ArrowRight');
+  const following = tabs.nth((chosenIndex + 1) % 7);
+  await expect(following).toHaveAttribute('aria-selected', 'true');
+  await expect(following).toBeFocused();
 });
 
 test('booking uses explicit stages, next availability, consent, and review', async ({ page }, testInfo) => {
@@ -321,8 +391,25 @@ test('guest booking exchanges the private fragment for an HttpOnly management se
   await page.getByRole('button', { name: 'Find another time' }).click();
   await expect(page.locator('.ew-manage-grid .ew-day-tabs [role="tab"]')).toHaveCount(7);
   await expect(page.locator('.ew-manage-grid .ew-time-period').first()).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('.ew-manage-grid .ew-slot-grid button').first().click();
+  await page.route('**/api/emmiwood/appointments/reschedule', async (route) => {
+    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'slot_taken', error: 'That opening was just booked.' }) });
+  });
+  await page.getByRole('button', { name: /^Move to/ }).click();
+  await expect(page.getByText('That opening was just booked. Your current appointment is still reserved.')).toBeVisible();
+  await expect(page.locator('.ew-status-pill')).toHaveText('booked');
+  await expect(page.getByRole('button', { name: 'Choose a new time' })).toBeDisabled();
   await page.getByRole('button', { name: 'Cancel appointment' }).click();
+  const cancelDialog = page.getByRole('alertdialog', { name: 'Release this appointment?' });
+  await expect(cancelDialog).toBeVisible();
+  await expect(cancelDialog.getByRole('button', { name: 'Keep appointment' })).toBeFocused();
+  await expectAccessible(page);
+  await page.screenshot({ path: testInfo.outputPath(`cancel-dialog-${testInfo.project.name}.png`), fullPage: true });
+  await page.keyboard.press('Escape');
+  await expect(cancelDialog).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Cancel appointment' })).toBeFocused();
+  await page.getByRole('button', { name: 'Cancel appointment' }).click();
+  await page.getByRole('alertdialog', { name: 'Release this appointment?' }).getByRole('button', { name: 'Cancel appointment' }).click();
   await expect(page.locator('.ew-status-pill')).toHaveText('cancelled');
   await page.screenshot({ path: testInfo.outputPath(`manage-${testInfo.project.name}.png`), fullPage: true });
 });
@@ -353,7 +440,7 @@ test('staff workspace uses cookie auth and shop-shaped mobile controls', async (
   await expect(primaryNav).not.toContainText('Hours');
   await expect(primaryNav).not.toContainText('Eligibility');
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize(testInfo.project.name === 'desktop' ? { width: 1440, height: 900 } : { width: 390, height: 844 });
   await expectNoPageOverflow(page);
 
   await page.getByRole('button', { name: 'New appointment' }).click();
