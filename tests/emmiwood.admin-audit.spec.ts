@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { type Page, type Route } from '@playwright/test';
+import { expect, test } from './e2e-server-ready';
 import AxeBuilder from '@axe-core/playwright';
 
 // Browser-only fixtures: every API request is intercepted; no D1 or SMS effects.
