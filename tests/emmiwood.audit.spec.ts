@@ -123,6 +123,53 @@ test('audit reduced-motion public, booking, sign-in, legal, and management-error
   }
 });
 
+test('operator mobile feedback keeps navigation compact and requested copy on one line', async ({ page }, info) => {
+  test.setTimeout(90_000);
+  for (const width of [319, 375, 430, 760]) {
+    await page.setViewportSize({ width, height: 863 });
+    await page.goto('/emmiwood');
+    await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    const header = page.locator('.ew-site-header');
+    await expect(header.locator('.ew-brand>strong')).toBeHidden();
+    await expect(page.getByRole('navigation', { name: 'Page sections' })).toHaveCount(0);
+    const nav = header.getByRole('navigation', { name: 'Primary navigation' });
+    await expect(nav).toBeVisible();
+    await expect(nav.getByRole('link')).toHaveCount(3);
+    const headerBox = (await header.boundingBox())!;
+    expect(headerBox.height).toBeLessThanOrEqual(68);
+    for (const control of [header.getByRole('link', { name: 'Emmiwood home' }), ...await nav.getByRole('link').all()]) {
+      const bounds = (await control.boundingBox())!;
+      expect(bounds.width).toBeGreaterThanOrEqual(44);
+      expect(bounds.height).toBeGreaterThanOrEqual(44);
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      expect(Math.abs(bounds.y + bounds.height / 2 - (headerBox.y + headerBox.height / 2))).toBeLessThanOrEqual(1);
+    }
+    await expect(page.locator('.ew-hero-main>.ew-eyebrow')).toHaveCount(0);
+    await expect(page.locator('.ew-hero-main .ew-actions a')).toHaveCount(1);
+    await expect(page.getByRole('link', { name: 'Choose a service', exact: true })).toHaveCount(0);
+    await expect(page.locator('.ew-hero-brand-lockup')).toHaveAttribute('src', '/emmiwood/brand/ewb-wordmark-transparent.png');
+    for (const selector of ['.ew-first-available strong', '.ew-weekly-card h3']) {
+      const layout = await page.locator(selector).evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const lines = [...range.getClientRects()];
+        const box = element.getBoundingClientRect();
+        return { lineCount: new Set(lines.map((line) => Math.round(line.top))).size, fits: lines.every((line) => line.left >= box.left - 1 && line.right <= box.right + 1) };
+      });
+      expect(layout.lineCount, `${selector} should fit one line at ${width}px`).toBe(1);
+      expect(layout.fits, `${selector} must not hide overflowing text`).toBe(true);
+    }
+    await noOverflow(page);
+    await accessible(page);
+    await screenshot(page, info, `operator-feedback-${width}`);
+    // The merged links still navigate to their original sections.
+    await nav.getByRole('link', { name: 'Barbers', exact: true }).click();
+    await expect(page).toHaveURL(/#barbers$/);
+  }
+});
+
 test('audit public skip link transfers keyboard focus and EWB marks remain square', async ({ page }, info) => {
   await page.goto('/emmiwood');
   await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toBeVisible();

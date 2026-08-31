@@ -2187,36 +2187,6 @@ body { margin:0; }
 
 /* Round 2 UI-ITER — nav access, hero plane, booking density, paper fit */
 
-/* Mobile in-page jump nav (Services / Barbers / Visit) */
-.ew-mobile-jump { display:none; }
-@media (max-width:760px) {
-  .ew-mobile-jump {
-    position:sticky;
-    top:66px;
-    z-index:28;
-    display:flex;
-    gap:.15rem;
-    justify-content:space-between;
-    padding:.15rem .65rem;
-    border-bottom:1px solid var(--ew-line-dark);
-    background:rgba(27,20,17,.96);
-    backdrop-filter:blur(12px);
-  }
-  .ew-mobile-jump a {
-    flex:1;
-    min-height:40px;
-    display:grid;
-    place-items:center;
-    color:var(--ew-ivory);
-    font-size:.66rem;
-    font-weight:700;
-    letter-spacing:.12em;
-    text-transform:uppercase;
-  }
-  .ew-mobile-jump a:hover,
-  .ew-mobile-jump a:focus-visible { color:var(--ew-gold); }
-}
-
 /* Hero: atmospheric wash from existing barro photo (crop/blur — not a headshot plate) */
 .ew-public-hero { isolation:isolate; overflow:hidden; }
 .ew-hero-atmosphere {
@@ -3355,7 +3325,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 }
 .ew-weekly-card h3 {
   margin:.45rem 0 1.15rem;
-  max-width:14ch;
+  max-width:100%;
   font-size:clamp(1.65rem,3vw,2.4rem);
   line-height:1.08;
 }
@@ -3532,7 +3502,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 
 .ew-public .ew-link,
 .ew-public .ew-site-footer a,
-.ew-public .ew-mobile-jump a,
+.ew-public .ew-site-header nav a,
 .ew-app-surface .ew-link,
 .ew-app-surface .ew-link-button { min-height:44px; display:inline-flex; align-items:center; }
 
@@ -3833,9 +3803,8 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 
 /* ===== Mobile scroll polish — unstick chrome, chin compact, hours + glitch ===== */
 @media (max-width:760px) {
-  /* Header + jump scroll away (no sticky top chrome). */
-  .ew-public .ew-site-header,
-  .ew-public .ew-mobile-jump {
+  /* Header scrolls away (no sticky top chrome). */
+  .ew-public .ew-site-header {
     position:relative;
     top:auto;
     z-index:5;
@@ -3940,4 +3909,29 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
     border-right:0;
     border-bottom:1px solid var(--ew-line);
   }
+}
+
+/* Operator mobile inspection: one compact logo/nav row and readable single-line copy.
+   Keep normal wrapping available for enlarged text instead of clipping overflow. */
+@media (max-width:760px) {
+  .ew-public .ew-site-header {
+    min-height:60px;
+    gap:.5rem;
+    padding:.5rem 1rem;
+  }
+  .ew-public .ew-site-header .ew-brand { min-width:44px; min-height:44px; }
+  .ew-public .ew-site-header .ew-brand>strong { display:none; }
+  .ew-public .ew-site-header nav {
+    display:flex;
+    justify-content:space-between;
+    flex:1;
+    max-width:340px;
+    gap:clamp(.35rem,2vw,1rem);
+    font-size:.66rem;
+    letter-spacing:.08em;
+  }
+  .ew-public .ew-site-header nav a { min-width:44px; justify-content:center; }
+  .ew-public .ew-first-available { padding:1.25rem; }
+  .ew-public .ew-first-available strong { font-size:clamp(.875rem,4.5vw,1.5rem); line-height:1.2; }
+  .ew-public .ew-weekly-card h3 { font-size:clamp(1.35rem,6.7vw,1.55rem); }
 }

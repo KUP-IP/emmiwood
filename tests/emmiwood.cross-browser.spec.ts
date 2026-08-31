@@ -2,6 +2,14 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 async function expectReadOnlySurfaceQuality(page: Page) {
+  // Match the full suite: contrast belongs to the settled UI, not a transient
+  // opacity frame from the booking-stage entrance animation.
+  await page.evaluate(async () => {
+    await Promise.all(document.getAnimations().filter((animation) => {
+      const timing = animation.effect?.getComputedTiming();
+      return animation.playState === 'running' && timing && Number.isFinite(Number(timing.endTime));
+    }).map((animation) => animation.finished.catch(() => undefined)));
+  });
   const dimensions = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,

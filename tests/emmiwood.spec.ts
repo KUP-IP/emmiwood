@@ -69,6 +69,7 @@ test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', a
   expect(publicHtml).toContain('<title>Emmiwood Barbers');
   for (const asset of [
     '/emmiwood/brand/ewb-horizontal-header.webp',
+    '/emmiwood/brand/ewb-wordmark-transparent.png',
     '/emmiwood/brand/ewb-app-icon-192.png',
     '/emmiwood/brand/ewb-app-icon-512.png',
     '/emmiwood/brand/ewb-maskable-512.png',
@@ -122,7 +123,7 @@ test('public site is booking-first, specific, responsive, and accessible', async
   expect(forbiddenRequests).toEqual([]);
   const brandLockup = page.getByRole('img', { name: 'Emmiwood Barbers — cuts, fades, grooming' });
   await expect(brandLockup).toBeVisible();
-  await expect(brandLockup).toHaveAttribute('src', '/emmiwood/brand/ewb-horizontal-header.webp');
+  await expect(brandLockup).toHaveAttribute('src', '/emmiwood/brand/ewb-wordmark-transparent.png');
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/emmiwood/brand/manifest.webmanifest');
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/emmiwood/brand/ewb-apple-touch-icon-180.png');
   await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toBeVisible();

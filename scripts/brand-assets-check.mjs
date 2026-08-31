@@ -4,11 +4,13 @@ import { readFile, readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
+import { transparentWordmark } from './brand-wordmark.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const pngSignature = Buffer.from('89504e470d0a1a0a', 'hex');
 export const runtimeAssets = Object.freeze({
   'ewb-horizontal-header.webp': [1000, 336],
+  'ewb-wordmark-transparent.png': [704, 216],
   'ewb-app-icon-192.png': [192, 192],
   'ewb-app-icon-512.png': [512, 512],
   'ewb-maskable-512.png': [512, 512],
@@ -101,6 +103,9 @@ export async function checkBrandAssets(staticRoot = join(root, 'client/public'))
     assertExactCrop(source, crop, x, y);
   }
   const directory = join(staticRoot, 'emmiwood/brand');
+  const wordmark = await readFile(join(directory, 'ewb-wordmark-transparent.png'));
+  assert.equal(wordmark[25], 6, 'hero wordmark has a genuine alpha channel');
+  assert.ok(wordmark.equals(transparentWordmark(source).png), 'hero wordmark exactly matches the approved-source crop and matte-removal recipe');
   assert.deepEqual((await readdir(directory)).sort(), Object.keys(runtimeAssets).sort(), 'public brand folder contains exactly runtime assets, no masters or campaign exports');
   const receipts = [];
   for (const [name, size] of Object.entries(runtimeAssets)) {

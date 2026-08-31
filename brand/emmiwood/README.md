@@ -21,7 +21,8 @@ The operator-provided logo sheet is the brand source of truth. All letterforms i
 
 Only assets required by the running site live in `client/public/emmiwood/brand/`:
 
-- `ewb-horizontal-header.webp` — site lockup.
+- `ewb-horizontal-header.webp` — full horizontal lockup.
+- `ewb-wordmark-transparent.png` — 704×216 hero wordmark only, with genuine transparency; excludes the EWB monogram and divider.
 - `ewb-app-icon-192.png`, `ewb-app-icon-512.png` — PWA icons and compact brand mark.
 - `ewb-maskable-512.png` — safely padded maskable PWA icon.
 - `ewb-apple-touch-icon-180.png` — Apple touch icon.
@@ -32,3 +33,9 @@ Only assets required by the running site live in `client/public/emmiwood/brand/`
 ## Derivative recipe
 
 The approved square mark is cropped from the source sheet at `390x390+568+550`. The horizontal master is the approved top lockup crop. Resize with a high-quality Lanczos filter; never substitute a font or an AI-generated glyph.
+
+Rebuild the transparent hero wordmark with `node scripts/generate-brand-wordmark.mjs`.
+Its crop is `704x216+696+256`. The deterministic matte-removal recipe in
+`scripts/brand-wordmark.mjs` clears the near-black background, preserves opaque
+lettering RGB exactly, and unmattes soft edges. Source hash, output bytes, alpha,
+and glyph-core preservation are checked by `npm run test:brand`.

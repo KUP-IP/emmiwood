@@ -224,21 +224,15 @@ export default function EmmiwoodPage() {
       <nav aria-label="Primary navigation"><a href="#services">Services</a><a href="#barbers">Barbers</a><a href="#visit">Visit</a></nav>
       <a className="ew-button" href="/emmiwood/book">Book an appointment</a>
     </header>
-    <nav className="ew-mobile-jump" aria-label="Page sections">
-      <a href="#services">Services</a>
-      <a href="#barbers">Barbers</a>
-      <a href="#visit">Visit</a>
-    </nav>
 
     <main id="main" tabIndex={-1}>
       <section className="ew-public-hero" id="top">
         <div className="ew-hero-atmosphere" aria-hidden="true" />
         <div className="ew-hero-main">
-          <img className="ew-hero-brand-lockup" src="/emmiwood/brand/ewb-horizontal-header.webp" width="1000" height="336" alt="Emmiwood Barbers — cuts, fades, grooming" />
-          <span className="ew-eyebrow">Emmiwood · Sioux Falls</span>
+          <img className="ew-hero-brand-lockup" src="/emmiwood/brand/ewb-wordmark-transparent.png" width="704" height="216" alt="Emmiwood Barbers — cuts, fades, grooming" />
           <h1>Get the best <em>for less.</em></h1>
           <p>One of the best fades in town—plus beard work, customer service off the charts, and a shop built for gentlemen and kids. Clear prices. An unrushed consult. A finish that grows out clean.</p>
-          <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book an appointment</a><a className="ew-link" href="#services">Choose a service</a></div>
+          <div className="ew-actions"><a className="ew-button" href="/emmiwood/book">Book an appointment</a></div>
         </div>
         <div className="ew-hero-booking"><TodayAtEmmiwood catalog={catalog} /></div>
       </section>
