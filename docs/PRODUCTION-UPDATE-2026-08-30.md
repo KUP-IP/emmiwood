@@ -56,3 +56,9 @@ Linux CI then passed all 62 Chromium cases but exposed a compressor-dependent
 wordmark assertion. Provenance now compares every decoded RGBA pixel against
 the source recipe; shipped asset bytes are still checked against the committed
 asset hash. No approved image or production code changed for this correction.
+
+The pre-update live baseline confirmed Cloudflare injects an optional analytics
+script that attempts a telemetry POST. The read-only browser lane now blocks
+that script before execution, keeping every mutating-method guard intact, and
+waits for finite entrance animations before measuring contrast. It also retains
+screenshots on successful live checks. These are test-only adjustments.

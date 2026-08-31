@@ -23,6 +23,14 @@ const test = base.extend<{ mutationGuard: void }>({
         await route.abort('blockedbyclient');
         return;
       }
+      // Cloudflare injects an analytics script on the real domain. Do not load
+      // that optional script in the read-only lane: it otherwise attempts a
+      // telemetry POST. All mutation-method checks above remain fail-closed.
+      const target = new URL(route.request().url());
+      if (target.hostname === 'static.cloudflareinsights.com' && target.pathname.startsWith('/beacon.min.js')) {
+        await route.abort('blockedbyclient');
+        return;
+      }
       // Playwright routing only intercepts the first URL of an automatic
       // redirect chain. Fetch one hop, then reject redirects before fulfilling
       // so no subsequent HTTP downgrade can escape the URL guard.
@@ -52,9 +60,19 @@ const test = base.extend<{ mutationGuard: void }>({
 });
 
 async function expectNoSeriousAccessibilityViolations(page: Page) {
+  await page.evaluate(async () => {
+    await Promise.all(document.getAnimations().filter((animation) => {
+      const timing = animation.effect?.getComputedTiming();
+      return animation.playState === 'running' && timing && Number.isFinite(Number(timing.endTime));
+    }).map((animation) => animation.finished.catch(() => undefined)));
+  });
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
 }
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status === 'passed') await page.screenshot({ path: testInfo.outputPath('verified-surface.png'), fullPage: true });
+});
 
 async function expectNoPageOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
