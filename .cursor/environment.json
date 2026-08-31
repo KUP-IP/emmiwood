@@ -1,0 +1,10 @@
+{
+  "install": "npm ci && npm ci --prefix client && npx playwright install --with-deps chromium",
+  "start": "node scripts/write-dev-vars-from-env.mjs && npm run build && npm run db:migrate:local",
+  "terminals": [
+    {
+      "name": "pages-dev",
+      "command": "npm run dev"
+    }
+  ]
+}
