@@ -51,3 +51,8 @@ Initial PR CI exposed an existing date-dependent fixture: the staff-SMS test
 selected a Saturday for John on the UTC runner. It now chooses a shared
 Mon/Wed/Fri date and tests fixture selection across all seven runner weekdays.
 This changes test code only, not production scheduling or SMS behavior.
+
+Linux CI then passed all 62 Chromium cases but exposed a compressor-dependent
+wordmark assertion. Provenance now compares every decoded RGBA pixel against
+the source recipe; shipped asset bytes are still checked against the committed
+asset hash. No approved image or production code changed for this correction.

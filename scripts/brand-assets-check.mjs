@@ -46,12 +46,12 @@ export function dimensions(bytes) {
   throw new Error('Unrecognized brand image format');
 }
 
-// Decode only the lossless RGB PNG masters for exact pixel provenance, with no
-// image library dependency. Runtime image headers are checked separately.
-export function decodeRgbPng(bytes) {
+// Compare decoded pixels, not compressor-dependent PNG bytes. RGB source
+// masters and the RGBA runtime wordmark share the same lossless filter rules.
+function decodePng(bytes, channels) {
   assert.ok(bytes.subarray(0, 8).equals(pngSignature), 'PNG signature');
   assert.equal(bytes[24], 8, 'source uses 8-bit channels');
-  assert.equal(bytes[25], 2, 'source uses RGB pixels');
+  assert.equal(bytes[25], channels === 3 ? 2 : 6, 'expected PNG color channels');
   assert.equal(bytes[28], 0, 'source is non-interlaced');
   const [width, height] = dimensions(bytes);
   const data = [];
@@ -61,16 +61,16 @@ export function decodeRgbPng(bytes) {
     offset += length + 12;
   }
   const rows = inflateSync(Buffer.concat(data));
-  const stride = width * 3;
+  const stride = width * channels;
   assert.equal(rows.length, height * (stride + 1), 'PNG scanline lengths');
-  const pixels = Buffer.alloc(width * height * 3);
+  const pixels = Buffer.alloc(width * height * channels);
   for (let y = 0; y < height; y++) {
     const filter = rows[y * (stride + 1)];
     assert.ok(filter <= 4, 'known PNG filter');
     for (let x = 0; x < stride; x++) {
-      const left = x >= 3 ? pixels[y * stride + x - 3] : 0;
+      const left = x >= channels ? pixels[y * stride + x - channels] : 0;
       const up = y ? pixels[(y - 1) * stride + x] : 0;
-      const corner = y && x >= 3 ? pixels[(y - 1) * stride + x - 3] : 0;
+      const corner = y && x >= channels ? pixels[(y - 1) * stride + x - channels] : 0;
       const prediction = left + up - corner;
       const a = Math.abs(prediction - left), b = Math.abs(prediction - up), c = Math.abs(prediction - corner);
       const paeth = a <= b && a <= c ? left : b <= c ? up : corner;
@@ -80,6 +80,9 @@ export function decodeRgbPng(bytes) {
   }
   return { width, height, pixels };
 }
+
+export const decodeRgbPng = (bytes) => decodePng(bytes, 3);
+export const decodeRgbaPng = (bytes) => decodePng(bytes, 4);
 
 export function assertExactCrop(source, crop, x, y) {
   assert.ok(x >= 0 && y >= 0 && x + crop.width <= source.width && y + crop.height <= source.height, 'crop bounds');
@@ -105,7 +108,10 @@ export async function checkBrandAssets(staticRoot = join(root, 'client/public'))
   const directory = join(staticRoot, 'emmiwood/brand');
   const wordmark = await readFile(join(directory, 'ewb-wordmark-transparent.png'));
   assert.equal(wordmark[25], 6, 'hero wordmark has a genuine alpha channel');
-  assert.ok(wordmark.equals(transparentWordmark(source).png), 'hero wordmark exactly matches the approved-source crop and matte-removal recipe');
+  const decodedWordmark = decodeRgbaPng(wordmark);
+  const expectedWordmark = transparentWordmark(source);
+  assert.deepEqual([decodedWordmark.width, decodedWordmark.height], [expectedWordmark.width, expectedWordmark.height]);
+  assert.ok(decodedWordmark.pixels.equals(expectedWordmark.pixels), 'hero wordmark pixels exactly match the approved-source crop and matte-removal recipe');
   assert.deepEqual((await readdir(directory)).sort(), Object.keys(runtimeAssets).sort(), 'public brand folder contains exactly runtime assets, no masters or campaign exports');
   const receipts = [];
   for (const [name, size] of Object.entries(runtimeAssets)) {

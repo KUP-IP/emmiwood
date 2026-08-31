@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { assertExactCrop, checkBrandAssets, decodeRgbPng, dimensions } from './brand-assets-check.mjs';
+import { assertExactCrop, checkBrandAssets, decodeRgbPng, decodeRgbaPng, dimensions } from './brand-assets-check.mjs';
 import { transparentWordmark, wordmarkCrop } from './brand-wordmark.mjs';
 
 test('brand inventory verifies runtime dimensions, source hash, and both approved-source crops', async () => {
@@ -31,7 +31,11 @@ test('hero wordmark preserves source glyph cores and removes the sheet backgroun
   assert.ok(clear > result.width * result.height * .65, 'background is actually transparent');
   assert.ok(opaque > 5000, 'approved wordmark remains present');
   assert.ok(soft > 0, 'anti-aliased edges remain soft');
-  assert.ok(result.png.equals(await readFile(new URL('../client/public/emmiwood/brand/ewb-wordmark-transparent.png', import.meta.url))));
+  const committed = decodeRgbaPng(await readFile(new URL('../client/public/emmiwood/brand/ewb-wordmark-transparent.png', import.meta.url)));
+  assert.ok(result.pixels.equals(committed.pixels), 'all committed RGBA pixels match the recipe');
+  assert.ok(result.pixels.equals(decodeRgbaPng(result.png).pixels), 'encoder round-trip preserves RGBA pixels');
+  committed.pixels[3] ^= 1;
+  assert.ok(!result.pixels.equals(committed.pixels), 'even a single changed alpha byte is detected');
 });
 
 test('pixel provenance rejects altered letterforms, crop offsets, and out-of-bounds crops', async () => {
