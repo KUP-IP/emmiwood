@@ -15,7 +15,7 @@ and deployment while preserving existing production settings.
 - All migrations 0001–0010 are already applied. No migrations, seed, database
   writes, real SMS/OTP tests, workflow changes, or domain redirects are authorized
   by this code-only update. Canonical redirect reconciliation remains separate.
-- No backend Functions or notification workflow changes are in the candidate
+- No backend runtime Functions or notification workflow changes are in the candidate
   relative to the current production source base.
 
 ## Release gate
@@ -46,3 +46,8 @@ in local evidence rather than being presented as a clean first attempt.
 This deployment is not a full operational-launch closeout: administrator OTP,
 exact-ID SMS reconciliation, canonical redirects, and remaining issue-closure
 requirements retain their own evidence and approval boundaries.
+
+Initial PR CI exposed an existing date-dependent fixture: the staff-SMS test
+selected a Saturday for John on the UTC runner. It now chooses a shared
+Mon/Wed/Fri date and tests fixture selection across all seven runner weekdays.
+This changes test code only, not production scheduling or SMS behavior.
