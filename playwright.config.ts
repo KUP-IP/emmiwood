@@ -9,7 +9,7 @@ export default defineConfig({
   outputDir: 'test-results/chromium',
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   timeout: 45_000,
   expect: { timeout: 20_000 },
   reporter: [['list'], ['html', { outputFolder: 'playwright-report/emmiwood', open: 'never' }]],
