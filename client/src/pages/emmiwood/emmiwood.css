@@ -4007,15 +4007,16 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 .ew-public .ew-hero-booking { align-self:center; }
 
 .ew-public #barbers .ew-barber-grid .ew-barber-card {
-  grid-template-columns:minmax(148px,.4fr) minmax(0,1fr);
+  grid-template-columns:minmax(176px,.48fr) minmax(0,1fr);
   grid-template-areas:
     "heading heading"
     "portrait facts"
     "note note"
     "book book";
   align-items:stretch;
-  gap:.85rem 1.15rem;
-  padding:1.15rem;
+  align-content:start;
+  gap:.5rem 1rem;
+  padding:1rem 1.1rem 1.05rem;
 }
 .ew-public #barbers .ew-barber-copy {
   display:contents;
@@ -4025,7 +4026,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   min-width:0;
 }
 .ew-public #barbers .ew-barber-heading h3 {
-  margin:.2rem 0 .45rem;
+  margin:.12rem 0 .28rem;
   font-size:clamp(2rem,2.6vw,2.7rem);
   line-height:1;
 }
@@ -4033,7 +4034,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   margin:0;
   max-width:46ch;
   font-size:.92rem;
-  line-height:1.45;
+  line-height:1.4;
 }
 .ew-public #barbers .ew-barber-portrait {
   grid-area:portrait;
@@ -4049,8 +4050,16 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   grid-area:facts;
   align-self:start;
   margin:0;
+  gap:.35rem 1rem;
 }
-.ew-public #barbers .ew-fit { grid-area:note; margin:0; }
+.ew-public #barbers .ew-barber-copy dl div { padding:.35rem 0; }
+.ew-public #barbers .ew-barber-portrait {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.ew-public #barbers .ew-barber-portrait span { font-size:3.6rem; }
+.ew-public #barbers .ew-fit { grid-area:note; margin:.15rem 0 0; }
 .ew-public #barbers .ew-barber-book { grid-area:book; margin-top:0; }
 
 @media (max-width:1050px) {
