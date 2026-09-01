@@ -30,7 +30,7 @@
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.20.1",
     "typescript": "5.9.3",
-    "wrangler": "^4.125.0"
+    "wrangler": "^4.127.1"
   },
   "overrides": {
     "sharp": "^0.35.3"
