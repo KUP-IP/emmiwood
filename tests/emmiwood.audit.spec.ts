@@ -132,14 +132,14 @@ test('operator mobile feedback keeps navigation compact and requested copy on on
     await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     const header = page.locator('.ew-site-header');
-    await expect(header.locator('.ew-brand>strong')).toBeHidden();
+    await expect(header.locator('.ew-brand')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'Page sections' })).toHaveCount(0);
     const nav = header.getByRole('navigation', { name: 'Primary navigation' });
     await expect(nav).toBeVisible();
     await expect(nav.getByRole('link')).toHaveCount(3);
     const headerBox = (await header.boundingBox())!;
     expect(headerBox.height).toBeLessThanOrEqual(68);
-    for (const control of [header.getByRole('link', { name: 'Emmiwood home' }), ...await nav.getByRole('link').all()]) {
+    for (const control of await nav.getByRole('link').all()) {
       const bounds = (await control.boundingBox())!;
       expect(bounds.width).toBeGreaterThanOrEqual(44);
       expect(bounds.height).toBeGreaterThanOrEqual(44);
@@ -147,6 +147,13 @@ test('operator mobile feedback keeps navigation compact and requested copy on on
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
       expect(Math.abs(bounds.y + bounds.height / 2 - (headerBox.y + headerBox.height / 2))).toBeLessThanOrEqual(1);
     }
+    const chin = page.getByRole('navigation', { name: 'Mobile booking' });
+    await expect(chin).toBeVisible();
+    const chinBox = (await chin.boundingBox())!;
+    const chinHit = (await chin.locator('a').boundingBox())!;
+    expect(chinHit.width).toBeGreaterThanOrEqual(chinBox.width - 1);
+    expect(chinHit.height).toBeGreaterThanOrEqual(chinBox.height - 1);
+    expect(chinHit.height).toBeGreaterThanOrEqual(44);
     await expect(page.locator('.ew-hero-main>.ew-eyebrow')).toHaveCount(0);
     await expect(page.locator('.ew-hero-main .ew-actions a')).toHaveCount(1);
     await expect(page.getByRole('link', { name: 'Choose a service', exact: true })).toHaveCount(0);
