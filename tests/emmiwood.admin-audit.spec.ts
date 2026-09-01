@@ -8,7 +8,7 @@ function dashboardFixture() {
     admin: { id: 'audit-owner', email: 'Owner audit fixture', role: 'owner' },
     shop: { id: 'emmiwood', name: 'Emmiwood', timezone: 'America/Chicago', horizon_days: 7 },
     appointments: [], customers: [], outbox: [], events: [], blocks: [], eligibility: [],
-    barbers: [{ id: 'audit-barber', name: 'Audit Barber', bio: 'Fixture only', active: 1, sort_order: 1 }],
+    barbers: [{ id: 'audit-barber', name: 'Audit Barber', bio: 'Fixture only', active: 1, sort_order: 1, phone: '+16059006334' }],
     services: [
       { id: 'audit-cut', name: 'Audit Cut', description: 'Fixture haircut', price_cents: 2500, duration_minutes: 30, buffer_minutes: 5, active: 1, sort_order: 1 },
       { id: 'audit-beard', name: 'Audit Beard', description: 'Fixture beard', price_cents: 1500, duration_minutes: 15, buffer_minutes: 0, active: 1, sort_order: 2 },
@@ -17,12 +17,16 @@ function dashboardFixture() {
   };
 }
 
-async function fixtureRoutes(page: Page, handler?: (route: Route) => Promise<boolean>) {
+async function fixtureRoutes(
+  page: Page,
+  handler?: (route: Route) => Promise<boolean>,
+  dashboard: ReturnType<typeof dashboardFixture> = dashboardFixture(),
+) {
   await page.route('**/api/emmiwood/**', async (route) => {
     if (handler && await handler(route)) return;
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/admin/dashboard')) {
-      await route.fulfill({ json: { ok: true, data: dashboardFixture() } });
+      await route.fulfill({ json: { ok: true, data: dashboard } });
     } else if (path.endsWith('/slots')) {
       await route.fulfill({ json: { ok: true, data: [] } });
     } else {
@@ -30,6 +34,34 @@ async function fixtureRoutes(page: Page, handler?: (route: Route) => Promise<boo
     }
   });
 }
+
+test('manager cannot edit the barber roster or service fit', async ({ page }, testInfo) => {
+  await fixtureRoutes(page, undefined, {
+    ...dashboardFixture(),
+    admin: { id: 'audit-manager', email: 'Manager audit fixture', role: 'manager' },
+  });
+  await page.goto('/emmiwood/admin');
+  await page.getByRole('button', { name: 'Shop', exact: true }).click();
+  await page.getByRole('button', { name: 'Team', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Team', exact: true })).toBeVisible();
+  await expect(page.getByText('Staff SMS on')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add new', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('checkbox').first()).toBeDisabled();
+  await page.screenshot({ path: testInfo.outputPath('manager-team-readonly.png'), fullPage: true });
+});
+
+test('owner Team editor includes the staff SMS number', async ({ page }, testInfo) => {
+  await fixtureRoutes(page);
+  await page.goto('/emmiwood/admin');
+  await page.getByRole('button', { name: 'Shop', exact: true }).click();
+  await page.getByRole('button', { name: 'Team', exact: true }).click();
+  await page.getByRole('button', { name: 'Add new', exact: true }).click();
+  await expect(page.getByLabel('Staff SMS number', { exact: true })).toBeVisible();
+  await page.locator('.ewa-resource-list article').filter({ hasText: 'Audit Barber' }).getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByLabel('Staff SMS number', { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('owner-team-staff-sms.png'), fullPage: true });
+});
 
 test('staff hours snapshot survives disabled controls and duplicate submits', async ({ page }, testInfo) => {
   const saves: Record<string, unknown>[] = [];
