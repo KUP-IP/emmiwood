@@ -163,6 +163,23 @@ test('public site is booking-first, specific, responsive, and accessible', async
   const barberCards = page.locator('.ew-barber-card');
   await expect(serviceCards).toHaveCount(5);
   await expect(barberCards).toHaveCount(2);
+  if (testInfo.project.name === 'desktop') {
+    const barberLayout = await page.locator('.ew-barber-card').first().evaluate((card) => {
+      const heading = card.querySelector('.ew-barber-heading')?.getBoundingClientRect();
+      const portrait = card.querySelector('.ew-barber-portrait')?.getBoundingClientRect();
+      const facts = card.querySelector('dl')?.getBoundingClientRect();
+      return {
+        headingTop: heading?.top || 0,
+        portraitTop: portrait?.top || 0,
+        factsTop: facts?.top || 0,
+        portraitHeight: portrait?.height || 0,
+        cardHeight: card.getBoundingClientRect().height,
+      };
+    });
+    expect(barberLayout.headingTop).toBeLessThan(barberLayout.portraitTop - 8);
+    expect(Math.abs(barberLayout.portraitTop - barberLayout.factsTop)).toBeLessThan(16);
+    expect(barberLayout.portraitHeight / barberLayout.cardHeight).toBeGreaterThan(0.28);
+  }
 
   const visualContract = await page.evaluate(() => {
     const hero = document.querySelector('.ew-public-hero') as HTMLElement | null;
@@ -213,8 +230,11 @@ test('public site is booking-first, specific, responsive, and accessible', async
     const dock = page.getByRole('navigation', { name: 'Mobile booking' });
     await expect(dock).toBeVisible();
     const box = await dock.boundingBox();
+    const hit = await dock.locator('a').boundingBox();
     const viewport = page.viewportSize();
     expect(box && viewport && box.y < viewport.height).toBeTruthy();
+    expect(hit && box && hit.width >= box.width - 1 && hit.height >= box.height - 1).toBeTruthy();
+    expect(hit && hit.height >= 44).toBeTruthy();
     const todayBox = await today.boundingBox();
     expect(todayBox && viewport && todayBox.y < viewport.height * 1.5).toBeTruthy();
   } else {

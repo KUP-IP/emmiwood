@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { emmiwoodApi } from './api';
 import {
   BARBER_DETAILS,
@@ -167,7 +167,7 @@ function VisitMap() {
 
 export default function EmmiwoodPage() {
   const [catalog, setCatalog] = useState<Catalog>(FALLBACK_CATALOG);
-  const [chinCompact, setChinCompact] = useState(false);
+  const bookChinRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -176,25 +176,44 @@ export default function EmmiwoodPage() {
   }, []);
 
   useEffect(() => {
+    const nav = bookChinRef.current;
     const mobile = window.matchMedia('(max-width: 760px)');
     let lastY = window.scrollY;
+    let compact = false;
     let ticking = false;
+    let lockedUntil = 0;
+
+    const apply = (next: boolean) => {
+      if (next === compact) return;
+      compact = next;
+      nav?.classList.toggle('ew-chin-compact', compact);
+    };
 
     const onScroll = () => {
       if (!mobile.matches) {
-        setChinCompact(false);
+        apply(false);
         return;
       }
       if (ticking) return;
       ticking = true;
       window.requestAnimationFrame(() => {
+        const now = performance.now();
         const y = window.scrollY;
         const delta = y - lastY;
-        if (y < 20) setChinCompact(false);
-        else if (delta > 8) setChinCompact(true);
-        else if (delta < -8) setChinCompact(false);
         lastY = y;
         ticking = false;
+        if (now < lockedUntil) return;
+        if (y < 24) {
+          apply(false);
+          return;
+        }
+        if (delta > 18) {
+          apply(true);
+          lockedUntil = now + 220;
+        } else if (delta < -18) {
+          apply(false);
+          lockedUntil = now + 220;
+        }
       });
     };
 
@@ -211,7 +230,7 @@ export default function EmmiwoodPage() {
     catalog.eligibility.filter((item) => item.service_id === service.id).map((item) => catalog.barbers.find((barber) => barber.id === item.barber_id)?.name).filter(Boolean).join(' & '),
   ])), [catalog]);
 
-  return <div className={`emmiwood ew-public${chinCompact ? ' ew-chin-compact' : ''}`}>
+  return <div className="emmiwood ew-public">
     <EmmiwoodMeta
       title="Emmiwood Barbers | Get the Best for Less in Sioux Falls"
       description="Best fades in town, beard work, and customer service off the charts—gentlemen and kids welcome. Online booking and noon–5 walk-ins at Emmiwood Barbers in Sioux Falls."
@@ -220,9 +239,12 @@ export default function EmmiwoodPage() {
     />
     <a className="ew-skip" href="#main" onClick={() => requestAnimationFrame(() => document.getElementById('main')?.focus())}>Skip to content</a>
     <header className="ew-site-header">
-      <a className="ew-brand" href="#top" aria-label="Emmiwood home"><EmmiwoodBrand /></a>
-      <nav aria-label="Primary navigation"><a href="#services">Services</a><a href="#barbers">Barbers</a><a href="#visit">Visit</a></nav>
-      <a className="ew-button" href="/emmiwood/book">Book an appointment</a>
+      <nav aria-label="Primary navigation">
+        <a href="#services">Services</a>
+        <a href="#barbers">Barbers</a>
+        <a href="#visit">Visit</a>
+        <a className="ew-button" href="/emmiwood/book">Book an appointment</a>
+      </nav>
     </header>
 
     <main id="main" tabIndex={-1}>
@@ -272,13 +294,25 @@ export default function EmmiwoodPage() {
           {catalog.barbers.map((barber, index) => {
             const detail = BARBER_DETAILS[barber.id];
             return <article key={barber.id} className={`ew-barber-card barber-${barber.id}`} data-reveal>
+              <div className="ew-barber-copy">
+                <header className="ew-barber-heading">
+                  <span className="ew-eyebrow">At the chair</span>
+                  <h3>{barber.name}</h3>
+                  <p className="ew-barber-bio">{barber.bio}</p>
+                </header>
+                <dl>
+                  <div><dt>Known for</dt><dd>{detail?.specialty}</dd></div>
+                  <div><dt>In the shop</dt><dd>{detail?.schedule}</dd></div>
+                </dl>
+                <p className="ew-fit">{detail?.fit}</p>
+                <a className="ew-barber-book" href={`/emmiwood/book?barber=${barber.id}`}>Book with {barber.name} <span aria-hidden="true">→</span></a>
+              </div>
               <div className="ew-barber-portrait" aria-hidden={barber.id === 'barro' ? undefined : true}>
                 {barber.id === 'barro'
                   ? <img className="ew-barber-photo" src="/emmiwood/barro-profile.webp" width="320" height="320" loading="lazy" decoding="async" alt="Barro working at the chair inside Emmiwood Barbers." />
                   : <span>{barber.name.slice(0, 1)}</span>}
                 <small aria-hidden="true">0{index + 1}</small>
               </div>
-              <div className="ew-barber-copy"><span className="ew-eyebrow">At the chair</span><h3>{barber.name}</h3><p className="ew-barber-bio">{barber.bio}</p><dl><div><dt>Known for</dt><dd>{detail?.specialty}</dd></div><div><dt>In the shop</dt><dd>{detail?.schedule}</dd></div></dl><p className="ew-fit">{detail?.fit}</p><a className="ew-barber-book" href={`/emmiwood/book?barber=${barber.id}`}>Book with {barber.name} <span aria-hidden="true">→</span></a></div>
             </article>;
           })}
         </div>
@@ -324,6 +358,6 @@ export default function EmmiwoodPage() {
       <div><a href="/emmiwood/privacy">Privacy</a><a href="/emmiwood/sms-terms">SMS terms</a><a href="/emmiwood/chair-rental">Chair rental</a><a href="/emmiwood/admin">Staff sign in</a></div>
       <p>© {new Date().getFullYear()} Emmiwood Barbers · Sioux Falls, South Dakota</p>
     </footer>
-    <nav className="ew-mobile-book" aria-label="Mobile booking"><a href="/emmiwood/book"><span>Appointments</span><strong>Book now →</strong></a></nav>
+    <nav ref={bookChinRef} className="ew-mobile-book" aria-label="Mobile booking"><a href="/emmiwood/book"><span>Appointments</span><strong>Book now →</strong></a></nav>
   </div>;
 }
