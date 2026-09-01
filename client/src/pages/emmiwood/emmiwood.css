@@ -4037,7 +4037,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 }
 .ew-public #barbers .ew-barber-portrait {
   grid-area:portrait;
-  align-self:center;
+  align-self:start;
   width:100%;
   min-height:0;
   height:auto;
@@ -4047,7 +4047,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
 }
 .ew-public #barbers .ew-barber-copy dl {
   grid-area:facts;
-  align-self:center;
+  align-self:start;
   margin:0;
 }
 .ew-public #barbers .ew-fit { grid-area:note; margin:0; }
