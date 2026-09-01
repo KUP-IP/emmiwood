@@ -2,7 +2,7 @@
 
 Single index for what is live, where truth lives, and what is still residual. Operational detail stays in [`CLOUD.md`](CLOUD.md), [`RELEASE.md`](RELEASE.md), and [`DECISIONS.md`](DECISIONS.md). If those files disagree with this page on a **live** fact, this page plus Cloudflare/GitHub win until the ledger is amended.
 
-**Recon date:** 2026-08-31. Path A (GitHub Actions Direct Upload) is the handoff deploy SSOT. Path B (new Git-connected Pages project) is deferred.
+**Recon date:** 2026-08-31. **Operator lock 2026-09-01:** Path A (GitHub Actions Direct Upload) is the handoff deploy SSOT. Path B (new Git-connected Pages project) stays residual.
 
 ## Live shop
 

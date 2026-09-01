@@ -40,7 +40,7 @@ Production readiness SHA: `EMMIWOOD_RELEASE_SHA` **or** Git-connected Pages `CF_
 
 ## Git-triggered Cloudflare deploys
 
-Existing Pages projects are **Direct Upload**. Cloudflare cannot attach Git to them. Two paths:
+Existing Pages projects are **Direct Upload**. Cloudflare cannot attach Git to them. Two paths. Operator lock **2026-09-01:** Path A is handoff SSOT; Path B stays residual.
 
 ### Path A — live SSOT (GitHub Actions Direct Upload)
 
