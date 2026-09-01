@@ -37,7 +37,7 @@ function isShopTab(tab: AdminTab): tab is ShopTab {
 
 const FIELDS: Record<Exclude<AdminResource, 'eligibility'>, string[]> = {
   services: ['name', 'description', 'price_cents', 'duration_minutes', 'buffer_minutes', 'active'],
-  barbers: ['name', 'bio', 'active'],
+  barbers: ['name', 'bio', 'phone', 'active'],
   availability: ['barber_id', 'weekday', 'start_minute', 'end_minute', 'active'],
   blocks: ['barber_id', 'date', 'start_minute', 'end_minute', 'kind', 'note'],
 };
@@ -46,6 +46,7 @@ const LABELS: Record<string, string> = {
   name: 'Name', description: 'What is included', price_cents: 'Price', duration_minutes: 'Chair time',
   buffer_minutes: 'Reset time after service', active: 'Status', bio: 'Approach and specialty', barber_id: 'Barber',
   weekday: 'Day', start_minute: 'Starts', end_minute: 'Ends', date: 'Date', kind: 'Type', note: 'Note',
+  phone: 'Staff SMS number',
 };
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -155,6 +156,7 @@ function ResourceField({ resource, field, value, data, disabled }: { resource: A
   if (field === 'start_minute' || field === 'end_minute') return <input disabled={disabled} name={field} type="time" step="300" defaultValue={Number(value) === 1440 ? '' : value == null ? (resource === 'availability' ? (field === 'start_minute' ? '09:00' : '17:00') : '') : minuteToInput(value)} required={resource === 'availability' && field === 'start_minute'} />;
   if (field === 'duration_minutes' || field === 'buffer_minutes') return <div className="ewa-unit-input"><input disabled={disabled} name={field} type="number" min={field === 'duration_minutes' ? 5 : 0} step="5" defaultValue={String(value ?? (field === 'duration_minutes' ? 30 : 0))} required={field === 'duration_minutes'} /><span>min</span></div>;
   if (field === 'description' || field === 'bio' || field === 'note') return <textarea disabled={disabled} name={field} rows={3} defaultValue={String(value ?? '')} />;
+  if (field === 'phone') return <input disabled={disabled} name={field} type="tel" inputMode="tel" autoComplete="tel" placeholder="(605) 555-0123" defaultValue={String(value ?? '')} />;
   return <input disabled={disabled} name={field} type={field === 'date' ? 'date' : 'text'} defaultValue={String(value ?? '')} required={field === 'name' || field === 'date'} />;
 }
 
@@ -166,6 +168,10 @@ function normalizeResourceForm(form: HTMLFormElement) {
     else if (key === 'start_minute' || key === 'end_minute') normalized[key] = value ? timeToMinute(value) : (key === 'end_minute' ? 1440 : 0);
     else if (key === 'barber_id') normalized[key] = value ? String(value) : null;
     else if (['duration_minutes', 'buffer_minutes', 'weekday', 'active'].includes(key)) normalized[key] = Number(value);
+    else if (key === 'phone') {
+      const digits = String(value || '').trim();
+      normalized[key] = digits ? (normalizeUsPhone(digits) || digits) : null;
+    }
     else normalized[key] = String(value);
   }
   return normalized as AdminRow;
@@ -173,7 +179,10 @@ function normalizeResourceForm(form: HTMLFormElement) {
 
 function resourceSummary(resource: Exclude<AdminResource, 'eligibility'>, row: AdminRow, data: Dashboard) {
   if (resource === 'services') return `${money(Number(row.price_cents || 0))} · ${row.duration_minutes} min · ${Number(row.active) ? 'Active' : 'Inactive'}`;
-  if (resource === 'barbers') return `${Number(row.active) ? 'Active' : 'Inactive'} · ${String(row.bio || 'No profile note')}`;
+  if (resource === 'barbers') {
+    const sms = String(row.phone || '').trim();
+    return `${Number(row.active) ? 'Active' : 'Inactive'} · ${sms ? 'Staff SMS on' : 'No staff SMS'} · ${String(row.bio || 'No profile note')}`;
+  }
   if (resource === 'availability') {
     const barber = data.barbers.find((item) => item.id === row.barber_id)?.name || 'Entire shop';
     return `${barber} · ${WEEKDAYS[Number(row.weekday)]} ${minuteLabel(row.start_minute)}–${minuteLabel(row.end_minute)}`;
@@ -259,10 +268,11 @@ function ResourceEditor({ resource, title, eyebrow, rows, data, refresh }: { res
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const formRef = useEditorFocus(editing);
+  const canMutate = resource !== 'barbers' || data.admin.role === 'owner';
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busyRef.current) return;
+    if (!canMutate || busyRef.current) return;
     const input = normalizeResourceForm(event.currentTarget);
     if (resource === 'blocks' && (Number(input.start_minute) || Number(input.end_minute)) && Number(input.end_minute) <= Number(input.start_minute)) { setMessage({ text: 'A timed exception must end after it starts. Leave both times blank for all day.', kind: 'error' }); return; }
     busyRef.current = true;
@@ -279,7 +289,7 @@ function ResourceEditor({ resource, title, eyebrow, rows, data, refresh }: { res
   }
 
   async function remove(row: AdminRow) {
-    if (busyRef.current) return;
+    if (!canMutate || busyRef.current) return;
     const deactivate = resource === 'services' || resource === 'barbers';
     if (!confirm(deactivate ? 'Make this inactive?' : 'Delete this schedule item?')) return;
     busyRef.current = true;
@@ -296,11 +306,11 @@ function ResourceEditor({ resource, title, eyebrow, rows, data, refresh }: { res
   }
 
   return <section className="ewa-panel" aria-busy={busy}>
-    <div className="ewa-panel-head"><div><span className="ew-eyebrow">{eyebrow}</span><h1>{title}</h1></div><button className="ew-button small" disabled={busy} onClick={() => setEditing({ id: '' })}>Add new</button></div>
+    <div className="ewa-panel-head"><div><span className="ew-eyebrow">{eyebrow}</span><h1>{title}</h1></div>{canMutate && <button className="ew-button small" disabled={busy} onClick={() => setEditing({ id: '' })}>Add new</button>}</div>
     {editing && resource === 'blocks' && <p>Times use the shop&apos;s Central time zone. Leave both blank for all day, or leave Ends blank for midnight.</p>}
-    {editing && <form key={`${resource}-${editing.id}`} ref={formRef} className="ewa-edit" onSubmit={save}>{FIELDS[resource].map((field) => <label key={field}>{LABELS[field]}<ResourceField resource={resource} field={field} value={editing[field]} data={data} disabled={busy} /></label>)}<div className="ewa-form-actions"><button className="ew-button small" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button><button className="ew-link-button" type="button" disabled={busy} onClick={() => setEditing(null)}>Close</button></div></form>}
+    {editing && canMutate && <form key={`${resource}-${editing.id}`} ref={formRef} className="ewa-edit" onSubmit={save}>{FIELDS[resource].map((field) => <label key={field}>{LABELS[field]}<ResourceField resource={resource} field={field} value={editing[field]} data={data} disabled={busy} /></label>)}<div className="ewa-form-actions"><button className="ew-button small" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button><button className="ew-link-button" type="button" disabled={busy} onClick={() => setEditing(null)}>Close</button></div></form>}
     {!rows.length && <div className="ewa-empty-state"><strong>No {title.toLowerCase()} yet.</strong><p>{resource === 'blocks' ? 'Add a closure or time-off exception when the regular schedule changes.' : `Add the first ${title.toLowerCase().replace(/s$/, '')} to continue setup.`}</p></div>}
-    <div className="ewa-resource-list">{rows.map((row) => <article key={row.id}><div><strong>{String(row.name || row.date || WEEKDAYS[Number(row.weekday)] || 'Schedule item')}</strong><span>{resourceSummary(resource, row, data)}</span></div><div><button disabled={busy} onClick={() => setEditing(row)}>Edit</button><button disabled={busy || ((resource === 'services' || resource === 'barbers') && !Number(row.active))} className="danger" onClick={() => void remove(row)}>{resource === 'services' || resource === 'barbers' ? (Number(row.active) ? 'Make inactive' : 'Inactive') : 'Delete'}</button></div></article>)}</div>
+    <div className="ewa-resource-list">{rows.map((row) => <article key={row.id}><div><strong>{String(row.name || row.date || WEEKDAYS[Number(row.weekday)] || 'Schedule item')}</strong><span>{resourceSummary(resource, row, data)}</span></div>{canMutate && <div><button disabled={busy} onClick={() => setEditing(row)}>Edit</button><button disabled={busy || ((resource === 'services' || resource === 'barbers') && !Number(row.active))} className="danger" onClick={() => void remove(row)}>{resource === 'services' || resource === 'barbers' ? (Number(row.active) ? 'Make inactive' : 'Inactive') : 'Delete'}</button></div>}</article>)}</div>
     <FeedbackMessage message={message} />
   </section>;
 }
@@ -310,10 +320,11 @@ function EligibilityPanel({ data, refresh }: { data: Dashboard; refresh: () => v
   const [busyId, setBusyId] = useState('');
   const busyRef = useRef(false);
   const eligible = useMemo(() => new Set(data.eligibility.map((item) => item.id)), [data.eligibility]);
+  const canMutate = data.admin.role === 'owner';
 
   async function toggle(barberId: string, serviceId: string, enabled: boolean) {
     const id = `${barberId}--${serviceId}`;
-    if (busyRef.current) return;
+    if (!canMutate || busyRef.current) return;
     busyRef.current = true;
     setBusyId(id);
     setMessage({ text: 'Saving service fit…', kind: 'info' });
@@ -326,7 +337,7 @@ function EligibilityPanel({ data, refresh }: { data: Dashboard; refresh: () => v
     finally { busyRef.current = false; setBusyId(''); }
   }
 
-  return <section className="ewa-panel ewa-eligibility" aria-busy={Boolean(busyId)}><div className="ewa-panel-head"><div><span className="ew-eyebrow">Service fit</span><h2>Who can perform each service?</h2></div></div>{(!data.barbers.length || !data.services.length) && <div className="ewa-empty-state"><strong>Service fit needs both a barber and a service.</strong><p>Add the missing shop setup records, then return here.</p></div>}<div className="ewa-eligibility-grid">{data.barbers.map((barber) => <article key={barber.id}><h3>{barber.name}</h3>{data.services.map((service) => { const id = `${barber.id}--${service.id}`; return <label key={service.id}><input type="checkbox" checked={eligible.has(id)} disabled={Boolean(busyId)} onChange={(event) => void toggle(barber.id, service.id, event.target.checked)} /><span>{service.name}</span></label>; })}</article>)}</div><FeedbackMessage message={message} /></section>;
+  return <section className="ewa-panel ewa-eligibility" aria-busy={Boolean(busyId)}><div className="ewa-panel-head"><div><span className="ew-eyebrow">Service fit</span><h2>Who can perform each service?</h2></div></div>{(!data.barbers.length || !data.services.length) && <div className="ewa-empty-state"><strong>Service fit needs both a barber and a service.</strong><p>Add the missing shop setup records, then return here.</p></div>}<div className="ewa-eligibility-grid">{data.barbers.map((barber) => <article key={barber.id}><h3>{barber.name}</h3>{data.services.map((service) => { const id = `${barber.id}--${service.id}`; return <label key={service.id}><input type="checkbox" checked={eligible.has(id)} disabled={!canMutate || Boolean(busyId)} onChange={(event) => void toggle(barber.id, service.id, event.target.checked)} /><span>{service.name}</span></label>; })}</article>)}</div><FeedbackMessage message={message} /></section>;
 }
 
 function AppointmentEditor({ data, appointment, close, refresh, onBusyChange }: { data: Dashboard; appointment?: Appointment; close: () => void; refresh: () => void; onBusyChange: (busy: boolean) => void }) {

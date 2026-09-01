@@ -30,6 +30,7 @@ test('wrangler.toml top-level and production vars match the live 2026-08-31 Page
     EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.com',
     EMMIWOOD_BOOKING_WRITES_ENABLED: 'true',
     EMMIWOOD_NOTIFICATIONS_ENABLED: 'true',
+    EMMIWOOD_SHOP_ADMIN_SMS_FANOUT: 'false',
   };
   assert.deepEqual(varsFrom(section('vars')), expected);
   assert.deepEqual(varsFrom(section('env.production.vars')), expected);
@@ -45,6 +46,7 @@ test('wrangler.toml preview env stays isolated on the preview D1 and origin', ()
   assert.equal(preview.EMMIWOOD_PUBLIC_ORIGIN, 'https://emmiwood-barbers-preview.pages.dev');
   assert.equal(preview.EMMIWOOD_BOOKING_WRITES_ENABLED, 'true');
   assert.equal(preview.EMMIWOOD_NOTIFICATIONS_ENABLED, 'false');
+  assert.equal(preview.EMMIWOOD_SHOP_ADMIN_SMS_FANOUT, 'false');
   assert.match(config, /database_name\s*=\s*"emmiwood-standalone-preview-db"/);
   assert.match(config, /database_id\s*=\s*"b4a10012-e0c8-40f0-b203-31474393fb2a"/);
 });

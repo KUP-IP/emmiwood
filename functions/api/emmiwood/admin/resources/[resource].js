@@ -1,5 +1,5 @@
 import { errorResponse, json } from '../../../../lib/emmiwood-core.js';
-import { EDIT_ROLES, createResource, listResource, requireAdmin } from '../../../../lib/emmiwood-admin.js';
+import { createResource, listResource, requireAdmin, resourceMutationRoles } from '../../../../lib/emmiwood-admin.js';
 
 export async function onRequestGet({ env, request, params }) {
   try {
@@ -12,7 +12,7 @@ export async function onRequestGet({ env, request, params }) {
 
 export async function onRequestPost({ env, request, params }) {
   try {
-    const admin = await requireAdmin(env, request, EDIT_ROLES);
+    const admin = await requireAdmin(env, request, resourceMutationRoles(params.resource));
     return json({ ok: true, data: await createResource(env, params.resource, await request.json(), admin) }, 201);
   } catch (error) {
     return errorResponse(error);

@@ -17,6 +17,7 @@ ENVIRONMENT = "production"
 EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood.com"
 EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
 EMMIWOOD_NOTIFICATIONS_ENABLED = "true"
+EMMIWOOD_SHOP_ADMIN_SMS_FANOUT = "false"
 
 # Explicit Pages production env for Git-connected builds and `wrangler pages deploy --branch main`.
 [env.production]
@@ -25,6 +26,7 @@ ENVIRONMENT = "production"
 EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood.com"
 EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
 EMMIWOOD_NOTIFICATIONS_ENABLED = "true"
+EMMIWOOD_SHOP_ADMIN_SMS_FANOUT = "false"
 
 [[env.production.d1_databases]]
 binding = "DB"
@@ -40,6 +42,7 @@ ENVIRONMENT = "preview"
 EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood-barbers-preview.pages.dev"
 EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
 EMMIWOOD_NOTIFICATIONS_ENABLED = "false"
+EMMIWOOD_SHOP_ADMIN_SMS_FANOUT = "false"
 
 [[env.preview.d1_databases]]
 binding = "DB"

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { book, cancelAppointment, normalizePhone, rescheduleAppointment, slots, zonedEpoch } from './emmiwood-core.js';
+import { book, cancelAppointment, catalog, normalizePhone, publicManagedAppointment, rescheduleAppointment, slots, zonedEpoch } from './emmiwood-core.js';
 import { bookingWriteState } from './emmiwood-runtime.js';
 import { setupEmmiwoodTestD1 } from './emmiwood-test-d1.js';
 
@@ -292,6 +292,9 @@ test('barber phone queues staff SMS without guest consent; john without phone qu
       0,
     );
     assert.ok(db.query("SELECT count(*) c FROM emmiwood_notification_outbox WHERE template='booking_confirmation'")[0].c >= 1);
+    const listed = await catalog(env);
+    assert.ok(listed.barbers.every((barber) => !Object.hasOwn(barber, 'phone')));
+    assert.equal(publicManagedAppointment({ id: 'a', barber_phone: '+16059006334', barber_name: 'Barro' }).barber_phone, undefined);
   } finally {
     db.close();
   }

@@ -1,6 +1,6 @@
 # Preview SMS exact-ID smoke (Wave 2)
 
-**Gates:** **Preview** Pages notifications stay `false`; non-production processor **requires** `?id=`; never bulk-process on preview. Production GitHub heartbeat scheduler is **already enabled** (see `docs/HANDOFF.md`) — this smoke does not flip production.
+**Gates:** **Preview** Pages notifications stay `false`; non-production processor **requires** `?id=`; never bulk-process on preview. Production GitHub heartbeat scheduler is **already enabled** (see `docs/HANDOFF.md`) — this smoke does not flip production. `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT` stays `false` until a separate GO; do not enable it in this smoke.
 
 ## Prerequisites
 

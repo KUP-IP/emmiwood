@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EDIT_ROLES, authRequestLimit, authSourceLimit, requestCode, requireAdmin, verifyCode } from './emmiwood-admin.js';
+import { EDIT_ROLES, ROSTER_ROLES, authRequestLimit, authSourceLimit, createResource, requestCode, requireAdmin, resourceMutationRoles, updateResource, verifyCode } from './emmiwood-admin.js';
 import { setupEmmiwoodTestD1 } from './emmiwood-test-d1.js';
 
 const OWNER_PHONE = '+16055550199';
@@ -248,4 +248,28 @@ test('session cookie helpers are HttpOnly, strict, scoped, and production-secure
   assert.doesNotMatch(preview, /Secure/);
   assert.match(adminSessionCookie('token', { ENVIRONMENT: 'production' }), /; Secure$/);
   assert.match(clearAdminSessionCookie({ ENVIRONMENT: 'production' }), /Max-Age=0/);
+});
+
+test('only the owner can mutate the barber roster and eligibility', async () => {
+  assert.deepEqual(resourceMutationRoles('barbers'), ROSTER_ROLES);
+  assert.deepEqual(resourceMutationRoles('eligibility'), ['owner']);
+  assert.deepEqual(resourceMutationRoles('services'), EDIT_ROLES);
+  const db = setupEmmiwoodTestD1();
+  const env = { DB: db, ENVIRONMENT: 'preview' };
+  const manager = { id: 'admin-barro', role: 'manager' };
+  const owner = { id: 'admin-isaiah', role: 'owner' };
+  try {
+    await assert.rejects(
+      () => createResource(env, 'barbers', { name: 'Pat' }, manager),
+      (error) => error?.code === 'forbidden' && error?.status === 403,
+    );
+    await assert.rejects(
+      () => createResource(env, 'eligibility', { barber_id: 'john', service_id: 'beard' }, manager),
+      (error) => error?.code === 'forbidden' && error?.status === 403,
+    );
+    const updated = await updateResource(env, 'barbers', 'john', { phone: '605-555-0177' }, owner);
+    assert.equal(updated.phone, '+16055550177');
+  } finally {
+    db.close();
+  }
 });

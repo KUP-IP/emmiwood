@@ -19,5 +19,5 @@ Cloud agents run on Ubuntu. There is no macOS Keychain and no `~/Library/Message
 5. `EMMIWOOD_NOTIFICATION_SECRET` is required for readiness/SMS suite processor calls. Keychain is Mac-only.
 6. Handset proof (`chat.db`) is Mac-only. In cloud, stop after D1 `status=sent` + Twilio `SM…` SID; ask the operator to prove the handset on a Mac.
 7. Production D1 migrations are gated: GitHub Actions `D1 remote migrations` workflow_dispatch, or `npm run db:migrate:remote:production` only after an explicit GO. Preview remote migrate is `npm run db:migrate:remote:preview`.
-8. Do not deploy with frozen-launch defaults. Live production vars are in `wrangler.toml` (`https://emmiwood.com`, writes and notifications enabled). See `docs/CLOUD.md`.
+8. Do not deploy with frozen-launch defaults. Live production vars are in `wrangler.toml` (`https://emmiwood.com`, writes and notifications enabled). `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT` stays `false` until an explicit GO. See `docs/CLOUD.md`.
 9. Client handoff index: `docs/HANDOFF.md`. Effective Cursor Cloud environment may be a Personal dashboard snapshot; keep `.cursor/environment.json` identical to that dashboard install/start/terminals.

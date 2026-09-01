@@ -8,6 +8,8 @@ import {
   appointmentSmsStatements,
   barberReminderAvailableAt,
   barberSmsStatements,
+  shopAdminNoticePhones,
+  staffSmsStatements,
   deliverNotification,
   manageAppointmentUrl,
   notificationProvider,
@@ -405,6 +407,64 @@ test('notification worker persists provider delivery identifiers', async () => {
     globalThis.fetch = originalFetch;
     db.close();
   }
+});
+
+test('staffSmsStatements fanout copies notices to managers without T-15m or owner phones', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  db.exec(`INSERT INTO emmiwood_admins(id,shop_id,email,role,phone,active)
+    VALUES('admin-barro','emmiwood','barro@example.com','manager','+16059006334',1);`);
+  const start = Math.floor(Date.now() / 1000) + 3600;
+  const args = {
+    shopId: 'emmiwood', appointmentId: null, event: 'booked',
+    startAt: start, serviceName: 'Cut', barberName: 'John', customerName: 'G', customerPhone: '+16055550188',
+    now: start - 3600,
+  };
+  try {
+    assert.deepEqual(await shopAdminNoticePhones({ DB: db, ENVIRONMENT: 'preview' }, 'emmiwood', null), []);
+
+    const off = await staffSmsStatements({ DB: db, ENVIRONMENT: 'preview' }, { ...args, barberPhone: null });
+    assert.deepEqual(off, []);
+
+    const env = { DB: db, ENVIRONMENT: 'preview', EMMIWOOD_SHOP_ADMIN_SMS_FANOUT: 'true' };
+    assert.deepEqual(await shopAdminNoticePhones(env, 'emmiwood', '+16059006334'), []);
+    assert.deepEqual(await shopAdminNoticePhones(env, 'emmiwood', '+15078485517'), ['+16059006334']);
+
+    const john = await staffSmsStatements(env, { ...args, barberPhone: null });
+    assert.equal(john.length, 1);
+    await db.batch(john);
+    assert.deepEqual(
+      db.query("SELECT template,recipient FROM emmiwood_notification_outbox ORDER BY template,recipient"),
+      [{ template: 'barber_booking_notice', recipient: '+16059006334' }],
+    );
+
+    db.exec('DELETE FROM emmiwood_notification_outbox');
+    const ownChair = await staffSmsStatements(env, { ...args, barberName: 'Barro', barberPhone: '+16059006334' });
+    assert.equal(ownChair.length, 2);
+    await db.batch(ownChair);
+    assert.deepEqual(
+      db.query('SELECT template,recipient FROM emmiwood_notification_outbox ORDER BY template'),
+      [
+        { template: 'barber_booking_notice', recipient: '+16059006334' },
+        { template: 'barber_reminder_15m', recipient: '+16059006334' },
+      ],
+    );
+  } finally {
+    db.close();
+  }
+});
+
+test('renderSms staff templates include the chair name when provided', () => {
+  const body = renderSms('barber_booking_notice', {
+    shopName: 'Emmiwood Barbers',
+    barberName: 'John',
+    serviceName: 'Signature Haircut',
+    when: 'Wed, Aug 26, 11:00 AM',
+    customerName: 'Guest',
+    customerPhone: '+16055550199',
+    optOut: 'Reply STOP to opt out. Reply HELP for help.',
+  });
+  assert.match(body, /John · Signature Haircut/);
 });
 
 test('barber reminder lead is T-15m and skips when start is too soon', () => {
