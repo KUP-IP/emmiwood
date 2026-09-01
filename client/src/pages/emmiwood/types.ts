@@ -28,6 +28,7 @@ export interface Barber {
   bio: string;
   active: number;
   sort_order: number;
+  phone?: string | null;
 }
 
 export interface Eligibility {

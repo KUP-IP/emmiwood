@@ -163,6 +163,35 @@ export function barberReminderAvailableAt(startAt, now = Math.floor(Date.now() /
   return start - BARBER_REMINDER_LEAD_SECONDS;
 }
 
+/** Shop-admin copies of book/cancel/reschedule. Missing or any value other than `true` stays off. */
+export function shopAdminSmsFanoutEnabled(env) {
+  return String(env?.EMMIWOOD_SHOP_ADMIN_SMS_FANOUT || '').trim() === 'true';
+}
+
+export async function shopAdminNoticePhones(env, shopId, assignedPhone = '') {
+  if (!shopAdminSmsFanoutEnabled(env) || !env?.DB) return [];
+  const assigned = String(assignedPhone || '').trim();
+  const result = await env.DB.prepare(
+    `SELECT phone FROM emmiwood_admins
+     WHERE shop_id=? AND role='manager' AND active=1
+       AND phone IS NOT NULL AND TRIM(phone)!=''`,
+  ).bind(shopId).all();
+  const seen = new Set(assigned ? [assigned] : []);
+  const phones = [];
+  for (const row of result?.results || []) {
+    const phone = String(row.phone || '').trim();
+    if (!phone || seen.has(phone)) continue;
+    seen.add(phone);
+    phones.push(phone);
+  }
+  return phones;
+}
+
+export async function staffSmsStatements(env, args) {
+  const extraNoticePhones = await shopAdminNoticePhones(env, args.shopId, args.barberPhone);
+  return barberSmsStatements(env, { ...args, extraNoticePhones });
+}
+
 export function notificationStatement(env, {
   id = crypto.randomUUID(),
   shopId,
@@ -278,6 +307,7 @@ export function barberSmsStatements(env, {
   shopId,
   appointmentId,
   barberPhone,
+  extraNoticePhones = [],
   event,
   startAt,
   previousStartAt = null,
@@ -288,8 +318,16 @@ export function barberSmsStatements(env, {
   shopName = 'Emmiwood Barbers',
   now = Math.floor(Date.now() / 1000),
 }) {
-  const recipient = String(barberPhone || '').trim();
-  if (!recipient) return [];
+  const assigned = String(barberPhone || '').trim();
+  const extras = [];
+  const seen = new Set(assigned ? [assigned] : []);
+  for (const value of extraNoticePhones || []) {
+    const phone = String(value || '').trim();
+    if (!phone || seen.has(phone)) continue;
+    seen.add(phone);
+    extras.push(phone);
+  }
+  if (!assigned && extras.length === 0) return [];
 
   const statements = [];
   if (event === 'cancelled' || event === 'rescheduled') {
@@ -324,39 +362,43 @@ export function barberSmsStatements(env, {
     optOut: 'Reply STOP to opt out. Reply HELP for help.',
   };
 
-  statements.push(notificationStatement(env, {
+  const notice = (recipient) => notificationStatement(env, {
     shopId,
     appointmentId,
     channel: 'sms',
     template,
     recipient,
     payload: basePayload,
-  }));
+  });
 
-  const reminderAt = (event === 'booked' || event === 'rescheduled')
-    ? barberReminderAvailableAt(startAt, now)
-    : null;
-  if (reminderAt != null) {
-    statements.push(notificationStatement(env, {
-      shopId,
-      appointmentId,
-      channel: 'sms',
-      template: 'barber_reminder_15m',
-      recipient,
-      availableAt: reminderAt,
-      payload: {
+  if (assigned) {
+    statements.push(notice(assigned));
+    const reminderAt = (event === 'booked' || event === 'rescheduled')
+      ? barberReminderAvailableAt(startAt, now)
+      : null;
+    if (reminderAt != null) {
+      statements.push(notificationStatement(env, {
+        shopId,
         appointmentId,
-        start: startAt,
-        serviceName,
-        barberName,
-        shopName,
-        when,
-        customerName: customerName || '',
-        customerPhone: customerPhone || '',
-        optOut: 'Reply STOP to opt out. Reply HELP for help.',
-      },
-    }));
+        channel: 'sms',
+        template: 'barber_reminder_15m',
+        recipient: assigned,
+        availableAt: reminderAt,
+        payload: {
+          appointmentId,
+          start: startAt,
+          serviceName,
+          barberName,
+          shopName,
+          when,
+          customerName: customerName || '',
+          customerPhone: customerPhone || '',
+          optOut: 'Reply STOP to opt out. Reply HELP for help.',
+        },
+      }));
+    }
   }
+  for (const phone of extras) statements.push(notice(phone));
 
   return statements;
 }
@@ -429,7 +471,8 @@ export function renderSms(template, payload) {
   const manage = payload.manageUrl ? ` Manage/cancel: ${payload.manageUrl}` : '';
   const customerBits = [payload.customerName, payload.customerPhone].filter(Boolean).join(' ').trim();
   const customer = customerBits ? ` Customer ${customerBits}.` : '';
-  let staffDetail = payload.serviceName ? ` ${payload.serviceName}` : '';
+  let staffDetail = payload.barberName ? ` ${payload.barberName}` : '';
+  if (payload.serviceName) staffDetail += staffDetail ? ` · ${payload.serviceName}` : ` ${payload.serviceName}`;
   if (payload.when) staffDetail += staffDetail ? ` · ${payload.when}` : ` ${payload.when}`;
   switch (template) {
     case 'admin_login_code': return `${KUP_SMS_BRAND}: your sign-in code is ${payload.code}. It expires in ten minutes.`;

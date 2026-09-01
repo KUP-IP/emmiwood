@@ -63,6 +63,7 @@ Do not run `db:migrate:remote:production` or live SMS processor POSTs without an
 
 ## Residual (out of this handoff SSOT)
 
+- **Shop-admin SMS fanout:** code is behind `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT` (default/missing `false`). Do not set production to `true` without an explicit GO plus preview exact-id or production synthetic smoke.
 - **Path B:** new Git-connected Pages project + domain cutover (`docs/CLOUD.md`). Do not attach Git to existing Direct Upload projects.
 - Apex→www canonical redirect.
 - Cursor environment: switch Personal dashboard → repo-managed `.cursor/environment.json` (operator dashboard).

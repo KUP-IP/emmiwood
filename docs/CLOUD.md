@@ -78,3 +78,4 @@ Names confirmed 2026-08-31 by job behavior (this Cloud Agent token cannot list A
 | Environment `production` | Used by `deploy` and production D1 migrate (no required-reviewer rules yet) |
 | Environment `preview` | Preview D1 migrate |
 | Heartbeat | secret `EMMIWOOD_NOTIFICATION_SECRET`; vars `EMMIWOOD_NOTIFICATION_URL`, `EMMIWOOD_NOTIFICATIONS_ENABLED` (process-queue step runs — treat as **enabled**) |
+| `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT` | Pages Function var. `true` copies book/cancel/reschedule staff notices to active manager phones. Missing/`false` = assigned chair only. Production stays **false** until an explicit GO. |

@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 
 ## Locked decisions
 
@@ -10,7 +10,7 @@ Last updated: 2026-08-31
 4. The GitHub repository is public so branch protection can be enforced without a paid private-repository plan.
 5. Version one is SMS-only for customer communication. Customer email is not collected in booking or operator-created appointments, and Resend provisioning is deferred.
 6. SMS delivery will use a dedicated Emmiwood Twilio sender under a **KUP-managed Twilio account**. Delivery remains disabled until account setup, sender compliance, and one controlled synthetic test are complete.
-7. Production administration uses two individual SMS-OTP accounts: Isaiah is the primary `owner`; Barro is `manager` with full administration access. Both handle support through their own accounts. No shared or third support login is seeded. The optional `kup_support` role remains read-only if introduced later.
+7. Production administration uses two individual SMS-OTP accounts: Isaiah is the primary `owner`; Barro is `manager`. **Amended 2026-09-01:** `manager` can create/cancel/reschedule appointments and edit hours, services, and closures. Only `owner` may create, edit, deactivate, or delete barbers and service eligibility. No shared or third support login is seeded. The optional `kup_support` role remains read-only if introduced later.
 8. GitHub CodeQL remains deferred by explicit decision. No CodeQL workflow is kept while it is deferred: a comments-only workflow is not a valid disabled workflow and creates a zero-job failure on every `main` push. Existing CI security tests and root/client high-severity dependency-audit gates remain required. Reintroducing CodeQL requires a later explicit decision and a complete, runnable workflow.
 9. Canonical product home (identity consolidation, 2026-07-21):
    - Local checkout: `/Users/keepup/Developer/emmiwood`
@@ -56,6 +56,8 @@ Last updated: 2026-08-31
     - **#13 / #14 scheduler:** Production Pages `EMMIWOOD_NOTIFICATIONS_ENABLED=true`. GitHub Actions heartbeat **does** run the scheduled process-queue step (variable inferred `true` on 2026-08-31). Local `npm run dev` still binds notifications `false` and mock SMS. Non-production processor stays exact-`?id=` only. Do not disable the live scheduler in this amendment.
     - **Implementation “launch gates” paragraph:** Processor URL and scheduler are **set** on production; remaining gates are D1 remote migrate, live SMS POST, Path B, and apex redirect — each still needs its own GO.
     - **Cursor Cloud:** Effective environment may be a Personal dashboard snapshot; git [`.cursor/environment.json`](../.cursor/environment.json) is the install/start/terminals template and must stay in lockstep.
+
+18. **Shop-admin staff SMS fanout (2026-09-01):** Assigned-chair staff SMS is unchanged. Optional copies of book/cancel/reschedule notices to active `manager` phones (not `owner`, no T−15m copies) sit behind Pages var `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT`. Missing or any value other than `true` stays **off**. Enabling it on production is a live-SMS Ship Gate. Public catalog and guest manage JSON omit barber phones.
 
 ## Deferred
 

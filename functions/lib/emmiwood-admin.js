@@ -3,16 +3,17 @@ import { cancelAppointment as cancelBooking, rescheduleAppointment as reschedule
 import {
   NOTIFICATION_PROVIDER_MOCK,
   appointmentSmsStatements,
-  barberSmsStatements,
   deliverNotification,
   flushDueAppointmentNotifications,
   notificationProvider,
   notificationStatement,
+  staffSmsStatements,
 } from './emmiwood-notifications.js';
 
 const EDIT_ROLES = ['owner', 'manager', 'staff'];
+const ROSTER_ROLES = ['owner'];
 const RESOURCE = {
-  barbers: { table: 'emmiwood_barbers', fields: ['name', 'bio', 'active', 'sort_order'], required: ['name'] },
+  barbers: { table: 'emmiwood_barbers', fields: ['name', 'bio', 'phone', 'active', 'sort_order'], required: ['name'] },
   services: { table: 'emmiwood_services', fields: ['name', 'description', 'price_cents', 'duration_minutes', 'buffer_minutes', 'active', 'sort_order'], required: ['name', 'price_cents', 'duration_minutes'] },
   availability: { table: 'emmiwood_availability', fields: ['barber_id', 'weekday', 'start_minute', 'end_minute', 'active'], required: ['barber_id', 'weekday', 'start_minute', 'end_minute'] },
   blocks: { table: 'emmiwood_exceptions', fields: ['barber_id', 'date', 'start_minute', 'end_minute', 'kind', 'note'], required: ['date', 'kind'] },
@@ -236,6 +237,27 @@ function resourceConfig(name) {
   return config;
 }
 
+export function resourceMutationRoles(name) {
+  resourceConfig(name);
+  if (name === 'barbers' || name === 'eligibility') return ROSTER_ROLES;
+  return EDIT_ROLES;
+}
+
+function requireRosterOwner(name, admin) {
+  if ((name === 'barbers' || name === 'eligibility') && admin?.role !== 'owner') {
+    throw new EmmiwoodError('forbidden', 'Only the shop owner can change the barber roster.', 403);
+  }
+}
+
+function normalizeBarberPhone(input) {
+  if (input.phone === undefined) return;
+  if (input.phone === null || String(input.phone).trim() === '') {
+    input.phone = null;
+    return;
+  }
+  input.phone = normalizePhone(input.phone);
+}
+
 function validateResource(name, input, creating) {
   const config = resourceConfig(name);
   if (creating) for (const field of config.required) if (input[field] === undefined || input[field] === '') throw new EmmiwoodError('invalid_input', `${field} is required.`, 422);
@@ -244,6 +266,7 @@ function validateResource(name, input, creating) {
     for (const field of ['duration_minutes', 'buffer_minutes']) if (input[field] !== undefined && (Number(input[field]) < 0 || Number(input[field]) % 5)) throw new EmmiwoodError('invalid_input', `${field} must use five-minute increments.`, 422);
   }
   if (name === 'availability' && input.weekday !== undefined && (Number(input.weekday) < 0 || Number(input.weekday) > 6)) throw new EmmiwoodError('invalid_input', 'weekday must be between 0 and 6.', 422);
+  if (name === 'barbers') normalizeBarberPhone(input);
   return config;
 }
 
@@ -257,6 +280,7 @@ export async function listResource(env, name) {
 }
 
 export async function createResource(env, name, input, admin) {
+  requireRosterOwner(name, admin);
   const config = validateResource(name, input, true);
   if (name === 'eligibility') {
     const id = `${input.barber_id}--${input.service_id}`;
@@ -278,6 +302,7 @@ export async function createResource(env, name, input, admin) {
 }
 
 export async function updateResource(env, name, id, input, admin) {
+  requireRosterOwner(name, admin);
   const config = validateResource(name, input, false);
   if (name === 'eligibility') {
     const [oldBarberId, oldServiceId] = String(id).split('--');
@@ -302,6 +327,7 @@ export async function updateResource(env, name, id, input, admin) {
 }
 
 export async function deleteResource(env, name, id, admin) {
+  requireRosterOwner(name, admin);
   const { table } = resourceConfig(name);
   if (name === 'eligibility') {
     const [barberId, serviceId] = String(id).split('--');
@@ -321,7 +347,7 @@ export async function deleteResource(env, name, id, admin) {
   return { ok: true };
 }
 
-export { EDIT_ROLES };
+export { EDIT_ROLES, ROSTER_ROLES };
 
 
 async function appointmentById(env, id) {
@@ -365,7 +391,7 @@ export async function cancelAdminAppointment(env, id, admin) {
         barberName: appointment.barber_name,
         now: timestamp,
       }),
-      ...barberSmsStatements(env, {
+      ...(await staffSmsStatements(env, {
         shopId: SHOP_ID,
         appointmentId: appointment.id,
         barberPhone: appointment.barber_phone,
@@ -376,7 +402,7 @@ export async function cancelAdminAppointment(env, id, admin) {
         customerName: appointment.customer_name,
         customerPhone: appointment.phone,
         now: timestamp,
-      }),
+      })),
     ],
   });
   await flushDueAppointmentNotifications(env, appointment.id);
@@ -429,7 +455,7 @@ export async function rescheduleAdminAppointment(env, id, input, admin) {
         barberName: chosen.barberName,
         now: timestamp,
       }),
-      ...barberSmsStatements(env, {
+      ...(await staffSmsStatements(env, {
         shopId: SHOP_ID,
         appointmentId: appointment.id,
         barberPhone: barberRow?.phone,
@@ -441,7 +467,7 @@ export async function rescheduleAdminAppointment(env, id, input, admin) {
         customerName: appointment.customer_name,
         customerPhone: appointment.phone,
         now: timestamp,
-      }),
+      })),
     ],
   });
   await flushDueAppointmentNotifications(env, appointment.id);

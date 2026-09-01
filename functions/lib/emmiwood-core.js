@@ -5,7 +5,7 @@ import {
   cancelAppointment as cancelBooking,
   rescheduleAppointment as rescheduleBooking,
 } from './emmiwood-booking.js';
-import { appointmentSmsStatements, barberSmsStatements, flushDueAppointmentNotifications, KUP_APPOINTMENT_SMS_CONSENT_VERSION } from './emmiwood-notifications.js';
+import { appointmentSmsStatements, flushDueAppointmentNotifications, KUP_APPOINTMENT_SMS_CONSENT_VERSION, staffSmsStatements } from './emmiwood-notifications.js';
 import { bookingWriteState } from './emmiwood-runtime.js';
 
 export const SHOP_ID = 'emmiwood';
@@ -184,7 +184,24 @@ export async function catalog(env) {
     env.DB.prepare('SELECT * FROM emmiwood_barbers WHERE shop_id=? AND active=1 ORDER BY sort_order').bind(SHOP_ID).all(),
     env.DB.prepare('SELECT barber_id,service_id FROM emmiwood_barber_services').all(),
   ]);
-  return { shop, services: rows(services), barbers: rows(barbers), eligibility: rows(eligibility) };
+  return {
+    shop,
+    services: rows(services),
+    barbers: rows(barbers).map(publicCatalogBarber),
+    eligibility: rows(eligibility),
+  };
+}
+
+export function publicCatalogBarber(row) {
+  if (!row) return row;
+  const { phone, ...rest } = row;
+  return rest;
+}
+
+export function publicManagedAppointment(appointment) {
+  if (!appointment) return appointment;
+  const { barber_phone, ...rest } = appointment;
+  return rest;
 }
 
 async function shopPolicy(env) {
@@ -278,7 +295,7 @@ export async function book(env, input, adminId = null) {
       manageToken,
       now: notificationNow,
     }),
-    ...barberSmsStatements(env, {
+    ...(await staffSmsStatements(env, {
       shopId: SHOP_ID,
       appointmentId: id,
       barberPhone: barberRow?.phone,
@@ -289,7 +306,7 @@ export async function book(env, input, adminId = null) {
       customerName,
       customerPhone: phone,
       now: notificationNow,
-    }),
+    })),
   ];
   await reserveAppointment(env.DB, {
     id, shopId: SHOP_ID, barberId: chosen.barberId, serviceId: input.serviceId, service,
@@ -339,7 +356,7 @@ export async function cancelAppointment(env, manageToken, adminId = null, now = 
       barberName: appointment.barber_name,
       now,
     }),
-    ...barberSmsStatements(env, {
+    ...(await staffSmsStatements(env, {
       shopId: SHOP_ID,
       appointmentId: appointment.id,
       barberPhone: appointment.barber_phone,
@@ -350,7 +367,7 @@ export async function cancelAppointment(env, manageToken, adminId = null, now = 
       customerName: appointment.customer_name,
       customerPhone: appointment.phone,
       now,
-    }),
+    })),
   ];
   try {
     await cancelBooking(env.DB, { appointmentId: appointment.id, startAt: appointment.start_at, now, changeCutoffMinutes: policy.change_cutoff_minutes, isAdmin: Boolean(adminId), extraStatements });
@@ -398,7 +415,7 @@ export async function rescheduleAppointment(env, manageToken, input, adminId = n
         manageToken,
         now,
       }),
-      ...barberSmsStatements(env, {
+      ...(await staffSmsStatements(env, {
         shopId: SHOP_ID,
         appointmentId: appointment.id,
         barberPhone: barberRow?.phone,
@@ -410,7 +427,7 @@ export async function rescheduleAppointment(env, manageToken, input, adminId = n
         customerName: appointment.customer_name,
         customerPhone: appointment.phone,
         now,
-      }),
+      })),
     ],
   });
   await flushDueAppointmentNotifications(env, appointment.id);

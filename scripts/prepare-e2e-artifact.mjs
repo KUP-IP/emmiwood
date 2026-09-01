@@ -56,6 +56,7 @@ ENVIRONMENT = "preview"
 EMMIWOOD_PUBLIC_ORIGIN = "http://localhost:${e2ePort}"
 EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
 EMMIWOOD_NOTIFICATIONS_ENABLED = "false"
+EMMIWOOD_SHOP_ADMIN_SMS_FANOUT = "false"
 `);
 
 const artifactFiles = [

@@ -36,6 +36,8 @@ export function wranglerPagesDevArgs(env = process.env) {
     'EMMIWOOD_BOOKING_WRITES_ENABLED=true',
     '--binding',
     'EMMIWOOD_NOTIFICATIONS_ENABLED=false',
+    '--binding',
+    'EMMIWOOD_SHOP_ADMIN_SMS_FANOUT=false',
   ];
 }
 
