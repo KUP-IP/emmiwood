@@ -1,6 +1,6 @@
 # Emmiwood client handoff
 
-Single index for what is live, where truth lives, and what is still residual. Operational detail stays in [`CLOUD.md`](CLOUD.md), [`RELEASE.md`](RELEASE.md), and [`DECISIONS.md`](DECISIONS.md). If those files disagree with this page on a **live** fact, this page plus Cloudflare/GitHub win until the ledger is amended.
+Single index for what is live, where truth lives, and what is still residual. Operational detail stays in [`CLOUD.md`](CLOUD.md), [`RELEASE.md`](RELEASE.md), and [`DECISIONS.md`](DECISIONS.md). Admin allowlist vs in-app signup: [`ADMIN-AUTH-SECURITY.md`](ADMIN-AUTH-SECURITY.md). If those files disagree with this page on a **live** fact, this page plus Cloudflare/GitHub win until the ledger is amended.
 
 **Recon date:** 2026-08-31. **Operator lock 2026-09-01:** Path A (GitHub Actions Direct Upload) is the handoff deploy SSOT. Path B (new Git-connected Pages project) stays residual.
 
@@ -63,6 +63,7 @@ Do not run `db:migrate:remote:production` or live SMS processor POSTs without an
 
 ## Residual (out of this handoff SSOT)
 
+- **Admin auth patches / invite UI:** ranked in [`ADMIN-AUTH-SECURITY.md`](ADMIN-AUTH-SECURITY.md). Design-only as of 2026-09-03. Do not ship public admin signup. Dashboard still returns outbox `payload_json` (including login OTP) until a later patch GO.
 - **Shop-admin SMS fanout:** code is behind `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT` (default/missing `false`). Do not set production to `true` without an explicit GO plus preview exact-id or production synthetic smoke.
 - **Path B:** new Git-connected Pages project + domain cutover (`docs/CLOUD.md`). Do not attach Git to existing Direct Upload projects.
 - Apex→www canonical redirect.
