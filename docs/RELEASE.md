@@ -48,7 +48,7 @@ Production requires exactly two active, phone-unique individual accounts:
 - `admin-isaiah`: owner
 - `admin-barro`: manager (full administration and support visibility)
 
-Isaiah and Barro handle support through their own accounts; production does not seed a shared or third support login. Real emails and E.164 phones are supplied only through the four `EMMIWOOD_OWNER_*` and `EMMIWOOD_BARRO_*` environment inputs. Never commit them, paste them into a gate, or store them in a migration. Dry-run validation masks all identities and performs no provider call:
+Isaiah and Barro handle support through their own accounts; production does not seed a shared or third support login. The staff sign-in page is allowlist OTP, not signup; there is no in-app add-admin. See [`ADMIN-AUTH-SECURITY.md`](ADMIN-AUTH-SECURITY.md). Production already has both rows with real phones — do not re-run the mutating seed. Real emails and E.164 phones are supplied only through the four `EMMIWOOD_OWNER_*` and `EMMIWOOD_BARRO_*` environment inputs. Never commit them, paste them into a gate, or store them in a migration. Dry-run validation masks all identities and performs no provider call:
 
 ```bash
 node scripts/seed-production-admins.mjs
