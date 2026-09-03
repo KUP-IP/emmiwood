@@ -81,7 +81,7 @@ The public footer **Staff sign in** is discovery, not a signup hole.
 
 ## Vulnerabilities (ranked)
 
-**High (if more than two trusted people ever exist) / Medium (today’s two-person roster)** — plaintext OTP in dashboard JSON.
+**High (if more than two trusted people ever exist) / Medium (today’s two-person roster)** — plaintext OTP in dashboard JSON. Tracked: [#59](https://github.com/KUP-IP/emmiwood/issues/59).
 
 - Login stores `{ code }` in `emmiwood_notification_outbox.payload_json` (`requestCode` in [`functions/lib/emmiwood-admin.js`](../functions/lib/emmiwood-admin.js)).
 - `dashboard()` does `SELECT *` on outbox and returns it to **any** signed-in role, including future `staff` / `kup_support`.
@@ -103,7 +103,7 @@ The public footer **Staff sign in** is discovery, not a signup hole.
 
 Not implemented in this pass.
 
-1. **Strip secrets from dashboard.** Never return `payload_json` for `admin_login_code` (redact or omit). Prefer storing OTP hash only in `login_challenges` and a delivery id in outbox, not the live code.
+1. **Strip secrets from dashboard.** Never return `payload_json` for `admin_login_code` (redact or omit). Prefer storing OTP hash only in `login_challenges` and a delivery id in outbox, not the live code. Issue [#59](https://github.com/KUP-IP/emmiwood/issues/59).
 2. **Scope dashboard by role.** `kup_support` (if ever used) must not see full outbox payloads or customer phones unless that is an explicit decision.
 3. **Account-level lockout** after N failed verifies across challenges; revoke all sessions on `active=0`.
 4. **Timing floor on verify** in production; do not trust `x-forwarded-for` off Cloudflare (prefer `cf-connecting-ip` only).

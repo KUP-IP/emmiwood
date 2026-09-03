@@ -63,7 +63,7 @@ Do not run `db:migrate:remote:production` or live SMS processor POSTs without an
 
 ## Residual (out of this handoff SSOT)
 
-- **Admin auth patches / invite UI:** ranked in [`ADMIN-AUTH-SECURITY.md`](ADMIN-AUTH-SECURITY.md). Design-only as of 2026-09-03. Do not ship public admin signup. Dashboard still returns outbox `payload_json` (including login OTP) until a later patch GO.
+- **Admin auth patches / invite UI:** ranked in [`ADMIN-AUTH-SECURITY.md`](ADMIN-AUTH-SECURITY.md). Design-only as of 2026-09-03. Do not ship public admin signup. Dashboard OTP leak: [#59](https://github.com/KUP-IP/emmiwood/issues/59).
 - **Shop-admin SMS fanout:** code is behind `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT` (default/missing `false`). Do not set production to `true` without an explicit GO plus preview exact-id or production synthetic smoke.
 - **Path B:** new Git-connected Pages project + domain cutover (`docs/CLOUD.md`). Do not attach Git to existing Direct Upload projects.
 - Apex→www canonical redirect.
