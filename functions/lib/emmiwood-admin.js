@@ -3,6 +3,7 @@ import { cancelAppointment as cancelBooking, rescheduleAppointment as reschedule
 import {
   NOTIFICATION_PROVIDER_MOCK,
   appointmentSmsStatements,
+  sanitizeOutboxRow,
   deliverNotification,
   flushDueAppointmentNotifications,
   notificationProvider,
@@ -142,7 +143,8 @@ export async function requestCode(env, phone, { defer, source } = {}) {
 
   const code = String((Number.parseInt((await hash(`${normalized}:${Date.now()}:${token(8)}`)).slice(0, 8), 16) % 900000) + 100000);
   const notificationId = crypto.randomUUID();
-  const payload = { code };
+  const persistPayload = { redacted: true };
+  const sendPayload = { code };
   const provider = notificationProvider(env, 'sms');
   await env.DB.batch([
     env.DB.prepare('UPDATE emmiwood_login_challenges SET consumed_at=? WHERE admin_id=? AND consumed_at IS NULL').bind(now(), admin.id),
@@ -153,12 +155,12 @@ export async function requestCode(env, phone, { defer, source } = {}) {
       channel: 'sms',
       template: 'admin_login_code',
       recipient: normalized,
-      payload,
+      payload: persistPayload,
     }),
     audit(env, admin.id, 'admin_code_requested', { phone: normalized }),
   ]);
 
-  const deliveryTask = deliverAdminCode(env, admin, normalized, notificationId, payload, provider);
+  const deliveryTask = deliverAdminCode(env, admin, normalized, notificationId, sendPayload, provider);
   if (defer) defer(deliveryTask);
   else await deliveryTask;
   await enforceAuthResponseFloor(env, startedAt);
@@ -228,7 +230,18 @@ export async function dashboard(env) {
     env.DB.prepare('SELECT * FROM emmiwood_notification_outbox WHERE shop_id=? ORDER BY created_at DESC LIMIT 100').bind(SHOP_ID).all(),
     env.DB.prepare('SELECT * FROM emmiwood_events WHERE shop_id=? ORDER BY created_at DESC LIMIT 100').bind(SHOP_ID).all(),
   ]);
-  return { shop, appointments: rows(appointments), customers: rows(customers), barbers: rows(barbers), services: rows(services), availability: rows(availability), blocks: rows(blocks), eligibility: rows(eligibility), outbox: rows(outbox), events: rows(events) };
+  return {
+    shop,
+    appointments: rows(appointments),
+    customers: rows(customers),
+    barbers: rows(barbers),
+    services: rows(services),
+    availability: rows(availability),
+    blocks: rows(blocks),
+    eligibility: rows(eligibility),
+    outbox: rows(outbox).map(sanitizeOutboxRow),
+    events: rows(events),
+  };
 }
 
 function resourceConfig(name) {

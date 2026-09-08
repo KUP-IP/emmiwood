@@ -142,8 +142,11 @@ test('booking records consent provenance only when the guest opts into appointme
       ],
     );
     assert.deepEqual(
-      db.query('SELECT channel,template,provider,status FROM emmiwood_notification_outbox'),
-      [{ channel: 'sms', template: 'booking_confirmation', provider: 'mock', status: 'queued' }],
+      db.query('SELECT channel,template,provider,status FROM emmiwood_notification_outbox ORDER BY template'),
+      [
+        { channel: 'sms', template: 'appointment_reminder', provider: 'mock', status: 'queued' },
+        { channel: 'sms', template: 'booking_confirmation', provider: 'mock', status: 'queued' },
+      ],
     );
   } finally {
     db.close();
