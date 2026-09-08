@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-09-01
+Last updated: 2026-09-08
 
 ## Locked decisions
 
@@ -58,6 +58,7 @@ Last updated: 2026-09-01
     - **Cursor Cloud:** Effective environment may be a Personal dashboard snapshot; git [`.cursor/environment.json`](../.cursor/environment.json) is the install/start/terminals template and must stay in lockstep.
 
 18. **Shop-admin staff SMS fanout (2026-09-01):** Assigned-chair staff SMS is unchanged. Optional copies of book/cancel/reschedule notices to active `manager` phones (not `owner`, no T−15m copies) sit behind Pages var `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT`. Missing or any value other than `true` stays **off**. Enabling it on production is a live-SMS Ship Gate. Public catalog and guest manage JSON omit barber phones.
+19. **Audience-correct SMS (2026-09-08):** Guest, barber, and admin OTP each have a distinct chassis in `renderSms`. From-brand stays **KUP Solutions**. Guest reminder is one row: T−24h when the visit is a day+ out, otherwise T−2h or T−30m. Barber SMS stores first name + last-4 only. Admin OTP is not persisted in outbox (`{ redacted: true }`); dashboard `bodyPreview` hides staff codes. Shop-admin fanout stays off.
 
 ## Deferred
 

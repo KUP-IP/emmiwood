@@ -108,7 +108,7 @@ test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', a
   const evidence = await (await request.get('/emmiwood/opt-in-evidence/')).text();
   expect(evidence).toContain('KUP Solutions');
   expect(evidence).toContain('Send me appointment texts.');
-  expect(evidence).toContain('Reply STOP to opt out or HELP for help.');
+  expect(evidence).toContain('Reply STOP to opt out, HELP for help.');
   expect(evidence).toContain('https://kup.solutions/sms/terms');
   expect(evidence).toContain('this booking is for Emmiwood Barbers');
   expect(evidence).not.toContain('id="root"');
@@ -355,7 +355,7 @@ test('booking uses explicit stages, next availability, consent, and review', asy
   await expect(page.getByRole('link', { name: 'SMS terms' })).toHaveAttribute('href', 'https://kup.solutions/sms/terms');
   await expect(page.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', 'https://kup.solutions/sms/privacy');
   await expect(page.getByText('from KUP Solutions about this appointment')).toBeVisible();
-  await expect(page.getByText('Reply STOP to opt out or HELP for help.')).toBeVisible();
+  await expect(page.getByText('Reply STOP to opt out, HELP for help.')).toBeVisible();
   await page.getByRole('button', { name: 'Review appointment' }).click();
   await expect(page.getByRole('heading', { name: 'Review before we reserve it.' })).toBeVisible();
   await expect(page.locator('.ew-review-list')).toContainText('Signature Haircut');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EDIT_ROLES, ROSTER_ROLES, authRequestLimit, authSourceLimit, createResource, requestCode, requireAdmin, resourceMutationRoles, updateResource, verifyCode } from './emmiwood-admin.js';
+import { EDIT_ROLES, ROSTER_ROLES, authRequestLimit, authSourceLimit, createResource, dashboard, requestCode, requireAdmin, resourceMutationRoles, updateResource, verifyCode } from './emmiwood-admin.js';
 import { setupEmmiwoodTestD1 } from './emmiwood-test-d1.js';
 
 const OWNER_PHONE = '+16055550199';
@@ -103,9 +103,14 @@ test('production request-code sends SMS immediately while known and unknown numb
     assert.match(calls[0].url, /api\.twilio\.com/);
     assert.match(calls[0].body, /To=%2B16055550199/);
     assert.match(decodeURIComponent(calls[0].body), /\b\d{6}\b/);
-    assert.deepEqual(db.query("SELECT status,attempt_count,provider_message_id,channel,last_attempt_at IS NOT NULL attempted FROM emmiwood_notification_outbox"), [
-      { status: 'sent', attempt_count: 1, provider_message_id: 'SM-admin-1', channel: 'sms', attempted: 1 },
-    ]);
+    const stored = db.query('SELECT payload_json,status,attempt_count,provider_message_id,channel,last_attempt_at IS NOT NULL attempted FROM emmiwood_notification_outbox')[0];
+    assert.equal(stored.status, 'sent');
+    assert.equal(stored.attempt_count, 1);
+    assert.equal(stored.provider_message_id, 'SM-admin-1');
+    assert.equal(stored.channel, 'sms');
+    assert.equal(stored.attempted, 1);
+    assert.equal(JSON.parse(stored.payload_json).redacted, true);
+    assert.equal(JSON.stringify(stored.payload_json).includes(decodeURIComponent(calls[0].body).match(/\b\d{6}\b/)[0]), false);
     const audit = JSON.stringify(db.query('SELECT event_type,detail_json FROM emmiwood_events'));
     assert.equal(audit.includes(decodeURIComponent(calls[0].body).match(/\b\d{6}\b/)[0]), false);
   } finally {
@@ -248,6 +253,21 @@ test('session cookie helpers are HttpOnly, strict, scoped, and production-secure
   assert.doesNotMatch(preview, /Secure/);
   assert.match(adminSessionCookie('token', { ENVIRONMENT: 'production' }), /; Secure$/);
   assert.match(clearAdminSessionCookie({ ENVIRONMENT: 'production' }), /Max-Age=0/);
+});
+
+test('dashboard never returns a live or historical admin login code', async () => {
+  const db = setupEmmiwoodTestD1();
+  try {
+    db.exec(`INSERT INTO emmiwood_notification_outbox(id,shop_id,channel,template,recipient,payload_json,provider,status,available_at)
+      VALUES('otp-leak','emmiwood','sms','admin_login_code','+16055550199','{"code":"654321"}','twilio','sent',0)`);
+    const result = await dashboard({ DB: db, ENVIRONMENT: 'preview' });
+    const row = result.outbox.find((item) => item.id === 'otp-leak');
+    assert.equal(row.bodyPreview, 'Staff sign-in code (hidden)');
+    assert.equal(JSON.parse(row.payload_json).redacted, true);
+    assert.equal(JSON.stringify(result.outbox).includes('654321'), false);
+  } finally {
+    db.close();
+  }
 });
 
 test('only the owner can mutate the barber roster and eligibility', async () => {

@@ -103,7 +103,7 @@ The public footer **Staff sign in** is discovery, not a signup hole.
 
 Not implemented in this pass.
 
-1. **Strip secrets from dashboard.** Never return `payload_json` for `admin_login_code` (redact or omit). Prefer storing OTP hash only in `login_challenges` and a delivery id in outbox, not the live code. Issue [#59](https://github.com/KUP-IP/emmiwood/issues/59).
+1. **Strip secrets from dashboard.** **Done 2026-09-08:** outbox stores `{ redacted: true }` for `admin_login_code`; `dashboard()` returns `bodyPreview` without the code. Hash stays on `login_challenges`. Issue [#59](https://github.com/KUP-IP/emmiwood/issues/59).
 2. **Scope dashboard by role.** `kup_support` (if ever used) must not see full outbox payloads or customer phones unless that is an explicit decision.
 3. **Account-level lockout** after N failed verifies across challenges; revoke all sessions on `active=0`.
 4. **Timing floor on verify** in production; do not trust `x-forwarded-for` off Cloudflare (prefer `cf-connecting-ip` only).

@@ -15,7 +15,10 @@ import {
   notificationProvider,
   notificationReadiness,
   reminderAvailableAt,
+  guestReminderAvailableAt,
+  phoneLast4,
   renderSms,
+  sanitizeOutboxRow,
 } from './emmiwood-notifications.js';
 
 const PRODUCTION_RUNTIME = Object.freeze({
@@ -233,7 +236,7 @@ test('mock delivery never performs an external send and copy carries opt-out lan
   assert.deepEqual(result, { provider: NOTIFICATION_PROVIDER_MOCK, status: 'queued' });
   assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /Reply STOP/);
   assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /^KUP Solutions:/);
-  assert.match(renderSms('admin_login_code', { code: '123456' }), /^KUP Solutions: your sign-in code is 123456/);
+  assert.match(renderSms('admin_login_code', { code: '123456' }), /^KUP Solutions: Emmiwood staff code 123456/);
 });
 
 test('booking confirmation SMS includes absolute manage link and appointment detail', () => {
@@ -248,12 +251,12 @@ test('booking confirmation SMS includes absolute manage link and appointment det
     shopName: 'Emmiwood Barbers',
     when: 'Wed, Aug 12, 9:00 AM',
     manageUrl,
-    optOut: 'Reply STOP to opt out.',
   });
-  assert.match(body, /^KUP Solutions: appointment confirmed at Emmiwood Barbers/);
+  assert.match(body, /^KUP Solutions: You're booked at Emmiwood\./);
   assert.match(body, /Signature Haircut with Barro/);
-  assert.match(body, /Manage\/cancel: https:\/\/emmiwood-barbers-preview\.pages\.dev\/emmiwood\/manage#token=tok_abc/);
-  assert.match(body, /Reply STOP/);
+  assert.match(body, /Manage: https:\/\/emmiwood-barbers-preview\.pages\.dev\/emmiwood\/manage#token=tok_abc/);
+  assert.match(body, /Reply STOP to opt out, HELP for help/);
+  assert.doesNotMatch(body, /appointment confirmed at/);
 });
 
 
@@ -454,6 +457,15 @@ test('staffSmsStatements fanout copies notices to managers without T-15m or owne
   }
 });
 
+test('guest reminder uses same-day lead when the visit is under 24h away', () => {
+  const now = 1_000_000;
+  assert.equal(guestReminderAvailableAt(now + 48 * 3600, now), now + 24 * 3600);
+  assert.equal(guestReminderAvailableAt(now + 3 * 3600, now), now + 3600);
+  assert.equal(guestReminderAvailableAt(now + 45 * 60, now), now + 15 * 60);
+  assert.equal(guestReminderAvailableAt(now + 10 * 60, now), null);
+  assert.equal(phoneLast4('+16055550199'), '...0199');
+});
+
 test('renderSms staff templates include the chair name when provided', () => {
   const body = renderSms('barber_booking_notice', {
     shopName: 'Emmiwood Barbers',
@@ -464,7 +476,8 @@ test('renderSms staff templates include the chair name when provided', () => {
     customerPhone: '+16055550199',
     optOut: 'Reply STOP to opt out. Reply HELP for help.',
   });
-  assert.match(body, /John · Signature Haircut/);
+  assert.match(body, /Wed, Aug 26, 11:00 AM · Signature Haircut/);
+  assert.doesNotMatch(body, /John · Signature Haircut/);
 });
 
 test('barber reminder lead is T-15m and skips when start is too soon', () => {
@@ -482,10 +495,37 @@ test('renderSms staff templates include customer details and STOP/HELP', () => {
     customerPhone: '+16055550199',
     optOut: 'Reply STOP to opt out. Reply HELP for help.',
   });
-  assert.match(body, /new booking/);
-  assert.match(body, /Customer Guest \+16055550199/);
+  assert.match(body, /New Emmiwood booking/);
+  assert.match(body, /Guest · \.\.\.0199/);
+  assert.doesNotMatch(body, /\+16055550199/);
   assert.match(body, /STOP/);
   assert.match(body, /HELP/);
+});
+
+test('sanitizeOutboxRow redacts OTP codes and full customer phones', () => {
+  const otp = sanitizeOutboxRow({
+    id: 'otp-1',
+    template: 'admin_login_code',
+    payload_json: '{"code":"111222"}',
+  });
+  assert.equal(otp.bodyPreview, 'Staff sign-in code (hidden)');
+  assert.equal(JSON.parse(otp.payload_json).redacted, true);
+  assert.equal(JSON.stringify(otp).includes('111222'), false);
+
+  const staff = sanitizeOutboxRow({
+    id: 'staff-1',
+    template: 'barber_booking_notice',
+    payload_json: JSON.stringify({
+      when: 'Tue, Sep 8, 10:35 AM',
+      serviceName: 'Cut',
+      customerName: 'Jane Doe',
+      customerPhone: '+16055550188',
+    }),
+  });
+  assert.equal(JSON.parse(staff.payload_json).customerPhone, undefined);
+  assert.equal(JSON.parse(staff.payload_json).customerPhoneLast4, '...0188');
+  assert.match(staff.bodyPreview, /Jane · \.\.\.0188/);
+  assert.doesNotMatch(staff.bodyPreview, /\+16055550188/);
 });
 
 test('barberSmsStatements no-ops without phone; queues notice + 15m reminder with phone', async () => {

@@ -5,10 +5,15 @@ export const NOTIFICATION_PROVIDER_TWILIO = 'twilio';
 export const NOTIFICATION_PROVIDER_RESEND = 'resend';
 export const NOTIFICATION_PROVIDER_UNCONFIGURED = 'unconfigured';
 export const REMINDER_LEAD_SECONDS = 24 * 60 * 60;
+export const SAME_DAY_REMINDER_LEAD_SECONDS = 2 * 60 * 60;
+export const SAME_DAY_SHORT_REMINDER_LEAD_SECONDS = 30 * 60;
 // Barber T-15m reminder lead (workflow cron every 5m → accept ±5m delivery jitter).
 export const BARBER_REMINDER_LEAD_SECONDS = 15 * 60;
 export const KUP_APPOINTMENT_SMS_CONSENT_VERSION = 'kup-appointment-texts-v1';
 export const KUP_SMS_BRAND = 'KUP Solutions';
+export const GUEST_SMS_OPT_OUT = 'Reply STOP to opt out, HELP for help.';
+export const STAFF_SMS_OPT_OUT = 'Reply STOP to opt out, HELP for help.';
+export const DEFAULT_SHOP_ADDRESS = '1118 S Minnesota Ave, Sioux Falls';
 export const BARBER_SMS_TEMPLATES = Object.freeze([
   'barber_booking_notice',
   'barber_cancellation_notice',
@@ -156,6 +161,32 @@ export function reminderAvailableAt(startAt, now = Math.floor(Date.now() / 1000)
   return start - REMINDER_LEAD_SECONDS;
 }
 
+/** One guest reminder: T-24h when the visit is a day+ out; otherwise T-2h or T-30m. Never two. */
+export function guestReminderAvailableAt(startAt, now = Math.floor(Date.now() / 1000)) {
+  const start = Number(startAt);
+  const current = Number(now);
+  if (!Number.isFinite(start) || !Number.isFinite(current)) return null;
+  const lead = start - current;
+  if (lead >= REMINDER_LEAD_SECONDS) return start - REMINDER_LEAD_SECONDS;
+  if (lead >= SAME_DAY_REMINDER_LEAD_SECONDS) return start - SAME_DAY_REMINDER_LEAD_SECONDS;
+  if (lead >= SAME_DAY_SHORT_REMINDER_LEAD_SECONDS) return start - SAME_DAY_SHORT_REMINDER_LEAD_SECONDS;
+  return null;
+}
+
+export function phoneLast4(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length < 4) return '';
+  return `...${digits.slice(-4)}`;
+}
+
+export function customerFirstName(name) {
+  return String(name || '').trim().split(/\s+/)[0] || '';
+}
+
+function smsLines(...lines) {
+  return lines.filter((line) => line != null && String(line).trim() !== '').join('\n');
+}
+
 export function barberReminderAvailableAt(startAt, now = Math.floor(Date.now() / 1000)) {
   const start = Number(startAt);
   const current = Number(now);
@@ -221,6 +252,7 @@ export function appointmentSmsStatements(env, {
   serviceName,
   barberName,
   shopName = 'Emmiwood Barbers',
+  shopAddress = DEFAULT_SHOP_ADDRESS,
   manageToken = null,
   now = Math.floor(Date.now() / 1000),
 }) {
@@ -249,6 +281,7 @@ export function appointmentSmsStatements(env, {
   if (!template) throw new Error(`Unsupported appointment notification event: ${event}`);
 
   const manageUrl = manageAppointmentUrl(env, manageToken);
+  const bookUrl = `${publicOrigin(env)}/emmiwood/book`;
   const when = formatSmsWhen(startAt);
   const basePayload = {
     appointmentId,
@@ -257,9 +290,11 @@ export function appointmentSmsStatements(env, {
     serviceName,
     barberName,
     shopName,
+    shopAddress,
     when,
     manageUrl,
-    optOut: 'Reply STOP to opt out.',
+    bookUrl,
+    optOut: GUEST_SMS_OPT_OUT,
   };
 
   statements.push(notificationStatement(env, {
@@ -272,7 +307,7 @@ export function appointmentSmsStatements(env, {
   }));
 
   const reminderAt = (event === 'booked' || event === 'rescheduled')
-    ? reminderAvailableAt(startAt, now)
+    ? guestReminderAvailableAt(startAt, now)
     : null;
   if (reminderAt != null) {
     statements.push(notificationStatement(env, {
@@ -288,9 +323,11 @@ export function appointmentSmsStatements(env, {
         serviceName,
         barberName,
         shopName,
+        shopAddress,
         when,
         manageUrl,
-        optOut: 'Reply STOP to opt out.',
+        bookUrl,
+        optOut: GUEST_SMS_OPT_OUT,
       },
     }));
   }
@@ -357,9 +394,9 @@ export function barberSmsStatements(env, {
     barberName,
     shopName,
     when,
-    customerName: customerName || '',
-    customerPhone: customerPhone || '',
-    optOut: 'Reply STOP to opt out. Reply HELP for help.',
+    customerName: customerFirstName(customerName),
+    customerPhoneLast4: phoneLast4(customerPhone),
+    optOut: STAFF_SMS_OPT_OUT,
   };
 
   const notice = (recipient) => notificationStatement(env, {
@@ -391,9 +428,9 @@ export function barberSmsStatements(env, {
           barberName,
           shopName,
           when,
-          customerName: customerName || '',
-          customerPhone: customerPhone || '',
-          optOut: 'Reply STOP to opt out. Reply HELP for help.',
+          customerName: customerFirstName(customerName),
+          customerPhoneLast4: phoneLast4(customerPhone),
+          optOut: STAFF_SMS_OPT_OUT,
         },
       }));
     }
@@ -422,6 +459,9 @@ export async function deliverNotification(env, row) {
   if (row.provider === NOTIFICATION_PROVIDER_MOCK) return { provider: NOTIFICATION_PROVIDER_MOCK, status: 'queued' };
   if (row.provider === NOTIFICATION_PROVIDER_UNCONFIGURED) throw new Error('Notification delivery is not configured.');
   const payload = JSON.parse(row.payload_json || '{}');
+  if (row.template === 'admin_login_code' && !payload.code) {
+    throw new Error('Staff sign-in code is not stored for retry.');
+  }
 
   if (row.provider === NOTIFICATION_PROVIDER_TWILIO) {
     if (row.channel !== 'sms') throw new Error(`Unsupported Twilio channel: ${row.channel}`);
@@ -460,32 +500,107 @@ export async function deliverNotification(env, row) {
   throw new Error(`Unsupported notification provider: ${row.provider}`);
 }
 
-export function renderSms(template, payload) {
-  const optOut = payload.optOut ? ` ${payload.optOut}` : '';
-  const shop = payload.shopName || 'Emmiwood Barbers';
-  let detail = '';
-  if (payload.serviceName && payload.barberName) detail = ` ${payload.serviceName} with ${payload.barberName}`;
-  else if (payload.serviceName) detail = ` ${payload.serviceName}`;
-  else if (payload.barberName) detail = ` with ${payload.barberName}`;
-  if (payload.when) detail += detail ? ` · ${payload.when}` : ` ${payload.when}`;
-  const manage = payload.manageUrl ? ` Manage/cancel: ${payload.manageUrl}` : '';
-  const customerBits = [payload.customerName, payload.customerPhone].filter(Boolean).join(' ').trim();
-  const customer = customerBits ? ` Customer ${customerBits}.` : '';
-  let staffDetail = payload.barberName ? ` ${payload.barberName}` : '';
-  if (payload.serviceName) staffDetail += staffDetail ? ` · ${payload.serviceName}` : ` ${payload.serviceName}`;
-  if (payload.when) staffDetail += staffDetail ? ` · ${payload.when}` : ` ${payload.when}`;
+export function renderSms(template, payload = {}) {
+  const optOut = payload.optOut || GUEST_SMS_OPT_OUT;
+  const when = payload.when || '';
+  const service = payload.serviceName || '';
+  const barber = payload.barberName || '';
+  const serviceWithBarber = service && barber ? `${service} with ${barber}` : service || barber;
+  const whenServiceBarber = [when, serviceWithBarber].filter(Boolean).join(' · ');
+  const staffWhenService = [when, service].filter(Boolean).join(' · ');
+  const manage = payload.manageUrl ? `Manage: ${payload.manageUrl}` : '';
+  const bookAgain = payload.bookUrl ? `Book again: ${payload.bookUrl}` : '';
+  const last4 = payload.customerPhoneLast4 || phoneLast4(payload.customerPhone);
+  const guestName = customerFirstName(payload.customerName);
+  const customerLine = [guestName, last4].filter(Boolean).join(' · ');
+
   switch (template) {
-    case 'admin_login_code': return `${KUP_SMS_BRAND}: your sign-in code is ${payload.code}. It expires in ten minutes.`;
-    case 'booking_confirmation': return `${KUP_SMS_BRAND}: appointment confirmed at ${shop}.${detail}.${manage}${optOut}`;
-    case 'appointment_reminder': return `${KUP_SMS_BRAND} reminder at ${shop}:${detail || ' tomorrow'}.${manage}${optOut}`;
-    case 'cancellation_confirmation': return `${KUP_SMS_BRAND}: appointment cancelled at ${shop}.${detail}.${optOut}`;
-    case 'reschedule_confirmation': return `${KUP_SMS_BRAND}: appointment rescheduled at ${shop}.${detail}.${manage}${optOut}`;
-    case 'barber_booking_notice': return `${KUP_SMS_BRAND}: new booking at ${shop}.${staffDetail}.${customer}${optOut}`;
-    case 'barber_cancellation_notice': return `${KUP_SMS_BRAND}: booking cancelled at ${shop}.${staffDetail}.${customer}${optOut}`;
-    case 'barber_reschedule_notice': return `${KUP_SMS_BRAND}: booking rescheduled at ${shop}.${staffDetail}.${customer}${optOut}`;
-    case 'barber_reminder_15m': return `${KUP_SMS_BRAND}: starting soon at ${shop}.${staffDetail}.${customer}${optOut}`;
-    default: return `${KUP_SMS_BRAND} appointment update at ${shop}.${optOut}`;
+    case 'admin_login_code':
+      return smsLines(
+        `${KUP_SMS_BRAND}: Emmiwood staff code ${payload.code || ''}`.trim(),
+        'Expires in 10 minutes.',
+      );
+    case 'booking_confirmation':
+      return smsLines(
+        `${KUP_SMS_BRAND}: You're booked at Emmiwood.`,
+        when,
+        serviceWithBarber,
+        manage,
+        optOut,
+      );
+    case 'appointment_reminder':
+      return smsLines(
+        `${KUP_SMS_BRAND}: See you at Emmiwood.`,
+        whenServiceBarber,
+        payload.shopAddress || DEFAULT_SHOP_ADDRESS,
+        manage,
+        optOut,
+      );
+    case 'cancellation_confirmation':
+      return smsLines(
+        `${KUP_SMS_BRAND}: Your Emmiwood visit is cancelled.`,
+        whenServiceBarber,
+        bookAgain,
+        optOut,
+      );
+    case 'reschedule_confirmation':
+      return smsLines(
+        `${KUP_SMS_BRAND}: Your Emmiwood time changed.`,
+        when,
+        serviceWithBarber,
+        manage,
+        optOut,
+      );
+    case 'barber_booking_notice':
+      return smsLines(
+        `${KUP_SMS_BRAND}: New Emmiwood booking.`,
+        staffWhenService,
+        customerLine,
+        payload.optOut || STAFF_SMS_OPT_OUT,
+      );
+    case 'barber_cancellation_notice':
+      return smsLines(
+        `${KUP_SMS_BRAND}: Emmiwood booking cancelled.`,
+        staffWhenService,
+        customerLine,
+        payload.optOut || STAFF_SMS_OPT_OUT,
+      );
+    case 'barber_reschedule_notice':
+      return smsLines(
+        `${KUP_SMS_BRAND}: Emmiwood booking moved.`,
+        staffWhenService,
+        customerLine,
+        payload.optOut || STAFF_SMS_OPT_OUT,
+      );
+    case 'barber_reminder_15m':
+      return smsLines(
+        `${KUP_SMS_BRAND}: Emmiwood in 15 min.`,
+        staffWhenService,
+        customerLine,
+        payload.optOut || STAFF_SMS_OPT_OUT,
+      );
+    default:
+      return smsLines(`${KUP_SMS_BRAND}: Emmiwood appointment update.`, optOut);
   }
+}
+
+export function sanitizeOutboxRow(row) {
+  let payload = {};
+  try {
+    payload = JSON.parse(row.payload_json || '{}');
+  } catch {
+    payload = {};
+  }
+  const otp = row.template === 'admin_login_code';
+  const { code: _code, customerPhone: _phone, ...rest } = payload;
+  const safePayload = otp
+    ? { redacted: true }
+    : { ...rest, customerPhoneLast4: rest.customerPhoneLast4 || phoneLast4(_phone) };
+  return {
+    ...row,
+    payload_json: JSON.stringify(safePayload),
+    bodyPreview: otp ? 'Staff sign-in code (hidden)' : renderSms(row.template, { ...payload, code: undefined }),
+  };
 }
 
 export function renderEmail(template, payload) {
