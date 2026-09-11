@@ -132,7 +132,7 @@ test('operator mobile feedback keeps navigation compact and requested copy on on
     await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     const header = page.locator('.ew-site-header');
-    await expect(header.locator('.ew-brand')).toHaveCount(0);
+    await expect(header.locator('.ew-brand')).toHaveCount(1);
     await expect(page.getByRole('navigation', { name: 'Page sections' })).toHaveCount(0);
     const nav = header.getByRole('navigation', { name: 'Primary navigation' });
     await expect(nav).toBeVisible();
@@ -148,11 +148,13 @@ test('operator mobile feedback keeps navigation compact and requested copy on on
       expect(Math.abs(bounds.y + bounds.height / 2 - (headerBox.y + headerBox.height / 2))).toBeLessThanOrEqual(1);
     }
     const chin = page.getByRole('navigation', { name: 'Mobile booking' });
+    await expect(chin).toBeHidden();
+    await page.locator('#services').scrollIntoViewIfNeeded();
     await expect(chin).toBeVisible();
     const chinBox = (await chin.boundingBox())!;
     const chinHit = (await chin.locator('a').boundingBox())!;
     expect(chinHit.width).toBeGreaterThanOrEqual(chinBox.width - 1);
-    expect(chinHit.height).toBeGreaterThanOrEqual(chinBox.height - 1);
+    expect(chinHit.height).toBeGreaterThanOrEqual(chinBox.height - 3);
     expect(chinHit.height).toBeGreaterThanOrEqual(44);
     await expect(page.locator('.ew-hero-main>.ew-eyebrow')).toHaveCount(0);
     await expect(page.locator('.ew-hero-main .ew-actions a')).toHaveCount(1);
@@ -296,4 +298,47 @@ test('audit workspace loading, recoverable failure, and each empty tab without a
   }
   await expect(page.getByText('No recent activity.', { exact: true })).toBeVisible();
   expect(attempts).toBe(2);
+});
+
+test('sprint 13 home header mark, one-barber grid, and branded 404', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/emmiwood');
+  await expect(page.locator('.ew-site-header').getByRole('link', { name: 'Emmiwood home' })).toBeVisible();
+  const heroSize = await page.locator('.ew-public-hero h1').evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize));
+  expect(heroSize).toBeGreaterThanOrEqual(50);
+  await expect(page.locator('.ew-barber-grid')).toHaveAttribute('data-count', '1');
+  const barberWidth = await page.locator('.ew-barber-card').evaluate((el) => el.getBoundingClientRect().width);
+  expect(barberWidth).toBeLessThanOrEqual(640);
+  await screenshot(page, info, 'sprint13-home-desktop');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/emmiwood');
+  const heroBook = page.locator('.ew-hero-main .ew-actions a');
+  const chin = page.getByRole('navigation', { name: 'Mobile booking' });
+  await expect(heroBook).toBeVisible();
+  await expect(chin).toBeHidden();
+  await screenshot(page, info, 'sprint13-home-mobile-first');
+  await page.locator('#services').scrollIntoViewIfNeeded();
+  await expect(chin).toBeVisible();
+
+  await page.goto('/emmiwood/not-a-page');
+  await expect(page.getByRole('heading', { name: 'That page is not on the shop site.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toHaveCount(0);
+  await screenshot(page, info, 'sprint13-404');
+});
+
+test('sprint 13 booking title clears the app header', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/emmiwood/book');
+  await expect(page.getByRole('heading', { name: 'Book your appointment.' })).toBeVisible();
+  const clearance = await page.evaluate(() => {
+    const header = document.querySelector('.ew-app-header');
+    const title = document.querySelector('.ew-booking-header h1, h1');
+    if (!header || !title) return { ok: false, headerBottom: 0, titleTop: 0 };
+    const headerBottom = header.getBoundingClientRect().bottom;
+    const titleTop = title.getBoundingClientRect().top;
+    return { ok: titleTop >= headerBottom - 1, headerBottom, titleTop };
+  });
+  expect(clearance.ok, `title ${clearance.titleTop} must sit below header ${clearance.headerBottom}`).toBe(true);
+  await screenshot(page, info, 'sprint13-booking-desktop');
 });

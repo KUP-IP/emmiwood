@@ -5,6 +5,7 @@ const EmmiwoodAdminPage = lazy(() => import('./pages/emmiwood/EmmiwoodAdminPage'
 const EmmiwoodBookingPage = lazy(() => import('./pages/emmiwood/EmmiwoodBookingPage'));
 const EmmiwoodManagePage = lazy(() => import('./pages/emmiwood/EmmiwoodManagePage'));
 const EmmiwoodInfoPage = lazy(() => import('./pages/emmiwood/EmmiwoodInfoPage'));
+const EmmiwoodNotFoundPage = lazy(() => import('./pages/emmiwood/EmmiwoodNotFoundPage'));
 
 function currentPath(): string {
   const path = window.location.pathname.replace(/\/$/, '');
@@ -13,9 +14,10 @@ function currentPath(): string {
 
 export default function App() {
   const path = currentPath();
-  let surface = <EmmiwoodPage />;
+  let surface = <EmmiwoodNotFoundPage />;
 
-  if (path === '/book' || path === '/emmiwood/book') surface = <EmmiwoodBookingPage />;
+  if (path === '/' || path === '/emmiwood') surface = <EmmiwoodPage />;
+  else if (path === '/book' || path === '/emmiwood/book') surface = <EmmiwoodBookingPage />;
   else if (path === '/manage' || path === '/emmiwood/manage') surface = <EmmiwoodManagePage />;
   else if (path === '/admin' || path === '/emmiwood/admin') surface = <EmmiwoodAdminPage />;
   else if (path === '/privacy' || path === '/emmiwood/privacy') surface = <EmmiwoodInfoPage kind="privacy" />;
@@ -23,7 +25,7 @@ export default function App() {
   else if (path === '/chair-rental' || path === '/emmiwood/chair-rental') surface = <EmmiwoodInfoPage kind="chair-rental" />;
 
   return (
-    <Suspense fallback={<div className="emmiwood-loading" role="status"><span className="ew-spinner" aria-hidden="true" /><span>Opening…</span></div>}>
+    <Suspense fallback={<div className="emmiwood-loading" role="status"><img src="/emmiwood/brand/ewb-app-icon-192.png" width="44" height="44" alt="" /><span className="ew-spinner" aria-hidden="true" /><span>Opening…</span></div>}>
       {surface}
     </Suspense>
   );

@@ -4187,10 +4187,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
     gap:0;
   }
   .ew-mobile-book.ew-chin-compact a span {
-    position:absolute;
-    opacity:0;
-    transform:translateY(8px);
-    pointer-events:none;
+    display:none;
   }
   .ew-mobile-book.ew-chin-compact a strong { font-size:1rem; }
 }
@@ -4200,4 +4197,107 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   .ew-mobile-book a span {
     transition:none!important;
   }
+}
+
+/* ===== Sprint 13 contract — winning chrome, type, grids, shells. Last block wins. ===== */
+.emmiwood-loading:has(img)::before { display:none; }
+.emmiwood-loading img {
+  width:44px;
+  height:44px;
+  border:1px solid rgba(198,164,92,.55);
+  border-radius:9px;
+}
+
+.ew-app-surface {
+  min-height:100svh;
+  display:flex;
+  flex-direction:column;
+  background:var(--ew-black);
+}
+.ew-app-surface :focus-visible { outline-color:var(--ew-gold); }
+.ew-book-page,
+.ew-manage-page,
+.ew-info-page {
+  flex:1 0 auto;
+}
+.ew-booking-header h1,
+.ew-stage-heading h2,
+.ew-booking-shell {
+  scroll-margin-top:5.5rem;
+}
+html:has(.ew-app-surface) { scroll-padding-top:5.5rem; }
+
+.ew-public .ew-site-header {
+  justify-content:space-between;
+  height:auto;
+  min-height:56px;
+  max-height:none;
+  gap:.75rem;
+  padding:.4rem clamp(.85rem,3vw,2rem);
+}
+.ew-public .ew-site-header .ew-brand {
+  display:inline-flex;
+  align-items:center;
+  gap:.65rem;
+  min-width:44px;
+  min-height:44px;
+  flex:0 0 auto;
+  color:var(--ew-ivory);
+  text-decoration:none;
+}
+.ew-public .ew-site-header nav {
+  flex:1;
+  justify-content:flex-end;
+  max-width:none;
+  margin:0;
+  gap:clamp(.4rem,1.6vw,1.4rem);
+}
+
+.ew-public .ew-public-hero h1 {
+  max-width:12ch;
+  font-size:clamp(3.15rem,5.4vw,5.5rem);
+  line-height:.98;
+  letter-spacing:-.045em;
+}
+
+.ew-public #barbers .ew-barber-grid[data-count="1"] {
+  grid-template-columns:minmax(0,40rem);
+  justify-content:center;
+}
+
+.ew-choice-grid { grid-template-columns:repeat(auto-fit,minmax(16.5rem,1fr)); }
+
+.ew-map-panel {
+  margin:0;
+  min-width:0;
+  display:grid;
+  background:var(--ew-paper);
+}
+.ew-map-panel .ew-map-embed,
+.ew-map-panel .ew-map-embed iframe { height:100%; }
+.ew-map-caption {
+  margin:0;
+  padding:.7rem 1rem;
+  border-top:1px solid var(--ew-line);
+  color:var(--ew-brown-deep);
+  font-size:.82rem;
+  font-weight:600;
+}
+
+@media (max-width:760px) {
+  .ew-public .ew-site-header {
+    min-height:56px;
+    height:auto;
+    max-height:none;
+    padding:.35rem .75rem;
+  }
+  .ew-public .ew-site-header .ew-brand>strong { display:none; }
+  .ew-public .ew-site-header nav {
+    max-width:340px;
+    justify-content:space-between;
+  }
+  .ew-public:not(.ew-chin-visible) .ew-mobile-book { display:none; }
+  .ew-public.ew-chin-visible .ew-mobile-book { display:block; }
+  .ew-public .ew-public-hero h1 { font-size:clamp(2.55rem,11vw,3.35rem); }
+  .ew-choice-grid { grid-template-columns:1fr; }
 }

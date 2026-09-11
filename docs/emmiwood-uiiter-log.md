@@ -17,6 +17,22 @@ Rule: Visual-first (F.0). After CSS/TSX edits: `npm run build` then hard-refresh
 | `/emmiwood/chair-rental` | Info |
 | Mobile viewport (~390) | Sticky book CTA + density |
 
+## Sprint 13 Contract — 2026-09-11
+
+Goal: entire-scope verification. Branch `design/sprint-13-professionalism` from `origin/main` `1b5fd74`.
+
+- Public header includes EWB mark on every viewport
+- Mobile: one Book in the first viewport; chin Book after the hero CTA leaves view
+- Desktop hero H1 ≥ 50px
+- Barber grid is catalog-aware (`data-count`); one barber is not a 2-col island
+- Booking H1 sits fully below `.ew-app-header`
+- Unknown paths render a branded 404
+- Loading uses the EWB mark
+- Admin placeholder is not a 605 number
+- Legal static chrome uses `--ew-black` + crimson Book
+- F15 photography deferred (no invented faces)
+- F7 full CSS-era delete deferred until after e2e; Sprint 13 block is the winning contract
+
 ## Round ledger
 
 | Round | Agent | Status | Top focus | Notes |

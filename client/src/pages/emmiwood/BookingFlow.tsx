@@ -56,7 +56,7 @@ export function BookingFlow({
   const service = catalog.services.find((item) => item.id === serviceId) || (busy ? mutationServiceRef.current : undefined);
   const eligibleBarbers = useMemo(() => {
     const ids = new Set(catalog.eligibility.filter((item) => item.service_id === serviceId).map((item) => item.barber_id));
-    return catalog.barbers.filter((barber) => ids.has(barber.id));
+    return catalog.barbers.filter((barber) => barber.active && ids.has(barber.id));
   }, [catalog, serviceId]);
   const barberName = barberId === 'first' ? 'First available' : catalog.barbers.find((barber) => barber.id === barberId)?.name || 'Selected barber';
 
@@ -224,7 +224,7 @@ export function BookingFlow({
                   <i className="ew-booking-barber-initial ew-booking-barber-any" aria-hidden="true">Any</i>
                   <span className="ew-booking-barber-copy">
                     <strong>First available</strong>
-                    <small>Soonest open chair — Barro or John</small>
+                    <small>{eligibleBarbers.length ? `Soonest open chair — ${eligibleBarbers.map((barber) => barber.name).join(' or ')}` : 'Soonest open chair'}</small>
                   </span>
                 </span>
               </label>
