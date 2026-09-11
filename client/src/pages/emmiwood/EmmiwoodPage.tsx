@@ -5,6 +5,7 @@ import {
   EMMIWOOD_ADDRESS,
   EMMIWOOD_MAPS_URL,
   EMMIWOOD_PHONE_LABEL,
+  EMMIWOOD_PLACE_NAME,
   emmiwoodMapsEmbedSrc,
   FALLBACK_CATALOG,
   SERVICE_ADD_ONS,
@@ -126,8 +127,8 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
 function HoursTimeline() {
   return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: appointments 9–noon and 5–7, walk-ins noon–5">
     <div className="ew-hours-track">
-      <div className="appointment morning"><strong>Appointments</strong><span>9:00 AM–noon</span></div>
-      <div className="walkin"><strong>Walk-ins</strong><span>Noon–5:00 PM</span></div>
+      <div className="appointment morning"><strong>Appointments</strong><span>9:00 AM–12:00 PM</span></div>
+      <div className="walkin"><strong>Walk-ins</strong><span>12:00–5:00 PM</span></div>
       <div className="appointment afternoon"><strong>Appointments</strong><span>5:00–7:00 PM</span></div>
     </div>
   </div>;
@@ -177,6 +178,8 @@ export default function EmmiwoodPage() {
 
   useEffect(() => {
     const nav = bookChinRef.current;
+    const root = document.querySelector('.ew-public');
+    const heroCta = document.querySelector('.ew-hero-main .ew-actions .ew-button');
     const mobile = window.matchMedia('(max-width: 760px)');
     let lastY = window.scrollY;
     let compact = false;
@@ -189,7 +192,19 @@ export default function EmmiwoodPage() {
       nav?.classList.toggle('ew-chin-compact', compact);
     };
 
+    const syncChin = () => {
+      if (!root) return;
+      if (!mobile.matches) {
+        root.classList.remove('ew-chin-visible');
+        return;
+      }
+      const cta = document.querySelector('.ew-hero-main .ew-actions .ew-button');
+      const box = cta?.getBoundingClientRect();
+      root.classList.toggle('ew-chin-visible', !box || box.bottom < 12);
+    };
+
     const onScroll = () => {
+      syncChin();
       if (!mobile.matches) {
         apply(false);
         return;
@@ -217,9 +232,18 @@ export default function EmmiwoodPage() {
       });
     };
 
+    const io = heroCta && root
+      ? new IntersectionObserver(([entry]) => {
+        root.classList.toggle('ew-chin-visible', Boolean(entry) && !entry.isIntersecting);
+      }, { threshold: 0.35 })
+      : null;
+    if (heroCta) io?.observe(heroCta);
+    syncChin();
+
     window.addEventListener('scroll', onScroll, { passive: true });
     mobile.addEventListener('change', onScroll);
     return () => {
+      io?.disconnect();
       window.removeEventListener('scroll', onScroll);
       mobile.removeEventListener('change', onScroll);
     };
@@ -239,6 +263,7 @@ export default function EmmiwoodPage() {
     />
     <a className="ew-skip" href="#main" onClick={() => requestAnimationFrame(() => document.getElementById('main')?.focus())}>Skip to content</a>
     <header className="ew-site-header">
+      <a className="ew-brand" href="#top" aria-label="Emmiwood home"><EmmiwoodBrand /></a>
       <nav aria-label="Primary navigation">
         <a href="#services">Services</a>
         <a href="#barbers">Barbers</a>
@@ -290,8 +315,8 @@ export default function EmmiwoodPage() {
 
       <section className="ew-public-section ew-barber-section" id="barbers">
         <header className="ew-section-intro light"><span className="ew-eyebrow">The barbers</span><h2>Meet the barbers.</h2><p className="ew-section-lead">Different chairs, same finish standard.</p></header>
-        <div className="ew-barber-grid">
-          {catalog.barbers.map((barber, index) => {
+        <div className="ew-barber-grid" data-count={catalog.barbers.filter((barber) => barber.active).length}>
+          {catalog.barbers.filter((barber) => barber.active).map((barber, index) => {
             const detail = BARBER_DETAILS[barber.id];
             return <article key={barber.id} className={`ew-barber-card barber-${barber.id}`} data-reveal>
               <div className="ew-barber-copy">
@@ -338,7 +363,10 @@ export default function EmmiwoodPage() {
       <section className="ew-visit-section" id="visit">
         <header><span className="ew-eyebrow">Visit Emmiwood</span><h2>Easy to find.</h2></header>
         <div className="ew-visit-feature">
-          <VisitMap />
+          <figure className="ew-map-panel">
+            <VisitMap />
+            <figcaption className="ew-map-caption">{EMMIWOOD_PLACE_NAME} · {EMMIWOOD_ADDRESS}</figcaption>
+          </figure>
           <div className="ew-visit-copy">
             <h3>Emmiwood Barbers</h3>
             <address>{EMMIWOOD_ADDRESS}</address>

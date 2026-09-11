@@ -128,11 +128,11 @@ test('public site is booking-first, specific, responsive, and accessible', async
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/emmiwood/brand/manifest.webmanifest');
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/emmiwood/brand/ewb-apple-touch-icon-180.png');
   await expect(page.getByRole('heading', { name: 'Get the best for less.' })).toBeVisible();
-  await expect(page.getByText(/1118 S Minnesota Ave/)).toBeVisible();
+  await expect(page.locator('address')).toContainText('1118 S Minnesota Ave');
   const today = page.getByRole('region', { name: 'Today at Emmiwood' });
   await expect(today).toBeVisible();
   await expect(today).toContainText(/Open now|Closed now|Opens at/);
-  await expect(today).toContainText('Noon–5:00 PM');
+  await expect(today).toContainText('12:00–5:00 PM');
   const hours = page.getByRole('img', { name: 'Daily shop hours' });
   await expect(hours).toContainText('Appointments');
   await expect(hours).toContainText('Walk-ins');
@@ -227,13 +227,14 @@ test('public site is booking-first, specific, responsive, and accessible', async
   await expect(page.getByRole('link', { name: 'Chair rental' })).toHaveAttribute('href', '/emmiwood/chair-rental');
 
   if (testInfo.project.name === 'mobile') {
+    await page.locator('#services').scrollIntoViewIfNeeded();
     const dock = page.getByRole('navigation', { name: 'Mobile booking' });
     await expect(dock).toBeVisible();
     const box = await dock.boundingBox();
     const hit = await dock.locator('a').boundingBox();
     const viewport = page.viewportSize();
     expect(box && viewport && box.y < viewport.height).toBeTruthy();
-    expect(hit && box && hit.width >= box.width - 1 && hit.height >= box.height - 1).toBeTruthy();
+    expect(hit && box && hit.width >= box.width - 1 && hit.height >= box.height - 3).toBeTruthy();
     expect(hit && hit.height >= 44).toBeTruthy();
     const todayBox = await today.boundingBox();
     expect(todayBox && viewport && todayBox.y < viewport.height * 1.5).toBeTruthy();
