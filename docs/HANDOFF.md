@@ -2,7 +2,7 @@
 
 Single index for what is live, where truth lives, and what is still residual. Operational detail stays in [`CLOUD.md`](CLOUD.md), [`RELEASE.md`](RELEASE.md), and [`DECISIONS.md`](DECISIONS.md). Admin allowlist vs in-app signup: [`ADMIN-AUTH-SECURITY.md`](ADMIN-AUTH-SECURITY.md). If those files disagree with this page on a **live** fact, this page plus Cloudflare/GitHub win until the ledger is amended.
 
-**Recon date:** 2026-08-31. **Operator lock 2026-09-01:** Path A (GitHub Actions Direct Upload) is the handoff deploy SSOT. Path B (new Git-connected Pages project) stays residual.
+**Recon date:** 2026-08-31. **Shop-hours ship 2026-10-03:** production Pages `1ac6601` and production D1 `0011` are live. **Operator lock 2026-09-01:** Path A (GitHub Actions Direct Upload) is the handoff deploy SSOT. Path B (new Git-connected Pages project) stays residual.
 
 ## Live shop
 
@@ -12,12 +12,12 @@ Single index for what is live, where truth lives, and what is still residual. Op
 | Production Pages | `emmiwood` — Direct Upload, Git Provider **No** |
 | Production domains | `emmiwood.com`, `www.emmiwood.com`, `emmiwood.pages.dev` (all 200; **no** apex→www redirect) |
 | Runtime origin | `EMMIWOOD_PUBLIC_ORIGIN=https://emmiwood.com` |
-| Production D1 | `emmiwood-db` `a79f099e-396f-4466-801c-2458a0c2b3e2` — migrations `0001`–`0010` applied; `0011_shop_hours_2026_10_03.sql` is in git and pending a remote GO |
+| Production D1 | `emmiwood-db` `a79f099e-396f-4466-801c-2458a0c2b3e2` — migrations `0001`–`0011` applied 2026-10-03. Monday–Thursday windows are 7:30–noon and 4:00–7:30; Friday–Sunday rows are removed. John stays `active=0`; his stored Monday/Wednesday window is 7:30–noon |
 | Preview Pages | `emmiwood-barbers-preview` — Direct Upload, `*.pages.dev` only |
-| Preview D1 | `emmiwood-standalone-preview-db` `b4a10012-e0c8-40f0-b203-31474393fb2a` — `0001`–`0010` applied |
+| Preview D1 | `emmiwood-standalone-preview-db` `b4a10012-e0c8-40f0-b203-31474393fb2a` — `0001`–`0010` applied; `0011_shop_hours_2026_10_03.sql` still pending. Preview Pages was not redeployed with the 2026-10-03 production ship |
 | Writes / notifications (Pages production) | both `true` |
 | SMS | Twilio From `+16052503489`; public brand **KUP Solutions** |
-| Canonical production SHA (recon) | `919bff7` on Pages deploy `cd658fb8` |
+| Canonical production SHA | `1ac6601` on Pages deploy `2f2a5975` (2026-10-03). Prior recon SHA `919bff7` / deploy `cd658fb8` |
 
 A2P filings and opt-in evidence URLs cite `https://www.emmiwood.com`. That host is live on the same production project. Do not add an apex→www redirect without a separate GO.
 
@@ -70,5 +70,5 @@ Do not run `db:migrate:remote:production` or live SMS processor POSTs without an
 - Cursor environment: switch Personal dashboard → repo-managed `.cursor/environment.json` (operator dashboard).
 - Cloudflare preview-slot leftover origin `https://www.emmiwood.com` on project `emmiwood-barbers-preview` (unused slot; live preview-slot of that project is pages.dev).
 - Open product issues: [#17](https://github.com/KUP-IP/emmiwood/issues/17) admin login evidence, [#49](https://github.com/KUP-IP/emmiwood/issues/49) brand mark, [#50](https://github.com/KUP-IP/emmiwood/issues/50) UI audit. [#45](https://github.com/KUP-IP/emmiwood/issues/45) is likely addressed by `919bff7` (main CI green). [#46](https://github.com/KUP-IP/emmiwood/issues/46) CodeQL comments-only — no CodeQL workflow is in `.github/workflows` (decision 8).
-- Dependabot PR [#51](https://github.com/KUP-IP/emmiwood/pull/51) Wrangler 4.125 → 4.127.
+- Dependabot PR [#51](https://github.com/KUP-IP/emmiwood/pull/51) (Wrangler 4.125 → 4.129) is closed. Root Wrangler on `main` is 4.147.0.
 - Wrangler API token lacks User Details Read (whoami email missing; Pages/D1 still work).

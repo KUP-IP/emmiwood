@@ -32,7 +32,7 @@ npm audit --audit-level=high
 npm audit --prefix client --audit-level=high
 ```
 
-The pre-provision fixture expects migrations `0001`–`0010` to be pending on a new production D1 database:
+The pre-provision fixture expects migrations `0001`–`0011` to be pending on a new production D1 database:
 
 ```bash
 npm run release:preflight -- \

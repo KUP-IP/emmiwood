@@ -1,6 +1,6 @@
 # Emmiwood Decision Ledger
 
-Last updated: 2026-09-08
+Last updated: 2026-10-03
 
 ## Locked decisions
 
@@ -23,7 +23,7 @@ Last updated: 2026-09-08
 12. **Barro review / v1 shop policy (2026-07-23 walkthrough; codified 2026-08-11):**
     - Minimum booking notice: **0** (any open future slot; past starts rejected).
     - Customer cancel/reschedule: allowed **until appointment start** (`change_cutoff_minutes = 0`).
-    - Appointment windows: **9:00–12:00** and **17:00–19:00**; walk-in / no online booking **12:00–17:00**. **Amended 2026-10-03:** open **7:30–19:30** every day. Monday–Thursday online appointments **7:30–12:00** and **16:00–19:30**; walk-ins **12:00–16:00**. Friday, Saturday, and Sunday are walk-in only. Migration `0011_shop_hours_2026_10_03.sql` (remote D1 apply stays GO-gated).
+    - Appointment windows: **9:00–12:00** and **17:00–19:00**; walk-in / no online booking **12:00–17:00**. **Amended 2026-10-03:** open **7:30–19:30** every day. Monday–Thursday online appointments **7:30–12:00** and **16:00–19:30**; walk-ins **12:00–16:00**. Friday, Saturday, and Sunday are walk-in only. Migration `0011_shop_hours_2026_10_03.sql` applied to production D1 on 2026-10-03. Preview D1 still has `0011` pending.
     - Menu/durations/prices per migrations `0007`–`0009` and seed defaults (Kids Cut, hot-towel $5 add-on copy).
     - Customer cancel-via-text for launch means a **manage link in SMS** (absolute origin URL), not inbound keyword CANCEL.
     - Google Calendar sync remains **out of launch scope** until a separate decision.
