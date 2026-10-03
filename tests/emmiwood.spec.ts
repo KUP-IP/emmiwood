@@ -131,13 +131,23 @@ test('public site is booking-first, specific, responsive, and accessible', async
   await expect(page.locator('address')).toContainText('1118 S Minnesota Ave');
   const today = page.getByRole('region', { name: 'Today at Emmiwood' });
   await expect(today).toBeVisible();
-  await expect(today).toContainText(/Open now|Closed now|Opens at/);
-  await expect(today).toContainText('12:00–5:00 PM');
+  await expect(today).toContainText(/Open now|Closed now|Opens at 7:30 AM/);
+  const chicagoWeekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long' }).format(new Date());
+  const appointmentDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'].includes(chicagoWeekday);
   const hours = page.getByRole('img', { name: 'Daily shop hours' });
-  await expect(hours).toContainText('Appointments');
-  await expect(hours).toContainText('Walk-ins');
-  await expect(hours).toContainText('9:00 AM');
-  await expect(hours).toContainText('7:00 PM');
+  if (appointmentDay) {
+    await expect(hours).toContainText('7:30 AM–12:00 PM');
+    await expect(hours).toContainText('12:00–4:00 PM');
+    await expect(hours).toContainText('4:00–7:30 PM');
+  } else {
+    await expect(hours).toContainText('Walk-ins');
+    await expect(hours).toContainText('7:30 AM–7:30 PM');
+    await expect(hours).not.toContainText('Appointments');
+  }
+  await expect(page.locator('.ew-hours-compact')).toContainText('Mon–Thu');
+  await expect(page.locator('.ew-hours-compact')).toContainText('Fri–Sun');
+  await expect(page.locator('.ew-hours-compact')).toContainText('Walk-in only');
+  await expect(page.getByRole('heading', { name: 'Open every day.' })).toBeVisible();
   const directions = page.getByRole('link', { name: 'Get directions' }).first();
   await expect(directions).toHaveAttribute('href', /google\.com\/maps\/search\/\?api=1&query=/);
   const palette = await page.locator('.ew-public').evaluate((element) => {
@@ -253,6 +263,25 @@ test('public site is booking-first, specific, responsive, and accessible', async
   const reducedMotionAccessibility = await new AxeBuilder({ page }).analyze();
   expect(reducedMotionAccessibility.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath(`public-${testInfo.project.name}.png`), fullPage: true });
+});
+
+test('today card shows weekday appointments and weekend walk-ins', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-05T13:30:00Z') });
+  await page.goto('/emmiwood', { waitUntil: 'networkidle' });
+  const hours = page.getByRole('img', { name: 'Daily shop hours' });
+  const today = page.getByRole('region', { name: 'Today at Emmiwood' });
+  await expect(hours).toContainText('7:30 AM–12:00 PM');
+  await expect(hours).toContainText('12:00–4:00 PM');
+  await expect(hours).toContainText('4:00–7:30 PM');
+  await expect(today).toContainText('Appointments until noon');
+
+  await page.clock.setFixedTime(new Date('2026-10-03T19:00:00Z'));
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(hours).toContainText('Walk-ins');
+  await expect(hours).toContainText('7:30 AM–7:30 PM');
+  await expect(hours).not.toContainText('Appointments');
+  await expect(today).toContainText('Walk-ins until 7:30 PM');
+  await expect(page.locator('.ew-hours-compact')).toContainText('walk-ins noon–4');
 });
 
 test('availability browser separates days, bounds choices, and honors the shop horizon', async ({ page, request }, testInfo) => {

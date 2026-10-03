@@ -116,7 +116,7 @@ export function AvailabilityBrowser({
         if (firstUsable) selectDate(firstUsable.date);
         setMessage(`We could not check every bookable day. Retry the search or call the shop before assuming no appointments remain.`);
       } else {
-        setMessage(`No openings through ${prettyDate(maxDate, true)}. Call the shop or use the noon–5 walk-in window.`);
+        setMessage(`No openings through ${prettyDate(maxDate, true)}. Walk in any day from 7:30 AM to 7:30 PM, or call the shop.`);
       }
     } catch (error) {
       if (currentRequest !== requestId.current) return;

@@ -96,8 +96,8 @@ export function EmmiwoodMeta({
           postalCode: '57105',
           addressCountry: 'US',
         },
-        openingHoursSpecification: [1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
-          '@type': 'OpeningHoursSpecification', dayOfWeek, opens: '09:00', closes: '19:00',
+        openingHoursSpecification: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((dayOfWeek) => ({
+          '@type': 'OpeningHoursSpecification', dayOfWeek: `https://schema.org/${dayOfWeek}`, opens: '07:30', closes: '19:30',
         })),
       });
       document.head.append(script);

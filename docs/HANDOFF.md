@@ -12,7 +12,7 @@ Single index for what is live, where truth lives, and what is still residual. Op
 | Production Pages | `emmiwood` — Direct Upload, Git Provider **No** |
 | Production domains | `emmiwood.com`, `www.emmiwood.com`, `emmiwood.pages.dev` (all 200; **no** apex→www redirect) |
 | Runtime origin | `EMMIWOOD_PUBLIC_ORIGIN=https://emmiwood.com` |
-| Production D1 | `emmiwood-db` `a79f099e-396f-4466-801c-2458a0c2b3e2` — migrations `0001`–`0010` applied |
+| Production D1 | `emmiwood-db` `a79f099e-396f-4466-801c-2458a0c2b3e2` — migrations `0001`–`0010` applied; `0011_shop_hours_2026_10_03.sql` is in git and pending a remote GO |
 | Preview Pages | `emmiwood-barbers-preview` — Direct Upload, `*.pages.dev` only |
 | Preview D1 | `emmiwood-standalone-preview-db` `b4a10012-e0c8-40f0-b203-31474393fb2a` — `0001`–`0010` applied |
 | Writes / notifications (Pages production) | both `true` |

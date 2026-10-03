@@ -64,12 +64,12 @@ export const SERVICE_ADD_ONS = [
 
 export const BARBER_DETAILS: Record<string, { schedule: string; specialty: string; fit: string }> = {
   barro: {
-    schedule: 'Monday–Saturday',
+    schedule: 'Appointments Monday–Thursday',
     specialty: 'Texture, fades, beard balance, and cuts built to grow out clean.',
     fit: 'Choose Barro when you want a consultative appointment and a tailored finish.',
   },
   john: {
-    schedule: 'Monday, Wednesday, Friday · mornings',
+    schedule: 'Monday and Wednesday mornings',
     specialty: 'Classic structure, clean silhouettes, and efficient morning appointments.',
     fit: 'Choose John for a focused appointment and a crisp, understated result.',
   },

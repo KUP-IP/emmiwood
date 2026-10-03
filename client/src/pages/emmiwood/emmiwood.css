@@ -1443,7 +1443,8 @@ body { margin:0; }
 .ew-today-card>header small { color:#6f665f; }
 .ew-today-card .ew-eyebrow { color:var(--ew-crimson); }
 .ew-hours-visual { padding:0; border-bottom:1px solid rgba(59,40,31,.16); }
-.ew-hours-track { min-height:76px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; background:rgba(59,40,31,.16); }
+.ew-hours-track { min-height:76px; display:grid; grid-template-columns:9fr 8fr 7fr; gap:1px; background:rgba(59,40,31,.16); }
+.ew-hours-track.walkin-day { grid-template-columns:minmax(0,1fr); }
 .ew-hours-track>div { min-width:0; display:flex; flex-direction:column; justify-content:center; padding:.75rem; }
 .ew-hours-track .appointment { background:var(--ew-brown); color:var(--ew-ivory); }
 .ew-hours-track .walkin { background:var(--ew-crimson); color:#fff; }
@@ -2090,7 +2091,7 @@ body { margin:0; }
   border-bottom:1px solid var(--ew-today-line);
 }
 .ew-hours-track {
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:9fr 8fr 7fr;
   gap:1px;
   background:var(--ew-today-line);
   min-height:76px;
@@ -3831,7 +3832,7 @@ body:has(.emmiwood.ew-app-surface) { background:var(--ew-black,#1b1411); }
   }
 
   .ew-hours-track {
-    grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-template-columns:9fr 8fr 7fr;
     min-height:88px;
   }
   .ew-hours-track>div {
