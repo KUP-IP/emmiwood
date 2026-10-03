@@ -151,6 +151,12 @@ test('operator mobile feedback keeps navigation compact and requested copy on on
     await expect(chin).toBeHidden();
     await page.locator('#services').scrollIntoViewIfNeeded();
     await expect(chin).toBeVisible();
+    await page.evaluate(async () => {
+      await Promise.all(document.getAnimations().filter((animation) => {
+        const timing = animation.effect?.getComputedTiming();
+        return timing && Number.isFinite(Number(timing.endTime));
+      }).map((animation) => animation.finished.catch(() => undefined)));
+    });
     const chinBox = (await chin.boundingBox())!;
     const chinHit = (await chin.locator('a').boundingBox())!;
     expect(chinHit.width).toBeGreaterThanOrEqual(chinBox.width - 1);

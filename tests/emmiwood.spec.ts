@@ -240,6 +240,12 @@ test('public site is booking-first, specific, responsive, and accessible', async
     await page.locator('#services').scrollIntoViewIfNeeded();
     const dock = page.getByRole('navigation', { name: 'Mobile booking' });
     await expect(dock).toBeVisible();
+    await page.evaluate(async () => {
+      await Promise.all(document.getAnimations().filter((animation) => {
+        const timing = animation.effect?.getComputedTiming();
+        return timing && Number.isFinite(Number(timing.endTime));
+      }).map((animation) => animation.finished.catch(() => undefined)));
+    });
     const box = await dock.boundingBox();
     const hit = await dock.locator('a').boundingBox();
     const viewport = page.viewportSize();
