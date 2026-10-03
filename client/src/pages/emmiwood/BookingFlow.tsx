@@ -27,22 +27,20 @@ export function BookingFlow({
   catalog,
   initialServiceId,
   initialBarberId,
+  initialStart,
 }: {
   catalog: Catalog;
   initialServiceId?: string | null;
   initialBarberId?: string | null;
+  initialStart?: number | null;
 }) {
   const [serviceId, setServiceId] = useState(hasService(catalog, initialServiceId) ? initialServiceId! : catalog.services[0]?.id || '');
   const [barberId, setBarberId] = useState(hasBarber(catalog, initialBarberId) ? initialBarberId! : 'first');
-  const [barberStepOpen, setBarberStepOpen] = useState(
-    () => hasService(catalog, initialServiceId)
-      || (Boolean(initialBarberId) && hasBarber(catalog, initialBarberId))
-      || (typeof window !== 'undefined' && window.matchMedia('(min-width: 761px)').matches),
-  );
   const [date, setDate] = useState(chicagoDate());
   const [slot, setSlot] = useState<Slot>();
   const [details, setDetails] = useState<Details>(EMPTY_DETAILS);
-  const [stage, setStage] = useState<Stage>('choose');
+  const preferredStart = Number(initialStart);
+  const [stage, setStage] = useState<Stage>(Number.isFinite(preferredStart) && preferredStart > 0 ? 'time' : 'choose');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [availabilityNotice, setAvailabilityNotice] = useState('');
@@ -95,6 +93,9 @@ export function BookingFlow({
     setSlot(nextSlot);
     setAvailabilityNotice('');
     track('slot_selected', { serviceId, barberId: nextSlot.barberId, start: nextSlot.start });
+    requestAnimationFrame(() => {
+      document.querySelector('.ew-slot-grid button.selected')?.scrollIntoView({ block: 'center', inline: 'nearest' });
+    });
   }
 
   function continueFromDetails(event: FormEvent<HTMLFormElement>) {
@@ -207,7 +208,7 @@ export function BookingFlow({
 
       {stage === 'choose' && (
         <div className="ew-book-stage" data-stage="choose">
-          <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">01</span> How can we help?</h2><p>Pick a service—barber is optional.</p></div>
+          <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">01</span> How can we help?</h2><p>Choose a service, then a barber. First available takes the soonest open time.</p></div>
           <fieldset className="ew-choice-grid">
             <legend>Choose a service</legend>
             {catalog.services.map((item) => <label key={item.id} className={serviceId === item.id ? 'selected' : ''}>
@@ -215,8 +216,7 @@ export function BookingFlow({
               <span><strong>{item.name}</strong><small>{item.duration_minutes} min · {money(item.price_cents)}</small><em>{item.description}</em></span>
             </label>)}
           </fieldset>
-          {barberStepOpen && (
-            <fieldset className="ew-barber-choice">
+          <fieldset className="ew-barber-choice">
               <legend>Choose a barber</legend>
               <label className={`ew-barber-choice-first${barberId === 'first' ? ' selected' : ''}`}>
                 <input type="radio" name="barber" value="first" checked={barberId === 'first'} onChange={() => { setBarberId('first'); setSlot(undefined); }} />
@@ -224,7 +224,7 @@ export function BookingFlow({
                   <i className="ew-booking-barber-initial ew-booking-barber-any" aria-hidden="true">Any</i>
                   <span className="ew-booking-barber-copy">
                     <strong>First available</strong>
-                    <small>{eligibleBarbers.length ? `Soonest open chair — ${eligibleBarbers.map((barber) => barber.name).join(' or ')}` : 'Soonest open chair'}</small>
+                    <small>Books the soonest open time.</small>
                   </span>
                 </span>
               </label>
@@ -240,19 +240,12 @@ export function BookingFlow({
                       <span className="ew-booking-barber-copy">
                         <strong>{barber.name}</strong>
                         <small className="ew-barber-meta">{detail?.schedule || 'Available for this service'}</small>
-                        <small className="ew-barber-bio">{detail?.specialty || barber.bio}</small>
                       </span>
                     </span>
                   </label>
                 );
               })}
             </fieldset>
-          )}
-          {!barberStepOpen && (
-            <button className="ew-barber-reveal" type="button" onClick={() => setBarberStepOpen(true)}>
-              Choose a barber <span>optional</span>
-            </button>
-          )}
           <div className="ew-choose-dock">
             {service && !eligibleBarbers.length && <p className="ew-system-note" role="status">No barber is available for this service. Choose another service or call the shop.</p>}
             <div className="ew-booking-context" aria-label="Current booking selection"><span><small>Service</small><strong>{service?.name}</strong></span><span><small>Barber</small><strong>{barberName}</strong></span><span><small>Total</small><strong>{service ? `${service.duration_minutes} min · ${money(service.price_cents)}` : ''}</strong></span></div>
@@ -263,7 +256,7 @@ export function BookingFlow({
 
       {stage === 'time' && service && (
         <div className="ew-book-stage" data-stage="time">
-          <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">02</span> Choose the time.</h2><p>Compare labeled days, then choose a morning, afternoon, or evening opening.</p></div>
+          <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">02</span> Choose the time.</h2><p>These are appointment times only. Walk-in hours are not listed.</p></div>
           <div className="ew-booking-context ew-booking-context-sticky" aria-label="Current booking selection"><span><small>Service</small><strong>{service.name}</strong></span><span><small>Barber</small><strong>{barberName}</strong></span><span><small>Total</small><strong>{service.duration_minutes} min · {money(service.price_cents)}</strong></span></div>
           <AvailabilityBrowser
             serviceId={serviceId}
@@ -277,6 +270,7 @@ export function BookingFlow({
               if (slot && slotDate(slot.start) !== nextDate) setSlot(undefined);
             }}
             notice={availabilityNotice}
+            preferredStart={Number.isFinite(preferredStart) && preferredStart > 0 ? preferredStart : undefined}
           />
           <div className="ew-time-dock">
             {slot && <div className="ew-selected-slot ew-selected-slot-dock" role="status"><span>Selected</span><strong>{prettyTime(slot.start)}</strong><small>{slot.barberName}</small></div>}
@@ -293,11 +287,15 @@ export function BookingFlow({
       {stage === 'details' && slot && (
         <form className="ew-book-stage" data-stage="details" noValidate onSubmit={continueFromDetails}>
           <div className="ew-stage-heading"><h2 ref={stageHeadingRef} tabIndex={-1}><span className="ew-stage-num" aria-hidden="true">03</span> Who should we expect?</h2><p>{prettyDateTime(slot.start)} with {slot.barberName}.</p></div>
-          <div className="ew-booking-context ew-details-context" aria-label="Selected appointment"><span><small>When</small><strong>{prettyDateTime(slot.start)}</strong></span><span><small>Barber</small><strong>{slot.barberName}</strong></span><span><small>Service</small><strong>{service?.name}</strong></span></div>
+          <dl className="ew-details-facts" aria-label="Selected appointment">
+            <div><dt>When</dt><dd>{prettyDateTime(slot.start)}</dd></div>
+            <div><dt>Barber</dt><dd>{slot.barberName}</dd></div>
+            <div><dt>Service</dt><dd>{service?.name}</dd></div>
+          </dl>
           <div className="ew-field-grid">
             <label>Name<input id="ew-guest-name" ref={nameInputRef} autoComplete="name" value={details.name} onChange={(event) => { setDetails({ ...details, name: event.target.value }); if (message) setMessage(''); }} aria-invalid={message === 'Enter your name.' ? true : undefined} aria-describedby={message === 'Enter your name.' ? 'ew-details-message' : undefined} required /></label>
-            <label>Mobile<input id="ew-guest-phone" ref={phoneInputRef} type="tel" inputMode="tel" autoComplete="tel" placeholder="(605) 555-0123" aria-describedby={message === 'Enter a valid 10-digit mobile number.' ? 'ew-details-message ew-mobile-help' : 'ew-mobile-help'} aria-invalid={message === 'Enter a valid 10-digit mobile number.' ? true : undefined} value={details.phone} onChange={(event) => { setDetails({ ...details, phone: event.target.value }); if (message) setMessage(''); }} onBlur={() => setDetails((current) => ({ ...current, phone: formatUsPhone(current.phone) }))} required /><small id="ew-mobile-help" className="ew-field-help">Required so the shop can contact you about this appointment. Marketing texts are not sent.</small></label>
-            <label className="wide">Notes <small>optional</small><textarea rows={3} value={details.notes} onChange={(event) => setDetails({ ...details, notes: event.target.value })} placeholder="Hair goals, accessibility needs, or anything the barber should know." /></label>
+            <label>Mobile<input id="ew-guest-phone" ref={phoneInputRef} type="tel" inputMode="tel" autoComplete="tel" placeholder="(605) 555-0123" aria-describedby={message === 'Enter a valid 10-digit mobile number.' ? 'ew-details-message ew-mobile-help' : 'ew-mobile-help'} aria-invalid={message === 'Enter a valid 10-digit mobile number.' ? true : undefined} value={details.phone} onChange={(event) => { setDetails({ ...details, phone: event.target.value }); if (message) setMessage(''); }} onBlur={() => setDetails((current) => ({ ...current, phone: formatUsPhone(current.phone) }))} required /><small id="ew-mobile-help" className="ew-field-help">The shop uses this number only for this appointment.</small></label>
+            <label className="wide">Notes<textarea rows={3} value={details.notes} onChange={(event) => setDetails({ ...details, notes: event.target.value })} placeholder="Optional. Hair goals, or anything the barber should know." /></label>
           </div>
           <label className="ew-consent"><input type="checkbox" checked={details.smsConsent} onChange={(event) => setDetails({ ...details, smsConsent: event.target.checked })} /><span><strong>Send me appointment texts.</strong> I agree to receive confirmation and reminder messages from KUP Solutions about this appointment. Message and data rates may apply. Reply STOP to opt out, HELP for help. <a href={KUP_SMS_TERMS_URL} target="_blank" rel="noreferrer">SMS terms</a> · <a href={KUP_SMS_PRIVACY_URL} target="_blank" rel="noreferrer">Privacy</a></span></label>
           <p id="ew-details-message" className={`ew-form-message${message ? ' is-error' : ' is-empty'}`} role={message ? 'alert' : undefined} aria-live="polite">{message}</p>
@@ -398,7 +396,7 @@ export function ManagePanel({ initialAppointment, horizonDays = 30 }: { initialA
       {!appointment && <div className="ew-empty" role="status"><p>{message}</p><a className="ew-link" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a></div>}
       {appointment && <>
         <div className={`ew-appointment-card${appointment.status === 'cancelled' ? ' is-cancelled' : ''}`}>
-          <div><span className={`ew-status-pill ${appointment.status}`}>{appointment.status}</span><h2>{appointment.service_name}</h2><p>{prettyDateTime(appointment.start_at)} · {appointment.barber_name}</p></div>
+          <div><span className={`ew-status-pill ${appointment.status}`}>{appointment.status === 'booked' ? 'Scheduled' : appointment.status === 'cancelled' ? 'Cancelled' : appointment.status}</span><h2>{appointment.service_name}</h2><p>{prettyDateTime(appointment.start_at)} · {appointment.barber_name}</p></div>
           {appointment.price_cents != null && <strong>{money(appointment.price_cents)}</strong>}
         </div>
         {appointment.status === 'booked' && <div className="ew-manage-grid">

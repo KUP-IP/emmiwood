@@ -29,9 +29,47 @@ async function expectNoPageOverflow(page: Page) {
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
 }
 
+async function expectNoOverlappingControls(page: Page, selector: string) {
+  const overlaps = await page.locator(selector).evaluateAll((elements) => {
+    const hits: string[] = [];
+    const viewBottom = window.innerHeight;
+    const viewRight = window.innerWidth;
+    const onScreen = (rect) => {
+      const width = Math.min(rect.right, viewRight) - Math.max(rect.left, 0);
+      const height = Math.min(rect.bottom, viewBottom) - Math.max(rect.top, 0);
+      return width > 8 && height > 8;
+    };
+    const boxes = elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        rect,
+        hidden: style.visibility === 'hidden' || style.display === 'none' || rect.width < 2 || rect.height < 2 || !onScreen(rect),
+        text: (element.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 48),
+      };
+    });
+    for (let i = 0; i < elements.length; i += 1) {
+      for (let j = i + 1; j < elements.length; j += 1) {
+        if (boxes[i].hidden || boxes[j].hidden) continue;
+        if (elements[i].contains(elements[j]) || elements[j].contains(elements[i])) continue;
+        const a = boxes[i].rect;
+        const b = boxes[j].rect;
+        const width = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const height = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (width > 4 && height > 4) hits.push(`${boxes[i].text} overlaps ${boxes[j].text}`);
+      }
+    }
+    return hits;
+  });
+  expect(overlaps).toEqual([]);
+}
+
 async function openBookingAtTime(page: Page) {
   await page.goto('/emmiwood/book?service=signature&barber=barro', { waitUntil: 'networkidle' });
   await expect(page.getByRole('heading', { name: 'Book your appointment.' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Choose a barber' })).toBeVisible();
+  await expectNoOverlappingControls(page, '.ew-barber-choice label, .ew-choose-dock .ew-stage-actions button, .ew-choice-grid label');
+  await expect(page.getByText('First available takes the soonest open time.')).toBeVisible();
   await expect(page.locator('.ew-choice-grid label.selected')).toContainText('Signature Haircut');
   await expect(page.locator('.ew-barber-choice label.selected')).toContainText('Barro');
   const bookingBarroPhoto = page.locator('.ew-barber-choice label.selected .ew-booking-barber-photo');
@@ -39,11 +77,27 @@ async function openBookingAtTime(page: Page) {
   await expect(bookingBarroPhoto).toBeVisible();
   await page.getByRole('button', { name: 'Find openings' }).click();
   await expect(page.getByRole('heading', { name: 'Choose the time.' })).toBeVisible();
+  await expect(page.getByText('Walk-in hours are not listed.')).toBeVisible();
+  await expect(page.locator('.ew-time-period h4').first()).toHaveText(/Before noon|From 4:00 PM/);
+  await expectNoOverlappingControls(page, '.ew-progress li');
+  await expectNoOverlappingControls(page, '.ew-date-find-row, .ew-date-find-row > *, .ew-time-dock, .ew-time-dock button, .ew-day-tabs button, .ew-booking-context-sticky');
   const opening = page.locator('.ew-day-panel .ew-slot-grid button').first();
   await expect(opening).toBeVisible();
   await opening.click();
+  const confirm = page.getByRole('button', { name: /^Confirm \d/ });
+  await expect(confirm).toBeVisible();
+  const confirmBox = await confirm.boundingBox();
+  const viewport = page.viewportSize();
+  if (confirmBox && viewport && viewport.width < 800) {
+    const gap = viewport.height - (confirmBox.y + confirmBox.height);
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThan(36);
+  }
+  await expectNoOverlappingControls(page, '.ew-date-find-row, .ew-date-find-row > *, .ew-time-dock, .ew-time-dock button, .ew-slot-grid button.selected');
   await page.getByRole('button', { name: /^Confirm \d/ }).click();
   await expect(page.getByRole('heading', { name: 'Who should we expect?' })).toBeVisible();
+  await expect(page.locator('.ew-details-facts')).toContainText('When');
+  await expectNoOverlappingControls(page, '.ew-progress li, .ew-details-facts > div, .ew-field-grid > label, .ew-book-stage[data-stage="details"] .ew-stage-actions button');
   await expectAccessible(page);
 }
 
@@ -131,16 +185,16 @@ test('public site is booking-first, specific, responsive, and accessible', async
   await expect(page.locator('address')).toContainText('1118 S Minnesota Ave');
   const today = page.getByRole('region', { name: 'Today at Emmiwood' });
   await expect(today).toBeVisible();
-  await expect(today).toContainText(/Open now|Closed now|Opens at 7:30 AM/);
+  await expect(today).toContainText(/Walk in now|Appointments now|Opens at 7:30 AM|Closed for today/);
   const chicagoWeekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long' }).format(new Date());
   const appointmentDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'].includes(chicagoWeekday);
   const hours = page.getByRole('img', { name: 'Daily shop hours' });
   if (appointmentDay) {
-    await expect(hours).toContainText('7:30 AM–12:00 PM');
-    await expect(hours).toContainText('12:00–4:00 PM');
+    await expect(hours).toContainText('7:30 AM–noon');
+    await expect(hours).toContainText('Noon–4:00 PM');
     await expect(hours).toContainText('4:00–7:30 PM');
   } else {
-    await expect(hours).toContainText('Walk-ins');
+    await expect(hours).toContainText('Walk in');
     await expect(hours).toContainText('7:30 AM–7:30 PM');
     await expect(hours).not.toContainText('Appointments');
   }
@@ -276,17 +330,40 @@ test('today card shows weekday appointments and weekend walk-ins', async ({ page
   await page.goto('/emmiwood', { waitUntil: 'networkidle' });
   const hours = page.getByRole('img', { name: 'Daily shop hours' });
   const today = page.getByRole('region', { name: 'Today at Emmiwood' });
-  await expect(hours).toContainText('7:30 AM–12:00 PM');
-  await expect(hours).toContainText('12:00–4:00 PM');
+  await expect(hours).toContainText('7:30 AM–noon');
+  await expect(hours).toContainText('Noon–4:00 PM');
   await expect(hours).toContainText('4:00–7:30 PM');
-  await expect(today).toContainText('Appointments until noon');
+  await expect(today).toContainText('Appointments now');
+  await expect(today).toContainText('Book a chair until noon');
+  await expect(today.getByRole('link', { name: 'Book this time' })).toHaveClass(/ew-button/);
+  await expect(today.getByRole('link', { name: 'Get directions' })).toHaveClass(/ew-today-quiet/);
+  const hourType = await hours.locator('strong').first().evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+  expect(hourType).toBeGreaterThanOrEqual(15);
+  const nowSegment = hours.locator('.is-now');
+  const quietWalkIn = hours.locator('.walkin:not(.is-now)');
+  const nowColor = await nowSegment.evaluate((element) => getComputedStyle(element).backgroundColor);
+  const quietColor = await quietWalkIn.evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(nowColor).not.toBe(quietColor);
+  const bookStyle = await today.getByRole('link', { name: 'Book this time' }).evaluate((element) => getComputedStyle(element).backgroundColor);
+  const directionsStyle = await today.getByRole('link', { name: 'Get directions' }).evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(bookStyle).not.toBe(directionsStyle);
 
   await page.clock.setFixedTime(new Date('2026-10-03T19:00:00Z'));
   await page.reload({ waitUntil: 'networkidle' });
-  await expect(hours).toContainText('Walk-ins');
+  await expect(hours).toContainText('Walk in');
   await expect(hours).toContainText('7:30 AM–7:30 PM');
   await expect(hours).not.toContainText('Appointments');
-  await expect(today).toContainText('Walk-ins until 7:30 PM');
+  await expect(today).toContainText('Walk in now');
+  await expect(today).toContainText('No appointment needed');
+  await expect(today.getByRole('link', { name: 'Get directions' })).toHaveClass(/ew-button/);
+  await expect(today.getByRole('link', { name: 'Book that time' })).toHaveClass(/ew-today-quiet/);
+
+  await page.clock.setFixedTime(new Date('2026-10-05T18:30:00Z'));
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(today).toContainText('Walk in now');
+  await expect(today).toContainText('until 4:00 PM');
+  await expect(today.getByRole('link', { name: 'Get directions' })).toHaveClass(/ew-button/);
+  await expect(today.getByRole('link', { name: 'Book that time' })).toHaveClass(/ew-today-quiet/);
   await expect(page.locator('.ew-hours-compact')).toContainText('walk-ins noon–4');
 });
 
@@ -444,7 +521,7 @@ test('guest booking exchanges the private fragment for an HttpOnly management se
   const cookie = (await context.cookies()).find((item) => item.name === 'emmiwood_manage_session');
   expect(cookie?.httpOnly).toBe(true);
   expect(cookie?.sameSite).toBe('Strict');
-  await expect(page.locator('.ew-status-pill')).toHaveText('booked');
+  await expect(page.locator('.ew-status-pill')).toHaveText('Scheduled');
   await page.getByRole('button', { name: 'Find another time' }).click();
   await expect(page.locator('.ew-manage-grid .ew-day-tabs [role="tab"]')).toHaveCount(7);
   await expect(page.locator('.ew-manage-grid .ew-time-period').first()).toBeVisible();
@@ -454,7 +531,7 @@ test('guest booking exchanges the private fragment for an HttpOnly management se
   });
   await page.getByRole('button', { name: /^Move to/ }).click();
   await expect(page.getByText('That opening was just booked. Your current appointment is still reserved.')).toBeVisible();
-  await expect(page.locator('.ew-status-pill')).toHaveText('booked');
+  await expect(page.locator('.ew-status-pill')).toHaveText('Scheduled');
   await expect(page.getByRole('button', { name: 'Choose a new time' })).toBeDisabled();
   await page.getByRole('button', { name: 'Cancel appointment' }).click();
   const cancelDialog = page.getByRole('alertdialog', { name: 'Release this appointment?' });
@@ -467,7 +544,7 @@ test('guest booking exchanges the private fragment for an HttpOnly management se
   await expect(page.getByRole('button', { name: 'Cancel appointment' })).toBeFocused();
   await page.getByRole('button', { name: 'Cancel appointment' }).click();
   await page.getByRole('alertdialog', { name: 'Release this appointment?' }).getByRole('button', { name: 'Cancel appointment' }).click();
-  await expect(page.locator('.ew-status-pill')).toHaveText('cancelled');
+  await expect(page.locator('.ew-status-pill')).toHaveText('Cancelled');
   await page.screenshot({ path: testInfo.outputPath(`manage-${testInfo.project.name}.png`), fullPage: true });
 });
 

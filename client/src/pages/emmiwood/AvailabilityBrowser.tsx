@@ -27,6 +27,7 @@ export function AvailabilityBrowser({
   onRefresh,
   autoFind = true,
   notice = '',
+  preferredStart,
 }: {
   serviceId: string;
   barberId: string;
@@ -37,6 +38,7 @@ export function AvailabilityBrowser({
   onRefresh?: () => void;
   autoFind?: boolean;
   notice?: string;
+  preferredStart?: number;
 }) {
   const today = useMemo(() => chicagoDate(), []);
   const maxDate = useMemo(() => addDays(today, horizonDays), [horizonDays, today]);
@@ -104,7 +106,7 @@ export function AvailabilityBrowser({
         if (available) {
           setDays(batch);
           selectDate(available.date);
-          setMessage(unavailableCount ? `Next opening found. ${unavailableCount} nearby ${unavailableCount === 1 ? 'day could' : 'days could'} not be checked; retry to refresh.` : `Next opening found. Compare ${batch.length} labeled days below.`);
+          setMessage(unavailableCount ? `Next appointment opening found. ${unavailableCount} nearby ${unavailableCount === 1 ? 'day could' : 'days could'} not be checked; retry to refresh.` : 'Pick a day, then a start time. Walk-in hours are not listed.');
           return;
         }
       }
@@ -142,7 +144,7 @@ export function AvailabilityBrowser({
       const chosen = batch.find((day) => day.date === date);
       const unavailableCount = batch.filter((day) => day.unavailable).length;
       if (chosen?.unavailable) setMessage(`${prettyDate(date, true)} could not be checked. Retry that date or compare the nearby days.`);
-      else if (chosen?.slots.length) setMessage(unavailableCount ? `Openings below. ${unavailableCount} nearby ${unavailableCount === 1 ? 'day needs' : 'days need'} a retry.` : `Openings below — expand a period for more.`);
+      else if (chosen?.slots.length) setMessage(unavailableCount ? `Times are below. ${unavailableCount} nearby ${unavailableCount === 1 ? 'day needs' : 'days need'} a retry.` : 'Choose a start time. Walk-in hours are not listed.');
       else setMessage(`No openings on ${prettyDate(date, true)}. Compare nearby days.`);
     } catch (error) {
       if (currentRequest !== requestId.current) return;
@@ -161,6 +163,19 @@ export function AvailabilityBrowser({
     if (autoFind && serviceId) void findNext();
     return () => { requestId.current += 1; };
   }, [autoFind, barberId, findNext, serviceId, today]);
+
+  const appliedPreferred = useRef(false);
+  useEffect(() => {
+    if (!preferredStart || appliedPreferred.current || !days.length) return;
+    for (const day of days) {
+      const match = day.slots.find((slot) => slot.start === preferredStart);
+      if (!match) continue;
+      appliedPreferred.current = true;
+      selectDate(day.date);
+      onSelect(match, day.date);
+      return;
+    }
+  }, [days, onSelect, preferredStart, selectDate]);
 
   const activeDay = days.find((day) => day.date === selectedDate) || days[0];
   const groups = groupSlots(activeDay?.slots || []);
@@ -221,7 +236,7 @@ export function AvailabilityBrowser({
                 <strong>{prettyTime(opening.start)}</strong>{barberId === 'first' && <small>{opening.barberName}</small>}
               </button>)}
             </div>
-            {periodSlots.length > INITIAL_TIMES_PER_PERIOD && <button className="ew-show-times" type="button" onClick={() => setExpanded((current) => ({ ...current, [key]: !isExpanded }))}>{isExpanded ? `Show fewer ${period.toLowerCase()} times` : `Show all ${periodSlots.length} ${period.toLowerCase()} times`}</button>}
+            {periodSlots.length > INITIAL_TIMES_PER_PERIOD && <button className="ew-show-times" type="button" onClick={() => setExpanded((current) => ({ ...current, [key]: !isExpanded }))}>{isExpanded ? 'Show fewer times' : `Show ${periodSlots.length - shown.length} more times`}</button>}
           </section>;
         })}
       </div>}

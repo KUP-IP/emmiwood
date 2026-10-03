@@ -17,7 +17,8 @@ Single index for what is live, where truth lives, and what is still residual. Op
 | Preview D1 | `emmiwood-standalone-preview-db` `b4a10012-e0c8-40f0-b203-31474393fb2a` — `0001`–`0010` applied; `0011_shop_hours_2026_10_03.sql` still pending. Preview Pages was not redeployed with the 2026-10-03 production ship |
 | Writes / notifications (Pages production) | both `true` |
 | SMS | Twilio From `+16052503489`; public brand **KUP Solutions** |
-| Canonical production SHA | `1ac6601` on Pages deploy `2f2a5975` (2026-10-03). Prior recon SHA `919bff7` / deploy `cd658fb8` |
+| Canonical production SHA | Shop hours `1ac6601` on Pages deploy `2f2a5975`, then ledger `7d5171d` on deploy `9f804a34` (2026-10-03). Confirm the live source with `wrangler pages deployment list` after each `main` deploy. Prior recon SHA `919bff7` / deploy `cd658fb8` |
+| Public today card | Walk-in blocks lead with directions. Appointment blocks lead with the next appointment opening and Book this time. Booking times are grouped Before noon and From 4:00 PM |
 
 A2P filings and opt-in evidence URLs cite `https://www.emmiwood.com`. That host is live on the same production project. Do not add an apex→www redirect without a separate GO.
 

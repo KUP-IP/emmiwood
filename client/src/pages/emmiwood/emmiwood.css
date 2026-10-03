@@ -4302,3 +4302,270 @@ html:has(.ew-app-surface) { scroll-padding-top:5.5rem; }
   .ew-public .ew-public-hero h1 { font-size:clamp(2.55rem,11vw,3.35rem); }
   .ew-choice-grid { grid-template-columns:1fr; }
 }
+
+/* ===== Mobile clarity — today card states, booking steps, no overlapping chrome ===== */
+.ew-today-card>header {
+  display:grid;
+  gap:.35rem;
+  text-align:left;
+}
+.ew-today-card>header>div { text-align:left; }
+.ew-today-card>header strong {
+  color:var(--ew-brown-deep, #2a1c16);
+  font:700 clamp(1.7rem, 6vw, 2.15rem)/1.05 "Space Grotesk",sans-serif;
+  letter-spacing:-.03em;
+}
+.ew-today-card>header small {
+  display:block;
+  max-width:36ch;
+  color:#4e4944;
+  font-size:1rem;
+  line-height:1.4;
+  white-space:normal;
+}
+.ew-today-card .ew-hours-track { min-height:96px; }
+.ew-today-card .ew-hours-track strong {
+  font-size:1rem;
+  letter-spacing:.04em;
+  line-height:1.15;
+}
+.ew-today-card .ew-hours-track span {
+  margin-top:.25rem;
+  font-size:.9rem;
+  line-height:1.2;
+  opacity:1;
+}
+.ew-today-card .ew-hours-track>div.is-now {
+  box-shadow:inset 0 0 0 3px #fff;
+}
+.ew-today-card .ew-next-opening.is-primary {
+  background:#fff;
+}
+.ew-today-card .ew-next-opening.is-primary>strong {
+  font:700 clamp(1.45rem, 5vw, 1.85rem)/1.1 "Space Grotesk",sans-serif;
+  color:var(--ew-brown-deep, #2a1c16);
+}
+.ew-today-card .ew-next-opening.is-quiet {
+  background:#f6f1e8;
+}
+.ew-today-card .ew-next-opening.is-quiet>strong {
+  font:600 1.15rem/1.25 "Space Grotesk",sans-serif;
+}
+.ew-today-actions {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:.65rem;
+  margin-top:.85rem;
+  padding:0;
+  border:0;
+}
+.ew-today-actions .ew-button {
+  width:100%;
+  justify-content:center;
+  min-height:52px;
+}
+.ew-today-quiet {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:44px;
+  padding:.2rem 0;
+  border:0;
+  background:transparent;
+  color:var(--ew-crimson-deep, #5f1624);
+  font-weight:700;
+  text-decoration:underline;
+  text-underline-offset:.18em;
+}
+
+.ew-details-facts {
+  display:grid;
+  margin:0 0 1.25rem;
+  border:1px solid var(--ew-line);
+  background:#fff;
+}
+.ew-details-facts>div {
+  display:grid;
+  gap:.2rem;
+  padding:.9rem 1rem;
+  border-top:1px solid var(--ew-line);
+}
+.ew-details-facts>div:first-child { border-top:0; }
+.ew-details-facts dt {
+  margin:0;
+  color:#626665;
+  font-size:.68rem;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.ew-details-facts dd {
+  margin:0;
+  color:var(--ew-black);
+  font:700 1.05rem/1.3 "Space Grotesk",sans-serif;
+  overflow-wrap:anywhere;
+}
+.ew-book-stage[data-stage="details"] .ew-field-grid { gap:1.15rem; }
+.ew-book-stage[data-stage="details"] .ew-stage-actions {
+  position:relative;
+  z-index:1;
+  margin-top:1.25rem;
+}
+
+@media (max-width:760px) {
+  .ew-today-card .ew-hours-track { min-height:112px; }
+  .ew-today-card .ew-hours-track>div { padding:.8rem .55rem; }
+  .ew-today-card .ew-hours-track strong { font-size:1.05rem; letter-spacing:.02em; }
+  .ew-today-card .ew-hours-track span { font-size:.92rem; }
+  .ew-progress li {
+    flex-direction:row;
+    justify-content:center;
+    gap:.3rem;
+    padding:.6rem .1rem;
+    font-size:.68rem;
+    letter-spacing:0;
+    line-height:1.1;
+  }
+  .ew-book-stage[data-stage="choose"] .ew-stage-heading p,
+  .ew-book-stage[data-stage="time"] .ew-stage-heading p {
+    display:block;
+    margin:.35rem 0 0;
+    color:#5f6461;
+    font-size:.95rem;
+    line-height:1.4;
+  }
+  .ew-booking-context-sticky {
+    grid-template-columns:1fr;
+  }
+  .ew-booking-context-sticky>span,
+  .ew-booking-context-sticky>span:first-child {
+    grid-column:1 / -1;
+    border-right:0;
+    border-bottom:1px solid var(--ew-line);
+    padding:.7rem .85rem;
+  }
+  .ew-booking-context-sticky>span:last-child { border-bottom:0; }
+  .ew-booking-context-sticky strong { font-size:1rem; }
+  .ew-booking-context-sticky small { font-size:.68rem; }
+  .ew-manage-panel h1 { font-size:clamp(2.1rem, 9vw, 2.8rem); }
+  .ew-appointment-card h2 { font-size:1.65rem; }
+  .ew-cancel-dialog { width:min(100% - 1.5rem, 28rem); }
+  .ew-cancel-dialog h2 { font-size:1.7rem; }
+}
+
+@keyframes ew-stage-in { from { opacity:0; } to { opacity:1; } }
+
+/* Current hours block is the only loud segment. Other blocks stay quiet. */
+.ew-today-card .ew-hours-track .appointment {
+  background:#5c4638;
+  color:#f6f1e8;
+}
+.ew-today-card .ew-hours-track .walkin {
+  background:#6b3333;
+  color:#f6f1e8;
+}
+.ew-today-card .ew-hours-track>div.is-now {
+  background:var(--ew-crimson);
+  color:#fff;
+  box-shadow:inset 0 -5px 0 #fff;
+}
+
+@media (max-width:760px) {
+  /* Stage actions stay in the page flow so they cannot cover the chair list or the date row. */
+  .ew-book-stage[data-stage="choose"],
+  .ew-book-stage[data-stage="time"],
+  .ew-book-stage[data-stage="review"] {
+    padding-bottom:1.25rem;
+    scroll-padding-bottom:1.25rem;
+  }
+  .ew-choose-dock,
+  .ew-time-dock,
+  .ew-review-dock {
+    position:static;
+    z-index:auto;
+    margin-top:1rem;
+    padding:0;
+    background:none;
+    box-shadow:none;
+  }
+  .ew-choose-dock .ew-stage-actions,
+  .ew-time-dock .ew-stage-actions,
+  .ew-review-dock .ew-stage-actions {
+    position:static;
+    bottom:auto;
+  }
+  .ew-book-stage[data-stage="time"] .ew-booking-context-sticky {
+    position:static;
+    top:auto;
+    display:flex;
+    flex-wrap:wrap;
+    gap:.35rem .85rem;
+    align-items:baseline;
+    padding:.7rem .85rem;
+    box-shadow:none;
+  }
+  .ew-book-stage[data-stage="time"] .ew-booking-context-sticky>span,
+  .ew-book-stage[data-stage="time"] .ew-booking-context-sticky>span:first-child,
+  .ew-book-stage[data-stage="time"] .ew-booking-context-sticky>span:last-child {
+    display:flex;
+    gap:.35rem;
+    align-items:baseline;
+    grid-column:auto;
+    border:0;
+    padding:0;
+    background:transparent;
+  }
+  .ew-book-stage[data-stage="time"] .ew-booking-context-sticky small {
+    font-size:.68rem;
+  }
+  .ew-book-stage[data-stage="time"] .ew-booking-context-sticky strong {
+    font-size:.95rem;
+  }
+  .ew-availability-browser .ew-date-find-row,
+  .ew-availability-browser.has-days .ew-date-find-row {
+    grid-template-columns:1fr;
+  }
+  .ew-selected-date small {
+    display:block;
+    font-size:.8rem;
+  }
+  .ew-weekly-card li {
+    grid-template-columns:1fr;
+    gap:.35rem;
+    padding:1rem 0;
+  }
+  .ew-weekly-card li small {
+    font-size:.95rem;
+    line-height:1.35;
+  }
+  .ew-book-stage[data-stage="time"]:has(.ew-selected-slot-dock) .ew-selected-slot-dock {
+    display:none;
+  }
+  .ew-book-stage { animation-name:ew-stage-in; }
+  .ew-availability-browser .ew-slot-grid button.selected {
+    border-color:var(--ew-crimson);
+    background:var(--ew-crimson);
+    color:#fff;
+    outline:2px solid #fff;
+    outline-offset:-3px;
+  }
+  .ew-book-stage[data-stage="time"]:has(.ew-selected-slot-dock) {
+    padding-bottom:calc(128px + env(safe-area-inset-bottom, 0px));
+  }
+  .ew-book-stage[data-stage="time"] .ew-slot-grid button,
+  .ew-book-stage[data-stage="time"] .ew-day-panel {
+    scroll-margin-bottom:calc(148px + env(safe-area-inset-bottom, 0px));
+  }
+  .ew-book-stage[data-stage="time"]:has(.ew-selected-slot-dock) .ew-time-dock {
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:8;
+    margin:0;
+    padding:.55rem .95rem calc(.55rem + env(safe-area-inset-bottom, 0px));
+    background:#f7f2ea;
+    box-shadow:0 -10px 24px rgba(17,16,14,.12);
+  }
+}

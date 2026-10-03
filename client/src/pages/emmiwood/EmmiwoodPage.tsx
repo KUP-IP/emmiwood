@@ -41,6 +41,9 @@ const WALKIN_END_MINUTE = 16 * 60;
 const CLOSE_MINUTE = 19 * 60 + 30;
 const APPOINTMENT_WEEKDAYS = new Set(['Monday', 'Tuesday', 'Wednesday', 'Thursday']);
 
+type ShopMode = 'walk-in' | 'appointments' | 'before-open' | 'closed';
+type HoursSegment = 'morning' | 'midday' | 'evening' | 'all-day' | 'none';
+
 function shopClock(date: Date) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
@@ -49,31 +52,61 @@ function shopClock(date: Date) {
   const weekday = parts.weekday || 'Sunday';
   const minutes = Number(parts.hour || 0) * 60 + Number(parts.minute || 0);
   const appointmentDay = APPOINTMENT_WEEKDAYS.has(weekday);
+  const tomorrow = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+  const tomorrowName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long' }).format(tomorrow);
+  const tomorrowAppointment = APPOINTMENT_WEEKDAYS.has(tomorrowName);
 
-  let status = 'Closed now';
-  let detail = 'Opens tomorrow at 7:30 AM';
+  let mode: ShopMode = 'closed';
+  let headline = 'Closed for today';
+  let detail = tomorrowAppointment
+    ? 'Opens tomorrow at 7:30 AM. Appointments start then.'
+    : 'Opens tomorrow at 7:30 AM. Tomorrow is walk-in only.';
+  let segment: HoursSegment = 'none';
+
   if (minutes < OPEN_MINUTE) {
-    status = 'Opens at 7:30 AM';
-    detail = appointmentDay ? 'Appointments begin this morning' : 'Walk-ins all day';
+    mode = 'before-open';
+    headline = 'Opens at 7:30 AM';
+    detail = appointmentDay ? 'Appointments start at 7:30 AM.' : 'Walk-ins all day once we open.';
+  } else if (minutes < CLOSE_MINUTE && !appointmentDay) {
+    mode = 'walk-in';
+    headline = 'Walk in now';
+    detail = 'No appointment needed. Come in any time until 7:30 PM.';
+    segment = 'all-day';
+  } else if (minutes < CLOSE_MINUTE && minutes < NOON_MINUTE) {
+    mode = 'appointments';
+    headline = 'Appointments now';
+    detail = 'Book a chair until noon. Walk-ins start at noon.';
+    segment = 'morning';
+  } else if (minutes < CLOSE_MINUTE && minutes < WALKIN_END_MINUTE) {
+    mode = 'walk-in';
+    headline = 'Walk in now';
+    detail = 'No appointment needed until 4:00 PM. Booking opens again at 4.';
+    segment = 'midday';
   } else if (minutes < CLOSE_MINUTE) {
-    status = 'Open now';
-    if (!appointmentDay) detail = 'Walk-ins until 7:30 PM';
-    else if (minutes < NOON_MINUTE) detail = 'Appointments until noon';
-    else if (minutes < WALKIN_END_MINUTE) detail = 'Walk-ins until 4:00 PM';
-    else detail = 'Appointments until 7:30 PM';
+    mode = 'appointments';
+    headline = 'Appointments now';
+    detail = 'Book a chair until 7:30 PM.';
+    segment = 'evening';
   }
 
+  const focusBooking = mode === 'appointments'
+    || (mode === 'before-open' && appointmentDay)
+    || (mode === 'closed' && tomorrowAppointment);
+
   return {
-    status,
+    mode,
+    headline,
     detail,
     appointmentDay,
+    segment,
+    focusBooking,
     today: new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric',
     }).format(date),
   };
 }
 
-function NextOpening({ catalog }: { catalog: Catalog }) {
+function NextOpening({ catalog, focusBooking }: { catalog: Catalog; focusBooking: boolean }) {
   const [opening, setOpening] = useState<Slot>();
   const [checked, setChecked] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
@@ -102,43 +135,43 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
     return () => { active = false; };
   }, [service]);
 
-  const directions = <a target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a>;
+  const directions = <a className={focusBooking ? 'ew-today-quiet' : 'ew-button'} target="_blank" rel="noreferrer" href={EMMIWOOD_MAPS_URL}>Get directions</a>;
+  const call = <a className="ew-today-quiet" href="tel:+16059006334">Call {EMMIWOOD_PHONE_LABEL}</a>;
+  const book = opening
+    ? <a className={focusBooking ? 'ew-button' : 'ew-today-quiet'} href={`/emmiwood/book?service=${service?.id}&barber=${opening.barberId}&start=${opening.start}`}>{focusBooking ? 'Book this time' : 'Book that time'}</a>
+    : null;
 
-  return <div className="ew-next-opening" aria-live="polite">
-    <span className="ew-eyebrow">Next online opening</span>
+  return <div className={`ew-next-opening${focusBooking ? ' is-primary' : ' is-quiet'}`} aria-live="polite">
+    <span className="ew-eyebrow">Next appointment opening</span>
     {!checked && <strong>Checking the book…</strong>}
     {checked && opening && <>
       <strong>{openingLabel(opening)}</strong>
       <small>with {opening.barberName} · {service?.name}</small>
-      <div className="ew-next-opening-links">
-        <a href={`/emmiwood/book?service=${service?.id}&barber=${opening.barberId}`}>Take this opening</a>
-        {directions}
-      </div>
     </>}
     {checked && !opening && <>
-      <strong>{unavailable ? 'Online openings are temporarily unavailable.' : 'No online opening found this week.'}</strong>
-      <small>{unavailable ? 'Call the shop for current availability.' : 'Walk-ins run 7:30 AM–7:30 PM every day.'}</small>
-      <div className="ew-next-opening-links">
-        <a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a>
-        {directions}
-      </div>
+      <strong>{unavailable ? 'Appointment times are temporarily unavailable.' : 'No appointment opening this week.'}</strong>
+      <small>{unavailable ? 'Call the shop and we will find a chair.' : 'Walk in any day from 7:30 AM to 7:30 PM.'}</small>
     </>}
+    <div className="ew-today-actions">
+      {focusBooking ? book : directions}
+      {focusBooking ? directions : (book || call)}
+    </div>
   </div>;
 }
 
-function HoursTimeline({ appointmentDay }: { appointmentDay: boolean }) {
+function HoursTimeline({ appointmentDay, segment }: { appointmentDay: boolean; segment: HoursSegment }) {
   if (!appointmentDay) {
     return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: Friday through Sunday, walk-ins 7:30 AM–7:30 PM">
       <div className="ew-hours-track walkin-day">
-        <div className="walkin"><strong>Walk-ins</strong><span>7:30 AM–7:30 PM</span></div>
+        <div className={`walkin${segment === 'all-day' ? ' is-now' : ''}`}><strong>Walk in</strong><span>7:30 AM–7:30 PM</span></div>
       </div>
     </div>;
   }
   return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: Monday through Thursday, appointments 7:30–noon and 4–7:30, walk-ins noon–4">
     <div className="ew-hours-track">
-      <div className="appointment morning"><strong>Appointments</strong><span>7:30 AM–12:00 PM</span></div>
-      <div className="walkin"><strong>Walk-ins</strong><span>12:00–4:00 PM</span></div>
-      <div className="appointment afternoon"><strong>Appointments</strong><span>4:00–7:30 PM</span></div>
+      <div className={`appointment morning${segment === 'morning' ? ' is-now' : ''}`}><strong>Book</strong><span>7:30 AM–noon</span></div>
+      <div className={`walkin${segment === 'midday' ? ' is-now' : ''}`}><strong>Walk in</strong><span>Noon–4:00 PM</span></div>
+      <div className={`appointment afternoon${segment === 'evening' ? ' is-now' : ''}`}><strong>Book</strong><span>4:00–7:30 PM</span></div>
     </div>
   </div>;
 }
@@ -151,13 +184,13 @@ function TodayAtEmmiwood({ catalog }: { catalog: Catalog }) {
   }, []);
   const clock = useMemo(() => shopClock(now), [now]);
 
-  return <aside className="ew-today-card" role="region" aria-label="Today at Emmiwood">
+  return <aside className={`ew-today-card is-${clock.mode}`} role="region" aria-label="Today at Emmiwood">
     <header>
-      <span className="ew-eyebrow">Today at Emmiwood</span>
-      <div><strong>{clock.status}</strong><small>{clock.today} · {clock.detail}</small></div>
+      <span className="ew-eyebrow">{clock.today}</span>
+      <div><strong>{clock.headline}</strong><small>{clock.detail}</small></div>
     </header>
-    <HoursTimeline appointmentDay={clock.appointmentDay} />
-    <NextOpening catalog={catalog} />
+    <HoursTimeline appointmentDay={clock.appointmentDay} segment={clock.segment} />
+    <NextOpening catalog={catalog} focusBooking={clock.focusBooking} />
   </aside>;
 }
 
@@ -350,7 +383,7 @@ export default function EmmiwoodPage() {
             </article>;
           })}
         </div>
-        <a className="ew-first-available" href="/emmiwood/book"><span>Not particular about the barber?</span><strong>Find the first available chair →</strong></a>
+        <a className="ew-first-available" href="/emmiwood/book"><span>No preference?</span><strong>Book the soonest open time →</strong></a>
       </section>
 
       <section className="ew-shop-section" id="story">

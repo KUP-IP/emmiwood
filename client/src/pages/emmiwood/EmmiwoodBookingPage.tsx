@@ -28,7 +28,7 @@ export default function EmmiwoodBookingPage() {
     <EmmiwoodMeta title="Book an Appointment | Emmiwood Barbers" description="Choose a service, barber, and live opening at Emmiwood Barbers in Sioux Falls." path="/emmiwood/book" noindex />
     <a className="ew-skip" href="#booking-title">Skip to booking</a>
     <EmmiwoodAppHeader />
-    <main className="ew-book-page"><BookingFlow catalog={catalog} initialServiceId={params.get('service')} initialBarberId={params.get('barber')} />{notice && <p className="ew-system-note">{notice}</p>}</main>
+    <main className="ew-book-page"><BookingFlow catalog={catalog} initialServiceId={params.get('service')} initialBarberId={params.get('barber')} initialStart={Number(params.get('start')) || null} />{notice && <p className="ew-system-note">{notice}</p>}</main>
     <footer className="ew-app-footer"><span>1118 S Minnesota Ave · Sioux Falls</span><a href="tel:+16059006334">(605) 900-6334</a></footer>
   </div>;
 }
