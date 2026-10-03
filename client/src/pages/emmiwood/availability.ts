@@ -50,13 +50,10 @@ function localMinute(epoch: number) {
   return Number(parts.hour) * 60 + Number(parts.minute);
 }
 
-export type DayPeriod = 'Morning' | 'Afternoon' | 'Evening';
+export type DayPeriod = 'Before noon' | 'From 4:00 PM';
 
 export function periodForSlot(slot: Slot): DayPeriod {
-  const minute = localMinute(slot.start);
-  if (minute < 720) return 'Morning';
-  if (minute < 1020) return 'Afternoon';
-  return 'Evening';
+  return localMinute(slot.start) < 720 ? 'Before noon' : 'From 4:00 PM';
 }
 
 export function curateSlots(slots: Slot[]) {
@@ -68,7 +65,7 @@ export function curateSlots(slots: Slot[]) {
 }
 
 export function groupSlots(slots: Slot[]) {
-  const groups: Record<DayPeriod, Slot[]> = { Morning: [], Afternoon: [], Evening: [] };
+  const groups: Record<DayPeriod, Slot[]> = { 'Before noon': [], 'From 4:00 PM': [] };
   for (const slot of curateSlots(slots)) groups[periodForSlot(slot)].push(slot);
   return groups;
 }
