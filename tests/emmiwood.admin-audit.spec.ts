@@ -78,15 +78,15 @@ test('staff hours snapshot survives disabled controls and duplicate submits', as
   await page.getByRole('button', { name: 'Shop', exact: true }).click();
   await page.getByRole('button', { name: 'Add new', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Barber', exact: true })).toBeFocused();
-  await expect(page.getByLabel('Starts', { exact: true })).toHaveValue('09:00');
-  await expect(page.getByLabel('Ends', { exact: true })).toHaveValue('17:00');
+  await expect(page.getByLabel('Starts', { exact: true })).toHaveValue('07:30');
+  await expect(page.getByLabel('Ends', { exact: true })).toHaveValue('12:00');
   try {
     await page.locator('form.ewa-edit').evaluate((form) => {
       form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
       form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     });
     await expect.poll(() => saves.length).toBe(1);
-    expect(saves[0]).toMatchObject({ barber_id: 'audit-barber', weekday: 1, start_minute: 540, end_minute: 1020, active: 1 });
+    expect(saves[0]).toMatchObject({ barber_id: 'audit-barber', weekday: 1, start_minute: 450, end_minute: 720, active: 1 });
     await expect(page.getByLabel('Starts', { exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeDisabled();
     await page.screenshot({ path: testInfo.outputPath('hours-saving.png'), fullPage: true });

@@ -10,8 +10,11 @@ import { bookingWriteState } from './emmiwood-runtime.js';
 
 export const SHOP_ID = 'emmiwood';
 export const SHOP_TIME_ZONE = 'America/Chicago';
-// Appointments 9–noon and 5–7; walk-ins noon–5 (gap 720–1020).
-export const APPOINTMENT_WINDOWS = [[540, 720], [1020, 1140]];
+// Mon–Thu appointments 7:30–noon and 4:00–7:30; walk-ins noon–4 (gap 720–960).
+// Fri–Sun are walk-in only and have no online windows.
+export const APPOINTMENT_WINDOWS = [[450, 720], [960, 1170]];
+const APPOINTMENT_DAYS = [1, 2, 3, 4];
+const WALK_IN_ONLY_WEEKDAYS = new Set([0, 5, 6]);
 export const FIVE_MINUTES = 300;
 const MANAGE_COOKIE = 'emmiwood_manage_session';
 
@@ -166,8 +169,8 @@ export async function bootstrap(env) {
     await env.DB.batch(statements);
     await env.DB.prepare("INSERT OR IGNORE INTO emmiwood_barber_services(barber_id,service_id) SELECT b.id,s.id FROM emmiwood_barbers b CROSS JOIN emmiwood_services s WHERE b.shop_id=? AND s.shop_id=?").bind(SHOP_ID, SHOP_ID).run();
     await env.DB.batch([
-      ...[1, 2, 3, 4, 5, 6].flatMap((day) => APPOINTMENT_WINDOWS.map(([start, end], index) => env.DB.prepare('INSERT OR IGNORE INTO emmiwood_availability(id,barber_id,weekday,start_minute,end_minute) VALUES(?,?,?,?,?)').bind(`barro-${day}-${index ? 'pm' : 'am'}`, 'barro', day, start, end))),
-      ...[1, 3, 5].map((day) => env.DB.prepare('INSERT OR IGNORE INTO emmiwood_availability(id,barber_id,weekday,start_minute,end_minute) VALUES(?,?,?,?,?)').bind(`john-${day}`, 'john', day, 540, 720)),
+      ...APPOINTMENT_DAYS.flatMap((day) => APPOINTMENT_WINDOWS.map(([start, end], index) => env.DB.prepare('INSERT OR IGNORE INTO emmiwood_availability(id,barber_id,weekday,start_minute,end_minute) VALUES(?,?,?,?,?)').bind(`barro-${day}-${index ? 'pm' : 'am'}`, 'barro', day, start, end))),
+      ...[1, 3].map((day) => env.DB.prepare('INSERT OR IGNORE INTO emmiwood_availability(id,barber_id,weekday,start_minute,end_minute) VALUES(?,?,?,?,?)').bind(`john-${day}`, 'john', day, APPOINTMENT_WINDOWS[0][0], APPOINTMENT_WINDOWS[0][1])),
     ]);
     return { repaired: true };
   } catch (error) {
@@ -215,7 +218,7 @@ export async function slots(env, { serviceId, date, barberId = 'first', now = Ma
   const service = await env.DB.prepare('SELECT * FROM emmiwood_services WHERE id=? AND shop_id=? AND active=1').bind(serviceId, SHOP_ID).first();
   if (!service) throw new EmmiwoodError('service_not_found', 'Choose an available service.', 404);
   const day = localDateParts(zonedEpoch(date, 720)).weekday;
-  if (day === 0) return [];
+  if (WALK_IN_ONLY_WEEKDAYS.has(day)) return [];
   const earliest = now + policy.min_notice_minutes * 60;
   const horizonDate = localDateParts(now + policy.horizon_days * 86400).date;
   if (date > horizonDate) throw new EmmiwoodError('outside_horizon', `Appointments open ${policy.horizon_days} days ahead.`, 422);

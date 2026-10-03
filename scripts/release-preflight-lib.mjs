@@ -9,6 +9,7 @@ export const REQUIRED_EMMIWOOD_MIGRATIONS = Object.freeze([
   '0008_cancel_until_start.sql',
   '0009_no_min_booking_notice.sql',
   '0010_barber_phone.sql',
+  '0011_shop_hours_2026_10_03.sql',
 ]);
 
 /** v1 required Page secrets — SMS-only; Resend deferred. */

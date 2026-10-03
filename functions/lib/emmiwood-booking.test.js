@@ -59,6 +59,7 @@ function setup() {
   db.exec(readFileSync(`${ROOT}migrations/0008_cancel_until_start.sql`, 'utf8'));
   db.exec(readFileSync(`${ROOT}migrations/0009_no_min_booking_notice.sql`, 'utf8'));
   db.exec(readFileSync(`${ROOT}migrations/0010_barber_phone.sql`, 'utf8'));
+  db.exec(readFileSync(`${ROOT}migrations/0011_shop_hours_2026_10_03.sql`, 'utf8'));
   return db;
 }
 
@@ -86,19 +87,27 @@ test('migration seeds the exact launch catalog and appointment availability', ()
   assert.equal(db.query('SELECT count(*) count FROM emmiwood_barber_services')[0].count, 10);
   assert.deepEqual(
     db.query("SELECT weekday,start_minute,end_minute FROM emmiwood_availability WHERE barber_id='john' ORDER BY weekday"),
-    [1, 3, 5].map((weekday) => ({ weekday, start_minute: 540, end_minute: 720 })),
+    [1, 3].map((weekday) => ({ weekday, start_minute: 450, end_minute: 720 })),
   );
-  assert.equal(db.query("SELECT count(*) count FROM emmiwood_availability WHERE barber_id='barro'")[0].count, 12);
+  assert.deepEqual(
+    db.query("SELECT weekday,start_minute,end_minute FROM emmiwood_availability WHERE barber_id='barro' ORDER BY weekday,start_minute"),
+    [1, 2, 3, 4].flatMap((weekday) => [
+      { weekday, start_minute: 450, end_minute: 720 },
+      { weekday, start_minute: 960, end_minute: 1170 },
+    ]),
+  );
   db.close();
 });
 
 test('claim buckets cover variable duration plus buffer and exclude walk-in hours', () => {
   assert.equal(claimBuckets(1_800, 4_800).length, 10);
-  const windows = [{ start_minute: 540, end_minute: 720 }, { start_minute: 1020, end_minute: 1140 }];
+  const windows = [{ start_minute: 450, end_minute: 720 }, { start_minute: 960, end_minute: 1170 }];
+  assert.equal(slotFitsAvailability(450, 50, windows), true);
   assert.equal(slotFitsAvailability(670, 50, windows), true);
   assert.equal(slotFitsAvailability(680, 50, windows), false);
-  assert.equal(slotFitsAvailability(840, 50, windows), false); // walk-in window
-  assert.equal(slotFitsAvailability(1020, 50, windows), true);
+  assert.equal(slotFitsAvailability(840, 50, windows), false); // walk-in noon–4
+  assert.equal(slotFitsAvailability(960, 50, windows), true);
+  assert.equal(slotFitsAvailability(1130, 50, windows), false);
 });
 
 test('booking policy allows near-term slots; blocks past and far horizon', () => {

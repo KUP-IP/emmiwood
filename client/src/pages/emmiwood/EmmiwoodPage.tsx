@@ -35,6 +35,12 @@ const openingLabel = (slot: Slot) => new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 }).format(slot.start * 1000);
 
+const OPEN_MINUTE = 7 * 60 + 30;
+const NOON_MINUTE = 12 * 60;
+const WALKIN_END_MINUTE = 16 * 60;
+const CLOSE_MINUTE = 19 * 60 + 30;
+const APPOINTMENT_WEEKDAYS = new Set(['Monday', 'Tuesday', 'Wednesday', 'Thursday']);
+
 function shopClock(date: Date) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
@@ -42,29 +48,25 @@ function shopClock(date: Date) {
   const parts = Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
   const weekday = parts.weekday || 'Sunday';
   const minutes = Number(parts.hour || 0) * 60 + Number(parts.minute || 0);
-  const openDay = weekday !== 'Sunday';
+  const appointmentDay = APPOINTMENT_WEEKDAYS.has(weekday);
 
   let status = 'Closed now';
-  let detail = weekday === 'Sunday' ? 'Opens Monday at 9:00 AM' : 'Opens tomorrow at 9:00 AM';
-  if (openDay && minutes < 540) {
-    status = 'Opens at 9:00 AM';
-    detail = 'Appointments begin this morning';
-  } else if (openDay && minutes < 720) {
+  let detail = 'Opens tomorrow at 7:30 AM';
+  if (minutes < OPEN_MINUTE) {
+    status = 'Opens at 7:30 AM';
+    detail = appointmentDay ? 'Appointments begin this morning' : 'Walk-ins all day';
+  } else if (minutes < CLOSE_MINUTE) {
     status = 'Open now';
-    detail = 'Appointments until noon';
-  } else if (openDay && minutes < 1020) {
-    status = 'Open now';
-    detail = 'Walk-ins until 5:00 PM';
-  } else if (openDay && minutes < 1140) {
-    status = 'Open now';
-    detail = 'Appointments until 7:00 PM';
-  } else if (weekday === 'Saturday') {
-    detail = 'Opens Monday at 9:00 AM';
+    if (!appointmentDay) detail = 'Walk-ins until 7:30 PM';
+    else if (minutes < NOON_MINUTE) detail = 'Appointments until noon';
+    else if (minutes < WALKIN_END_MINUTE) detail = 'Walk-ins until 4:00 PM';
+    else detail = 'Appointments until 7:30 PM';
   }
 
   return {
     status,
     detail,
+    appointmentDay,
     today: new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric',
     }).format(date),
@@ -115,7 +117,7 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
     </>}
     {checked && !opening && <>
       <strong>{unavailable ? 'Online openings are temporarily unavailable.' : 'No online opening found this week.'}</strong>
-      <small>{unavailable ? 'Call the shop for current availability.' : 'Walk-ins run noon–5, Monday through Saturday.'}</small>
+      <small>{unavailable ? 'Call the shop for current availability.' : 'Walk-ins run 7:30 AM–7:30 PM every day.'}</small>
       <div className="ew-next-opening-links">
         <a href="tel:+16059006334">{EMMIWOOD_PHONE_LABEL}</a>
         {directions}
@@ -124,12 +126,19 @@ function NextOpening({ catalog }: { catalog: Catalog }) {
   </div>;
 }
 
-function HoursTimeline() {
-  return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: appointments 9–noon and 5–7, walk-ins noon–5">
+function HoursTimeline({ appointmentDay }: { appointmentDay: boolean }) {
+  if (!appointmentDay) {
+    return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: Friday through Sunday, walk-ins 7:30 AM–7:30 PM">
+      <div className="ew-hours-track walkin-day">
+        <div className="walkin"><strong>Walk-ins</strong><span>7:30 AM–7:30 PM</span></div>
+      </div>
+    </div>;
+  }
+  return <div className="ew-hours-visual" role="img" aria-label="Daily shop hours: Monday through Thursday, appointments 7:30–noon and 4–7:30, walk-ins noon–4">
     <div className="ew-hours-track">
-      <div className="appointment morning"><strong>Appointments</strong><span>9:00 AM–12:00 PM</span></div>
-      <div className="walkin"><strong>Walk-ins</strong><span>12:00–5:00 PM</span></div>
-      <div className="appointment afternoon"><strong>Appointments</strong><span>5:00–7:00 PM</span></div>
+      <div className="appointment morning"><strong>Appointments</strong><span>7:30 AM–12:00 PM</span></div>
+      <div className="walkin"><strong>Walk-ins</strong><span>12:00–4:00 PM</span></div>
+      <div className="appointment afternoon"><strong>Appointments</strong><span>4:00–7:30 PM</span></div>
     </div>
   </div>;
 }
@@ -147,7 +156,7 @@ function TodayAtEmmiwood({ catalog }: { catalog: Catalog }) {
       <span className="ew-eyebrow">Today at Emmiwood</span>
       <div><strong>{clock.status}</strong><small>{clock.today} · {clock.detail}</small></div>
     </header>
-    <HoursTimeline />
+    <HoursTimeline appointmentDay={clock.appointmentDay} />
     <NextOpening catalog={catalog} />
   </aside>;
 }
@@ -257,7 +266,7 @@ export default function EmmiwoodPage() {
   return <div className="emmiwood ew-public">
     <EmmiwoodMeta
       title="Emmiwood Barbers | Get the Best for Less in Sioux Falls"
-      description="Best fades in town, beard work, and customer service off the charts—gentlemen and kids welcome. Online booking and noon–5 walk-ins at Emmiwood Barbers in Sioux Falls."
+      description="Best fades in town, beard work, and customer service off the charts—gentlemen and kids welcome. Online booking Monday–Thursday and walk-ins every day at Emmiwood Barbers in Sioux Falls."
       path="/emmiwood"
       structured
     />
@@ -352,10 +361,10 @@ export default function EmmiwoodPage() {
         </div>
         <div className="ew-weekly-card">
           <span className="ew-eyebrow">Weekly hours</span>
-          <h3>Open six days a week.</h3>
+          <h3>Open every day.</h3>
           <ul className="ew-hours-compact">
-            <li><strong>Mon–Sat</strong><span>9:00 AM–7:00 PM<small>Walk-ins noon–5 · evening appointments 5–7</small></span></li>
-            <li className="closed"><strong>Sunday</strong><span>Closed</span></li>
+            <li><strong>Mon–Thu</strong><span>7:30 AM–7:30 PM<small>Appointments 7:30–noon and 4–7:30 · walk-ins noon–4</small></span></li>
+            <li><strong>Fri–Sun</strong><span>7:30 AM–7:30 PM<small>Walk-in only</small></span></li>
           </ul>
         </div>
       </section>

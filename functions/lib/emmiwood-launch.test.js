@@ -74,7 +74,7 @@ test('customer mobile numbers normalize to E.164 and invalid values fail closed'
   assert.throws(() => normalizePhone('555-0142'), { code: 'invalid_phone', status: 422 });
 });
 
-function nextBookableDate(weekdays = [1, 2, 3, 4, 5, 6], from = new Date()) {
+function nextBookableDate(weekdays = [1, 2, 3, 4], from = new Date()) {
   const date = new Date(from);
   date.setDate(date.getDate() + 5);
   while (!weekdays.includes(date.getDay())) date.setDate(date.getDate() + 1);
@@ -84,7 +84,7 @@ function nextBookableDate(weekdays = [1, 2, 3, 4, 5, 6], from = new Date()) {
 test('booking fixture selects an eligible weekday across every possible runner day', () => {
   for (let offset = 0; offset < 7; offset++) {
     const from = new Date(2026, 7, 24 + offset, 12);
-    for (const weekdays of [[1, 2, 3, 4, 5, 6], [1, 3, 5]]) {
+    for (const weekdays of [[1, 2, 3, 4], [1, 3]]) {
       const date = nextBookableDate(weekdays, from);
       assert.ok(weekdays.includes(new Date(`${date}T12:00:00`).getDay()));
     }
@@ -108,10 +108,41 @@ test('slot generation uses bounded D1 operations and filters claims and exceptio
 
     db.resetMetrics();
     const openings = await slots(env, { serviceId: 'signature', date, barberId: 'barro', now });
-    assert.equal(openings[0].start, zonedEpoch(date, 660));
+    assert.equal(openings.some((slot) => slot.start === start), false);
+    assert.equal(openings.some((slot) => slot.start === zonedEpoch(date, 630)), false);
+    assert.equal(openings.some((slot) => slot.start === zonedEpoch(date, 660)), true);
     assert.ok(db.operationCount() <= 6, `expected at most 6 D1 operations, observed ${db.operationCount()}: ${JSON.stringify(db.metrics)}`);
     assert.equal(db.metrics.batch, 0);
     assert.equal(db.metrics.run, 0);
+  } finally {
+    db.close();
+  }
+});
+
+test('online booking is 7:30–noon and 4:00–7:30 Monday–Thursday, and closed Friday–Sunday', async () => {
+  const db = setupEmmiwoodTestD1();
+  const monday = nextBookableDate([1]);
+  const friday = nextBookableDate([5]);
+  const saturday = nextBookableDate([6]);
+  const sunday = nextBookableDate([0]);
+  const env = { DB: db, ENVIRONMENT: 'preview' };
+  const now = zonedEpoch(monday, 450) - 24 * 3600;
+
+  try {
+    const mondaySlots = await slots(env, { serviceId: 'signature', date: monday, barberId: 'barro', now });
+    assert.equal(mondaySlots[0].start, zonedEpoch(monday, 450));
+    assert.equal(mondaySlots.some((slot) => slot.start === zonedEpoch(monday, 960)), true);
+    assert.equal(mondaySlots.some((slot) => slot.start === zonedEpoch(monday, 720)), false);
+    assert.equal(mondaySlots.some((slot) => slot.start === zonedEpoch(monday, 900)), false);
+    assert.equal(mondaySlots.at(-1).start, zonedEpoch(monday, 1120));
+
+    const johnSlots = await slots(env, { serviceId: 'signature', date: monday, barberId: 'john', now });
+    assert.equal(johnSlots[0].start, zonedEpoch(monday, 450));
+    assert.equal(johnSlots.some((slot) => slot.start >= zonedEpoch(monday, 720)), false);
+
+    for (const date of [friday, saturday, sunday]) {
+      assert.deepEqual(await slots(env, { serviceId: 'signature', date, barberId: 'barro', now }), []);
+    }
   } finally {
     db.close();
   }
@@ -266,8 +297,8 @@ test('legacy appointment-texts-v1 consent is stored but does not enqueue SMS', a
 
 test('barber phone queues staff SMS without guest consent; john without phone queues none', async () => {
   const db = setupEmmiwoodTestD1();
-  // Both bookings need an eligible day: John works only Mon/Wed/Fri.
-  const date = nextBookableDate([1, 3, 5]);
+  // Both bookings need an eligible day: John works Monday and Wednesday mornings.
+  const date = nextBookableDate([1, 3]);
   const start = zonedEpoch(date, 540);
   const env = { DB: db, ENVIRONMENT: 'preview', EMMIWOOD_BOOKING_WRITES_ENABLED: 'true' };
   try {
