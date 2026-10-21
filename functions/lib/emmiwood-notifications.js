@@ -136,6 +136,15 @@ export function manageAppointmentUrl(env, manageToken) {
   return `${origin}/emmiwood/manage#token=${encodeURIComponent(token)}`;
 }
 
+/** Absolute admin deep link to one appointment; null if origin or id missing.
+ *  The admin page requires staff sign-in, then opens that booking. */
+export function adminAppointmentUrl(env, appointmentId) {
+  const origin = publicOrigin(env);
+  const id = String(appointmentId || '').trim();
+  if (!origin || !id) return null;
+  return `${origin}/emmiwood/admin?appointment=${encodeURIComponent(id)}`;
+}
+
 /** Short America/Chicago time for SMS bodies. */
 export function formatSmsWhen(startAt, timeZone = 'America/Chicago') {
   const start = Number(startAt);
@@ -386,6 +395,7 @@ export function barberSmsStatements(env, {
   if (!template) throw new Error(`Unsupported barber notification event: ${event}`);
 
   const when = formatSmsWhen(startAt);
+  const adminUrl = adminAppointmentUrl(env, appointmentId);
   const basePayload = {
     appointmentId,
     start: startAt,
@@ -396,6 +406,7 @@ export function barberSmsStatements(env, {
     when,
     customerName: customerFirstName(customerName),
     customerPhoneLast4: phoneLast4(customerPhone),
+    adminUrl,
     optOut: STAFF_SMS_OPT_OUT,
   };
 
@@ -430,6 +441,7 @@ export function barberSmsStatements(env, {
           when,
           customerName: customerFirstName(customerName),
           customerPhoneLast4: phoneLast4(customerPhone),
+          adminUrl,
           optOut: STAFF_SMS_OPT_OUT,
         },
       }));
@@ -509,6 +521,7 @@ export function renderSms(template, payload = {}) {
   const whenServiceBarber = [when, serviceWithBarber].filter(Boolean).join(' · ');
   const staffWhenService = [when, service].filter(Boolean).join(' · ');
   const manage = payload.manageUrl ? `Manage: ${payload.manageUrl}` : '';
+  const view = payload.adminUrl ? `View: ${payload.adminUrl}` : '';
   const bookAgain = payload.bookUrl ? `Book again: ${payload.bookUrl}` : '';
   const last4 = payload.customerPhoneLast4 || phoneLast4(payload.customerPhone);
   const guestName = customerFirstName(payload.customerName);
@@ -556,6 +569,7 @@ export function renderSms(template, payload = {}) {
         `${KUP_SMS_BRAND}: New Emmiwood booking.`,
         staffWhenService,
         customerLine,
+        view,
         payload.optOut || STAFF_SMS_OPT_OUT,
       );
     case 'barber_cancellation_notice':
@@ -563,6 +577,7 @@ export function renderSms(template, payload = {}) {
         `${KUP_SMS_BRAND}: Emmiwood booking cancelled.`,
         staffWhenService,
         customerLine,
+        view,
         payload.optOut || STAFF_SMS_OPT_OUT,
       );
     case 'barber_reschedule_notice':
@@ -570,6 +585,7 @@ export function renderSms(template, payload = {}) {
         `${KUP_SMS_BRAND}: Emmiwood booking moved.`,
         staffWhenService,
         customerLine,
+        view,
         payload.optOut || STAFF_SMS_OPT_OUT,
       );
     case 'barber_reminder_15m':
@@ -577,6 +593,7 @@ export function renderSms(template, payload = {}) {
         `${KUP_SMS_BRAND}: Emmiwood in 15 min.`,
         staffWhenService,
         customerLine,
+        view,
         payload.optOut || STAFF_SMS_OPT_OUT,
       );
     default:

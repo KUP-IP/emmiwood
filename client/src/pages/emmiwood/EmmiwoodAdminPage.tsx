@@ -431,6 +431,10 @@ export default function EmmiwoodAdminPage() {
   const [actionBusy, setActionBusy] = useState(false);
   const actionBusyRef = useRef(false);
   const refreshVersion = useRef(0);
+  // Staff SMS deep link (?appointment=<id>): held across the sign-in flow and
+  // consumed once the authenticated dashboard has loaded.
+  const [deepLinkId] = useState(() => new URLSearchParams(window.location.search).get('appointment') || '');
+  const deepLinkHandled = useRef(false);
 
   function refresh() {
     const version = ++refreshVersion.current;
@@ -442,6 +446,21 @@ export default function EmmiwoodAdminPage() {
     });
   }
   useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    if (!data || !deepLinkId || deepLinkHandled.current) return;
+    deepLinkHandled.current = true;
+    const target = data.appointments.find((appointment) => appointment.id === deepLinkId);
+    // Consume the parameter so a manual refresh does not reopen the editor.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('appointment');
+    window.history.replaceState(null, '', url);
+    if (target) {
+      setTab('book');
+      setEditingAppointment(target);
+    } else {
+      setMessage('That booking could not be found. It may have been cancelled or belongs to another shop.');
+    }
+  }, [data, deepLinkId]);
   async function logout() {
     if (actionBusyRef.current) return;
     actionBusyRef.current = true;

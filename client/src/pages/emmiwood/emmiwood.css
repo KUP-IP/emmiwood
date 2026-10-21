@@ -2118,6 +2118,7 @@ body { margin:0; }
 .ewa-auth .ewa-login {
   align-content:center;
   min-height:100svh;
+  min-height:100dvh;
 }
 .ewa-auth .ewa-login-card form { margin-top:1.5rem; }
 
@@ -4568,4 +4569,15 @@ html:has(.ew-app-surface) { scroll-padding-top:5.5rem; }
     background:#f7f2ea;
     box-shadow:0 -10px 24px rgba(17,16,14,.12);
   }
+}
+
+/* Admin sign-in on short viewports (foldable cover screens, keyboard open):
+   top-align the card and tighten display type so the phone/code field and the
+   submit button stay in the visible area instead of centering off-screen. */
+@media (max-height:480px) {
+  .ewa-auth .ewa-login { align-content:start; padding:1rem; }
+  .ewa-auth .ewa-login-card { align-self:start; padding:1.25rem; }
+  .ewa-auth .ewa-login-card .ew-brand { margin-bottom:1rem; }
+  .ewa-auth .ewa-login-card h1 { margin:.25rem 0 .5rem; font-size:2rem; }
+  .ewa-auth .ewa-login-card form { margin-top:.75rem; }
 }
