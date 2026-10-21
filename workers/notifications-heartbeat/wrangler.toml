@@ -1,0 +1,22 @@
+name = "emmiwood-notifications-heartbeat"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+# EMMIWOOD_NOTIFICATION_SECRET is a secret, never a var:
+#   npx wrangler secret put EMMIWOOD_NOTIFICATION_SECRET
+# Use the same value as the GitHub Actions secret of the same name.
+
+[vars]
+# Must match the repo variable EMMIWOOD_NOTIFICATION_URL used by the
+# Actions heartbeat — confirm its value before the first deploy.
+EMMIWOOD_NOTIFICATION_URL = "https://emmiwood.com/api/emmiwood/internal/notifications"
+# Ships "false" (probe-only) on purpose. Flip to "true" only at the
+# processing-handoff step of the cutover protocol in README.md, in the
+# same move that sets the Actions repo variable
+# EMMIWOOD_NOTIFICATIONS_ENABLED to "false" — the outbox processor has
+# no atomic claim, so two live processors can double-send.
+PROCESS_QUEUE = "false"
+
+[triggers]
+crons = ["*/5 * * * *"]
