@@ -197,3 +197,125 @@ test('verified staff login retries only dashboard after dashboard failure', asyn
   expect(codeRequests).toBe(1);
   expect(verifications).toBe(1);
 });
+
+function dashboardWithAppointment() {
+  const start = Math.floor(Date.now() / 1000) + 3 * 3600;
+  return {
+    ...dashboardFixture(),
+    appointments: [{
+      id: 'audit-appt-1', service_id: 'audit-cut', barber_id: 'audit-barber',
+      start_at: start, end_at: start + 1800, status: 'booked',
+      customer_name: 'Walk In Wendy', phone: '+16055550177',
+      barber_name: 'Audit Barber', service_name: 'Audit Cut',
+    }],
+  };
+}
+
+test('staff SMS deep link opens the linked booking when already signed in', async ({ page }) => {
+  const dashboard = dashboardWithAppointment();
+  await fixtureRoutes(page, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/admin/dashboard')) {
+      await route.fulfill({ json: { ok: true, data: dashboard } });
+      return true;
+    }
+    return false;
+  });
+  await page.goto('/emmiwood/admin?appointment=audit-appt-1');
+  const editor = page.locator('form.ewa-appointment-edit');
+  await expect(editor).toBeVisible();
+  await expect(editor.locator('select').first()).toHaveValue('audit-cut');
+  await expect(editor.getByRole('button', { name: 'Reschedule', exact: true })).toBeVisible();
+  // The parameter is consumed so a manual refresh does not reopen the editor.
+  await expect.poll(() => page.evaluate(() => window.location.search)).toBe('');
+});
+
+test('staff SMS deep link survives sign-in and opens the linked booking', async ({ page }) => {
+  const dashboard = dashboardWithAppointment();
+  let dashboardRequests = 0;
+  await fixtureRoutes(page, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/admin/dashboard')) {
+      dashboardRequests += 1;
+      if (dashboardRequests === 1) {
+        await route.fulfill({ status: 401, json: { ok: false, error: 'Sign in to continue.' } });
+      } else {
+        await route.fulfill({ json: { ok: true, data: dashboard } });
+      }
+      return true;
+    }
+    if (path.endsWith('/admin/auth/request-code')) {
+      await route.fulfill({ json: { ok: true, data: { previewCode: '123456' } } });
+      return true;
+    }
+    if (path.endsWith('/admin/auth/verify')) {
+      await route.fulfill({ json: { ok: true, data: { admin: dashboard.admin } } });
+      return true;
+    }
+    return false;
+  });
+  await page.goto('/emmiwood/admin?appointment=audit-appt-1');
+  await page.getByLabel('Mobile number', { exact: true }).fill('6055550199');
+  await page.getByRole('button', { name: 'Text me a code', exact: true }).click();
+  await page.getByLabel('Six-digit code', { exact: true }).fill('123456');
+  await page.getByRole('button', { name: 'Verify and enter', exact: true }).click();
+  const editor = page.locator('form.ewa-appointment-edit');
+  await expect(editor).toBeVisible();
+  await expect(editor.getByRole('button', { name: 'Reschedule', exact: true })).toBeVisible();
+});
+
+test('staff SMS deep link with an unknown booking explains instead of opening an editor', async ({ page }) => {
+  await fixtureRoutes(page);
+  await page.goto('/emmiwood/admin?appointment=missing-1');
+  await expect(page.getByText('That booking could not be found.')).toBeVisible();
+  await expect(page.locator('form.ewa-appointment-edit')).toHaveCount(0);
+});
+
+test('staff sign-in stays usable at foldable cover-screen size when the keyboard shrinks the viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 306, height: 318 });
+  let dashboardRequests = 0;
+  await fixtureRoutes(page, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/admin/dashboard')) {
+      dashboardRequests += 1;
+      if (dashboardRequests === 1) {
+        await route.fulfill({ status: 401, json: { ok: false, error: 'Sign in to continue.' } });
+      } else {
+        await route.fulfill({ json: { ok: true, data: dashboardFixture() } });
+      }
+      return true;
+    }
+    if (path.endsWith('/admin/auth/request-code')) {
+      await route.fulfill({ json: { ok: true, data: { previewCode: '123456' } } });
+      return true;
+    }
+    if (path.endsWith('/admin/auth/verify')) {
+      await route.fulfill({ json: { ok: true, data: { admin: dashboardFixture().admin } } });
+      return true;
+    }
+    return false;
+  });
+  await page.goto('/emmiwood/admin');
+  // The viewport opts into layout resize so the on-screen keyboard cannot
+  // leave the form outside the visible area on foldables.
+  const viewportMeta = await page.locator('meta[name="viewport"]').getAttribute('content');
+  expect(viewportMeta).toContain('interactive-widget=resizes-content');
+  const phone = page.getByLabel('Mobile number', { exact: true });
+  await expect(phone).toBeVisible();
+  await phone.click();
+  // Keyboard opens: the visible viewport collapses to a short strip.
+  await page.setViewportSize({ width: 306, height: 150 });
+  // Short-viewport rules top-align the card so the form scrolls from the top.
+  const cardAlign = await page.evaluate(() => {
+    const card = document.querySelector('.ewa-login-card');
+    return card ? getComputedStyle(card).alignSelf : '';
+  });
+  expect(cardAlign).toBe('start');
+  await phone.fill('6055550199');
+  await page.getByRole('button', { name: 'Text me a code', exact: true }).click();
+  const code = page.getByLabel('Six-digit code', { exact: true });
+  await expect(code).toBeVisible();
+  await code.fill('123456');
+  await page.getByRole('button', { name: 'Verify and enter', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+});

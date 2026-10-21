@@ -11,6 +11,7 @@ import {
   shopAdminNoticePhones,
   staffSmsStatements,
   deliverNotification,
+  adminAppointmentUrl,
   manageAppointmentUrl,
   notificationProvider,
   notificationReadiness,
@@ -500,6 +501,59 @@ test('renderSms staff templates include customer details and STOP/HELP', () => {
   assert.doesNotMatch(body, /\+16055550199/);
   assert.match(body, /STOP/);
   assert.match(body, /HELP/);
+});
+
+test('adminAppointmentUrl builds the staff deep link and fails closed without origin or id', () => {
+  assert.equal(
+    adminAppointmentUrl({ EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.example' }, 'appt 1'),
+    'https://emmiwood.example/emmiwood/admin?appointment=appt%201',
+  );
+  assert.equal(adminAppointmentUrl({}, 'appt-1'), null);
+  assert.equal(adminAppointmentUrl({ EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.example' }, ''), null);
+  assert.equal(adminAppointmentUrl({ EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.example' }, null), null);
+});
+
+test('renderSms staff templates carry the View deep link only when an admin URL is present', () => {
+  const withLink = renderSms('barber_booking_notice', {
+    serviceName: 'Cut',
+    when: 'Wed, Aug 26, 11:00 AM',
+    customerName: 'Guest',
+    customerPhoneLast4: '...0199',
+    adminUrl: 'https://emmiwood.example/emmiwood/admin?appointment=appt-1',
+  });
+  assert.match(withLink, /View: https:\/\/emmiwood\.example\/emmiwood\/admin\?appointment=appt-1/);
+  const withoutLink = renderSms('barber_booking_notice', {
+    serviceName: 'Cut',
+    when: 'Wed, Aug 26, 11:00 AM',
+    customerName: 'Guest',
+    customerPhoneLast4: '...0199',
+  });
+  assert.doesNotMatch(withoutLink, /View:/);
+});
+
+test('barberSmsStatements payload carries the admin deep link for the notice and the reminder', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const env = { DB: db, ENVIRONMENT: 'preview', EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.example' };
+  const start = Math.floor(Date.now() / 1000) + 3600;
+  try {
+    db.exec(`INSERT INTO emmiwood_customers(id,shop_id,name,phone) VALUES('c-42','emmiwood','G','+16055550199');
+      INSERT INTO emmiwood_appointments(id,shop_id,barber_id,service_id,customer_id,start_at,end_at,claim_end_at,status,manage_token_hash)
+      VALUES('appt-42','emmiwood','barro','signature','c-42',${start},${start + 2400},${start + 3000},'booked','hash-42');`);
+    const stmts = barberSmsStatements(env, {
+      shopId: 'emmiwood', appointmentId: 'appt-42', barberPhone: '+15078485517', event: 'booked',
+      startAt: start, serviceName: 'Cut', barberName: 'Barro', customerName: 'G', customerPhone: '+16055550199',
+      now: start - 3600,
+    });
+    await db.batch(stmts);
+    const rows = db.query("SELECT template,payload_json FROM emmiwood_notification_outbox ORDER BY template");
+    assert.equal(rows.length, 2);
+    for (const row of rows) {
+      assert.equal(JSON.parse(row.payload_json).adminUrl, 'https://emmiwood.example/emmiwood/admin?appointment=appt-42');
+    }
+  } finally {
+    db.close();
+  }
 });
 
 test('sanitizeOutboxRow redacts OTP codes and full customer phones', () => {

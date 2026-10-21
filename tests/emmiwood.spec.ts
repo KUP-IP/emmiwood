@@ -326,7 +326,22 @@ test('public site is booking-first, specific, responsive, and accessible', async
 });
 
 test('today card shows weekday appointments and weekend walk-ins', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-10-05T13:30:00Z') });
+  // The today card asks the real slots API for the mocked week, and the API
+  // computes availability against the server's clock — so the mocked dates
+  // must stay in the server's future. Compute the coming Monday (and the
+  // Saturday before it) instead of hardcoding dates that time will pass.
+  const dayMs = 86_400_000;
+  const todayUtc = new Date();
+  todayUtc.setUTCHours(0, 0, 0, 0);
+  const daysUntilMonday = ((8 - todayUtc.getUTCDay()) % 7) || 7;
+  const monday = todayUtc.getTime() + daysUntilMonday * dayMs;
+  const saturday = monday - 2 * dayMs;
+  const atUtc = (day: number, hours: number, minutes: number) => {
+    const date = new Date(day);
+    date.setUTCHours(hours, minutes, 0, 0);
+    return date;
+  };
+  await page.clock.install({ time: atUtc(monday, 13, 30) });
   await page.goto('/emmiwood', { waitUntil: 'networkidle' });
   const hours = page.getByRole('img', { name: 'Daily shop hours' });
   const today = page.getByRole('region', { name: 'Today at Emmiwood' });
@@ -348,7 +363,7 @@ test('today card shows weekday appointments and weekend walk-ins', async ({ page
   const directionsStyle = await today.getByRole('link', { name: 'Get directions' }).evaluate((element) => getComputedStyle(element).backgroundColor);
   expect(bookStyle).not.toBe(directionsStyle);
 
-  await page.clock.setFixedTime(new Date('2026-10-03T19:00:00Z'));
+  await page.clock.setFixedTime(atUtc(saturday, 19, 0));
   await page.reload({ waitUntil: 'networkidle' });
   await expect(hours).toContainText('Walk in');
   await expect(hours).toContainText('7:30 AM–7:30 PM');
@@ -358,7 +373,7 @@ test('today card shows weekday appointments and weekend walk-ins', async ({ page
   await expect(today.getByRole('link', { name: 'Get directions' })).toHaveClass(/ew-button/);
   await expect(today.getByRole('link', { name: 'Book that time' })).toHaveClass(/ew-today-quiet/);
 
-  await page.clock.setFixedTime(new Date('2026-10-05T18:30:00Z'));
+  await page.clock.setFixedTime(atUtc(monday, 18, 30));
   await page.reload({ waitUntil: 'networkidle' });
   await expect(today).toContainText('Walk in now');
   await expect(today).toContainText('until 4:00 PM');
