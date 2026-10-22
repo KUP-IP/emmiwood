@@ -114,6 +114,12 @@ async function deliverAdminCode(env, admin, phone, notificationId, payload, prov
   }
 }
 
+const NUMBER_NOT_SETUP_RESPONSE = Object.freeze({
+  ok: false,
+  error: 'number_not_setup',
+  message: 'This number is not set up for admin access. Check the number and try again, or ask the shop owner to add it.',
+});
+
 export async function requestCode(env, phone, { defer, source } = {}) {
   const startedAt = Date.now();
   await bootstrap(env);
@@ -122,8 +128,9 @@ export async function requestCode(env, phone, { defer, source } = {}) {
     normalized = normalizePhone(phone);
   } catch {
     await enforceAuthResponseFloor(env, startedAt);
-    // Indistinguishable response for invalid / unknown numbers (no account enumeration).
-    return { ok: true };
+    // Barro Item 5 (Isaiah GO 2026-10-22): the admin login answers explicitly
+    // when a number cannot receive a code, instead of a silent ok.
+    return { ...NUMBER_NOT_SETUP_RESPONSE };
   }
   if (!await consumeAuthSource(env, source)) {
     await enforceAuthResponseFloor(env, startedAt);
@@ -132,7 +139,7 @@ export async function requestCode(env, phone, { defer, source } = {}) {
   const admin = await env.DB.prepare('SELECT * FROM emmiwood_admins WHERE shop_id=? AND phone=? AND active=1').bind(SHOP_ID, normalized).first();
   if (!admin) {
     await enforceAuthResponseFloor(env, startedAt);
-    return { ok: true };
+    return { ...NUMBER_NOT_SETUP_RESPONSE };
   }
   const recentChallenges = await env.DB.prepare('SELECT COUNT(*) count FROM emmiwood_login_challenges WHERE admin_id=? AND created_at>?').bind(admin.id, now() - 600).first();
   if (Number(recentChallenges?.count || 0) >= authRequestLimit(env)) {
