@@ -119,7 +119,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
     try {
       if (!sent) {
         const result = await emmiwoodApi.requestCode(phone.trim());
-        if (!result.ok) {
+        if (result.ok === false) {
           setMessage(result.message || 'This number is not set up for admin access.');
           return;
         }
@@ -146,7 +146,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
     setBusy(true);
     try {
       const result = await emmiwoodApi.requestCode(phone.trim());
-      if (!result.ok) {
+      if (result.ok === false) {
         setMessage(result.message || 'This number is not set up for admin access.');
         return;
       }
