@@ -86,7 +86,7 @@ test('login requests are bounded by request source as well as account', async ()
   } finally { db.close(); }
 });
 
-test('production request-code sends SMS immediately while known and unknown numbers stay indistinguishable', async () => {
+test('production request-code sends SMS immediately; unknown numbers get the explicit not-set-up result (Barro Item 5)', async () => {
   const db = setupEmmiwoodTestD1();
   const calls = [];
   const originalFetch = globalThis.fetch;
@@ -98,7 +98,9 @@ test('production request-code sends SMS immediately while known and unknown numb
     const unknown = await requestCode(env, '605-555-0100');
 
     assert.deepEqual(known, { ok: true });
-    assert.deepEqual(unknown, known);
+    assert.equal(unknown.ok, false);
+    assert.equal(unknown.error, 'number_not_setup');
+    assert.match(unknown.message, /not set up for admin access/);
     assert.equal(calls.length, 1);
     assert.match(calls[0].url, /api\.twilio\.com/);
     assert.match(calls[0].body, /To=%2B16055550199/);

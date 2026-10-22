@@ -90,8 +90,15 @@ function Login({ onLogin }: { onLogin: () => void }) {
   const [sent, setSent] = useState(false);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
   const busyRef = useRef(false);
   const infoPrefix = 'If that number';
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn((value) => Math.max(0, value - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -112,13 +119,41 @@ function Login({ onLogin }: { onLogin: () => void }) {
     try {
       if (!sent) {
         const result = await emmiwoodApi.requestCode(phone.trim());
+        if (result.ok === false) {
+          setMessage(result.message || 'This number is not set up for admin access.');
+          return;
+        }
         setPreview(result.previewCode || '');
         setSent(true);
+        setResendIn(30);
         setMessage('If that number is authorized, a short-lived code is on the way.');
       } else {
         await emmiwoodApi.verifyCode(phone.trim(), code.trim());
         await onLogin();
       }
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function resend() {
+    if (busyRef.current || resendIn > 0) return;
+    setMessage('Working…');
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      const result = await emmiwoodApi.requestCode(phone.trim());
+      if (result.ok === false) {
+        setMessage(result.message || 'This number is not set up for admin access.');
+        return;
+      }
+      setPreview(result.previewCode || '');
+      setCode('');
+      setResendIn(30);
+      setMessage('If that number is authorized, a new code is on the way.');
     } catch (error) {
       setMessage((error as Error).message);
     } finally {
@@ -140,6 +175,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
         {!sent ? <label key="phone">Mobile number<input autoFocus disabled={busy} type="tel" inputMode="tel" value={phone} onChange={(event) => { setPhone(formatUsPhone(event.target.value)); if (message) setMessage(''); }} autoComplete="tel" aria-invalid={showError || undefined} required placeholder="Shop mobile number" /></label> : <label key="code">Six-digit code<input autoFocus disabled={busy} inputMode="numeric" pattern="[0-9]{6}" value={code} onChange={(event) => { setCode(event.target.value); if (message) setMessage(''); }} autoComplete="one-time-code" aria-invalid={showError || undefined} required /></label>}
         {preview && <p className="ewa-preview" role="status">Preview code <strong>{preview}</strong></p>}
         <button className="ew-button" type="submit" disabled={busy}>{busy ? 'Working…' : sent ? 'Verify and enter' : 'Text me a code'}</button>
+        {sent && <button className="ew-link-button" type="button" disabled={busy || resendIn > 0} onClick={resend}>{resendIn > 0 ? `Resend code (${resendIn}s)` : 'Resend code'}</button>}
         {sent && <button className="ew-link-button" type="button" disabled={busy} onClick={() => { setSent(false); setCode(''); setPreview(''); setMessage(''); }}>Use another number</button>}
         <p className={`ew-form-message${message ? (message === 'Working…' || message.startsWith(infoPrefix) ? ' is-info' : ' is-error') : ' is-empty'}`} role={showError ? 'alert' : undefined} aria-live="polite">{message}</p>
       </form>
