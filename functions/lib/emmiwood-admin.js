@@ -102,6 +102,13 @@ async function deliverAdminCode(env, admin, phone, notificationId, payload, prov
           WHERE id=?`).bind(delivery.provider, delivery.providerMessageId || null, notificationId),
         audit(env, admin.id, 'admin_code_delivered', { provider: delivery.provider, providerMessageId: delivery.providerMessageId || null }),
       ]);
+    } else if (delivery.status === 'suppressed_test_mode') {
+      await env.DB.batch([
+        env.DB.prepare(`UPDATE emmiwood_notification_outbox
+          SET status='suppressed_test_mode',provider=?,last_attempt_at=unixepoch(),attempt_count=attempt_count+1,error=NULL
+          WHERE id=?`).bind(delivery.provider, notificationId),
+        audit(env, admin.id, 'admin_code_suppressed_test_mode', { provider: delivery.provider }),
+      ]);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
