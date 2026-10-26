@@ -562,7 +562,7 @@ export async function deliverNotification(env, row) {
   if (row.provider === NOTIFICATION_PROVIDER_MOCK) return { provider: NOTIFICATION_PROVIDER_MOCK, status: 'queued' };
   if (row.provider === NOTIFICATION_PROVIDER_UNCONFIGURED) throw new Error('Notification delivery is not configured.');
   if (!recipientAllowedForTestMode(env, row.channel, row.recipient)) {
-    return { provider: row.provider, status: 'suppressed_test_mode' };
+    return { provider: row.provider, status: 'skipped_test_mode' };
   }
   const payload = JSON.parse(row.payload_json || '{}');
   if (row.template === 'admin_login_code' && !payload.code) {
@@ -788,6 +788,14 @@ export async function processQueuedNotifications(env, {
 
   const results = [];
   for (const row of pending.results || []) {
+    if (!recipientAllowedForTestMode(env, row.channel, row.recipient)) {
+      results.push({
+        id: row.id,
+        status: 'skipped_test_mode',
+        attempt: Number(row.attempt_count || 0),
+      });
+      continue;
+    }
     const claimed = await claimQueuedNotification(env, row.id);
     if (!claimed) continue;
     const attempt = Number(claimed.attempt_count);
@@ -810,10 +818,10 @@ export async function processQueuedNotifications(env, {
         await env.DB.prepare(`UPDATE emmiwood_notification_outbox
           SET status='sent',provider=?,sent_at=unixepoch(),last_attempt_at=unixepoch(),attempt_count=?,provider_message_id=?,error=NULL
           WHERE id=?`).bind(resolvedProvider, attempt, delivery.providerMessageId || null, row.id).run();
-      } else if (delivery.status === 'suppressed_test_mode') {
+      } else if (delivery.status === 'skipped_test_mode' || delivery.status === 'suppressed_test_mode') {
         await env.DB.prepare(`UPDATE emmiwood_notification_outbox
-          SET status='suppressed_test_mode',provider=?,last_attempt_at=unixepoch(),attempt_count=?,error=NULL
-          WHERE id=?`).bind(resolvedProvider, attempt, row.id).run();
+          SET status='queued',last_attempt_at=NULL,attempt_count=?
+          WHERE id=?`).bind(Math.max(0, attempt - 1), row.id).run();
       } else if (delivery.status === 'queued') {
         await env.DB.prepare(`UPDATE emmiwood_notification_outbox
           SET status='queued',last_attempt_at=unixepoch(),attempt_count=?
@@ -843,7 +851,13 @@ export async function processQueuedNotifications(env, {
     }
   }
 
-  return { ok: true, ready: true, readiness, processed: results.length, results };
+  return {
+    ok: true,
+    ready: true,
+    readiness,
+    processed: results.filter((result) => result.status !== 'skipped_test_mode').length,
+    results,
+  };
 }
 
 /** Best-effort immediate flush after book/cancel/reschedule (does not throw).

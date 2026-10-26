@@ -16,7 +16,7 @@ Every 5 minutes the Worker:
 2. **Processes the queue** only when the Worker's `PROCESS_QUEUE` var is
    `"true"`: `POST` to the same URL. The run fails if any processed
    notification comes back `retrying` or `failed`. Expired and
-   `suppressed_test_mode` rows are expected skips and do not fail the run.
+   `skipped_test_mode` rows are expected skips and do not fail the run.
 
 This mirrors the Actions workflow's failure behavior: a failed probe or a
 failed notification turns the run red (the cron handler throws). The
@@ -49,10 +49,11 @@ Pages vars:
 - `EMAIL_TEST_ALLOWLIST`: comma-separated email addresses
 
 When an allowlist is set and non-empty, only those recipients are sent.
-Every other live SMS or email row is marked `suppressed_test_mode` and is
-not retried. Non-production environments treat test mode as on even when
-the allowlist is empty, so a forgotten list suppresses live sends instead
-of texting real customers.
+Every other live SMS or email row is left `queued` and unclaimed
+(`skipped_test_mode`) so real customer rows are not consumed. Booking-time
+flush does the same: non-allowlisted numbers stay on the queue. Preview
+and development treat test mode as on even when the allowlist is empty, so
+a forgotten list skips live sends instead of texting real customers.
 
 Readiness includes `data.sms.testMode`, `data.sms.testAllowlistCount`,
 and the same fields on `data.email`.
@@ -131,8 +132,8 @@ atomic claim means both processors can overlap briefly without
 double-send.
 
 Do not run `db:migrate:remote:production` for this change. Status values
-`sending`, `expired`, and `suppressed_test_mode` need no CHECK-constraint
-migration.
+`sending` and `expired` need no CHECK-constraint migration. Test-mode
+skips do not write a new status.
 
 ## Tests
 

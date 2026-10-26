@@ -53,7 +53,9 @@ function countByStatus(results) {
     else if (result.status === 'retrying') counts.retrying += 1;
     else if (result.status === 'failed') counts.failed += 1;
     else if (result.status === 'expired') counts.expired += 1;
-    else if (result.status === 'suppressed_test_mode') counts.suppressed += 1;
+    else if (result.status === 'suppressed_test_mode' || result.status === 'skipped_test_mode') {
+      counts.suppressed += 1;
+    }
   }
   return counts;
 }

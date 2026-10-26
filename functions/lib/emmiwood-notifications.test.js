@@ -821,7 +821,7 @@ test('processor expires stale reminders and old confirmation notices', async () 
   }
 });
 
-test('allowlisted SMS sends via stubbed Twilio and non-allowlisted is suppressed', async () => {
+test('allowlisted SMS sends via stubbed Twilio and non-allowlisted stays queued', async () => {
   const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
   const db = setupEmmiwoodTestD1();
   const originalFetch = globalThis.fetch;
@@ -850,21 +850,88 @@ test('allowlisted SMS sends via stubbed Twilio and non-allowlisted is suppressed
     });
     assert.equal(allowed.status, 'sent');
     assert.equal(allowed.providerMessageId, 'SM-allow');
-    assert.equal(blocked.status, 'suppressed_test_mode');
-    const processed = await processQueuedNotifications(env, { notificationId: 'block-1' });
-    assert.equal(processed.results[0].status, 'suppressed_test_mode');
-    assert.deepEqual(db.query("SELECT status FROM emmiwood_notification_outbox WHERE id='block-1'"), [
-      { status: 'suppressed_test_mode' },
+    assert.equal(blocked.status, 'skipped_test_mode');
+    const sent = await processQueuedNotifications(env, { notificationId: 'allow-1' });
+    const skipped = await processQueuedNotifications(env, { notificationId: 'block-1' });
+    assert.equal(sent.results[0].status, 'sent');
+    assert.equal(skipped.results[0].status, 'skipped_test_mode');
+    assert.equal(skipped.processed, 0);
+    assert.deepEqual(db.query("SELECT status,attempt_count,last_attempt_at FROM emmiwood_notification_outbox WHERE id='block-1'"), [
+      { status: 'queued', attempt_count: 0, last_attempt_at: null },
     ]);
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     assert.match(calls[0].body, /To=%2B16055550100/);
+    assert.match(calls[1].body, /To=%2B16055550100/);
   } finally {
     globalThis.fetch = originalFetch;
     db.close();
   }
 });
 
-test('non-production live SMS is suppressed when the allowlist is empty', async () => {
+test('test mode leaves non-allowlisted outbox rows queued and unclaimed', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify({ sid: 'SM-nope' }), { status: 200 });
+  };
+  try {
+    insertOutbox(db, { id: 'skip-1', recipient: '+16055550999' });
+    const env = processorEnv(db, { SMS_TEST_ALLOWLIST: '+16055550100' });
+    const outcome = await processQueuedNotifications(env, { notificationId: 'skip-1' });
+    assert.equal(outcome.results[0].status, 'skipped_test_mode');
+    assert.equal(outcome.processed, 0);
+    assert.equal(fetchCalls, 0);
+    assert.deepEqual(
+      db.query("SELECT status,attempt_count,last_attempt_at,error FROM emmiwood_notification_outbox WHERE id='skip-1'"),
+      [{ status: 'queued', attempt_count: 0, last_attempt_at: null, error: null }],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+
+test('booking-time flush defers non-allowlisted numbers to the queue', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const { flushDueAppointmentNotifications } = await import('./emmiwood-notifications.js');
+  const db = setupEmmiwoodTestD1();
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify({ sid: 'SM-book' }), { status: 200 });
+  };
+  const start = Math.floor(Date.now() / 1000) + 3600;
+  try {
+    db.exec(`INSERT INTO emmiwood_customers(id,shop_id,name,phone) VALUES('c-skip','emmiwood','G','+16055550999');
+      INSERT INTO emmiwood_appointments(id,shop_id,barber_id,service_id,customer_id,start_at,end_at,claim_end_at,status,manage_token_hash)
+      VALUES('appt-skip','emmiwood','barro','signature','c-skip',${start},${start + 2400},${start + 3000},'booked','hash-skip');`);
+    insertOutbox(db, {
+      id: 'book-skip-1',
+      appointmentId: 'appt-skip',
+      recipient: '+16055550999',
+      payload: { start },
+    });
+    const env = processorEnv(db, { SMS_TEST_ALLOWLIST: '+16055550100' });
+    const outcome = await flushDueAppointmentNotifications(env, 'appt-skip');
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.processed, 0);
+    assert.equal(outcome.results[0].status, 'skipped_test_mode');
+    assert.equal(fetchCalls, 0);
+    assert.deepEqual(
+      db.query("SELECT status,attempt_count,last_attempt_at FROM emmiwood_notification_outbox WHERE id='book-skip-1'"),
+      [{ status: 'queued', attempt_count: 0, last_attempt_at: null }],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+
+test('preview live SMS is skipped when the allowlist is empty', async () => {
   const originalFetch = globalThis.fetch;
   let fetchCalls = 0;
   globalThis.fetch = async () => {
@@ -884,7 +951,7 @@ test('non-production live SMS is suppressed when the allowlist is empty', async 
       recipient: '+16055550100',
       payload_json: '{}',
     });
-    assert.equal(result.status, 'suppressed_test_mode');
+    assert.equal(result.status, 'skipped_test_mode');
     assert.equal(fetchCalls, 0);
   } finally {
     globalThis.fetch = originalFetch;

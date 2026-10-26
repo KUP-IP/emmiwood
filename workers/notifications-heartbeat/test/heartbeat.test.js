@@ -150,7 +150,7 @@ test('heartbeat processes the queue after a good probe when enabled', async () =
         results: [
           { id: 'n1', status: 'sent', provider: 'twilio', attempt: 1, providerMessageId: 'SM1' },
           { id: 'n2', status: 'expired', attempt: 1 },
-          { id: 'n3', status: 'suppressed_test_mode', attempt: 1 },
+          { id: 'n3', status: 'skipped_test_mode', attempt: 1 },
         ],
       },
     })
@@ -168,14 +168,14 @@ test('processing throws when any result is retrying or failed', async () => {
   await assert.rejects(() => processQueue({ ...ENV }), /n2/);
 });
 
-test('processing accepts expired and suppressed results', async () => {
+test('processing accepts expired and skipped test-mode results', async () => {
   stubFetch(async () => jsonResponse(200, {
     ok: true,
     data: {
       processed: 2,
       results: [
         { id: 'n1', status: 'expired' },
-        { id: 'n2', status: 'suppressed_test_mode' },
+        { id: 'n2', status: 'skipped_test_mode' },
       ],
     },
   }));
