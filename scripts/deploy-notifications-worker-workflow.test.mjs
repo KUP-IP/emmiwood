@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +35,61 @@ test('deploy-notifications-worker is dispatch-only with SHA and confirmation gat
   assert.match(source, /origin\/main/);
   assert.match(source, /github\.repository == 'KUP-IP\/emmiwood'/);
   assert.match(source, /cancel-in-progress:\s*false/);
+});
+
+test('empty test_allowlist omits SMS_TEST_ALLOWLIST from wrangler vars and sets EXPECT_TEST_MODE false', () => {
+  assert.match(source, /echo "expect_test_mode=true"/);
+  assert.match(source, /echo "expect_test_mode=false"/);
+  assert.match(
+    source,
+    /if \[ -n "\$trimmed" \]; then\n(?:.*\n)*?\s+echo "expect_test_mode=true"/,
+  );
+  assert.match(
+    source,
+    /else\n(?:.*\n)*?\s+echo "expect_test_mode=false"/,
+  );
+  assert.match(source, /wrangler_vars<<EOF/);
+  assert.match(
+    source,
+    /echo "EXPECT_TEST_MODE"\n\s+if \[ -n "\$trimmed" \]; then\n\s+echo "SMS_TEST_ALLOWLIST"/,
+  );
+  assert.match(source, /vars:\s*\$\{\{\s*steps\.vars\.outputs\.wrangler_vars\s*\}\}/);
+  assert.doesNotMatch(
+    source,
+    /vars:\s*\|\n\s+PROCESS_QUEUE\n\s+EXPECT_TEST_MODE\n\s+SMS_TEST_ALLOWLIST/,
+  );
+});
+
+test('prepare-vars script omits SMS_TEST_ALLOWLIST when the allowlist is empty', () => {
+  const prepare = (allowlist) => execFileSync(
+    'bash',
+    ['-lc', `
+      set -euo pipefail
+      TEST_ALLOWLIST=${JSON.stringify(allowlist)}
+      trimmed="$(printf '%s' "$TEST_ALLOWLIST" | tr -d '[:space:]')"
+      if [ -n "$trimmed" ]; then
+        echo "expect_test_mode=true"
+      else
+        echo "expect_test_mode=false"
+      fi
+      echo "PROCESS_QUEUE"
+      echo "EXPECT_TEST_MODE"
+      if [ -n "$trimmed" ]; then
+        echo "SMS_TEST_ALLOWLIST"
+      fi
+    `],
+    { encoding: 'utf8' },
+  );
+
+  const empty = prepare('');
+  assert.match(empty, /^expect_test_mode=false$/m);
+  assert.match(empty, /^PROCESS_QUEUE$/m);
+  assert.match(empty, /^EXPECT_TEST_MODE$/m);
+  assert.doesNotMatch(empty, /SMS_TEST_ALLOWLIST/);
+
+  const set = prepare('+15555550100');
+  assert.match(set, /^expect_test_mode=true$/m);
+  assert.match(set, /^SMS_TEST_ALLOWLIST$/m);
 });
 
 test('Worker has no authenticated test-send route so the workflow only documents one-row cron', () => {
