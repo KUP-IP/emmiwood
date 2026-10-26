@@ -5,6 +5,11 @@ import {
   NOTIFICATION_PROVIDER_UNCONFIGURED,
   NOTIFICATION_PROVIDER_TWILIO,
   NOTIFICATION_PROVIDER_RESEND,
+  NOTICE_STALE_AGE_SECONDS,
+  REMINDER_STALE_AGE_SECONDS,
+  STALE_APPOINTMENT_ERROR,
+  STALE_NOTICE_ERROR,
+  STALE_SENDING_SECONDS,
   appointmentSmsStatements,
   barberReminderAvailableAt,
   barberSmsStatements,
@@ -15,11 +20,14 @@ import {
   manageAppointmentUrl,
   notificationProvider,
   notificationReadiness,
+  notificationTestMode,
+  processQueuedNotifications,
   reminderAvailableAt,
   guestReminderAvailableAt,
   phoneLast4,
   renderSms,
   sanitizeOutboxRow,
+  staleNotificationReason,
 } from './emmiwood-notifications.js';
 
 const PRODUCTION_RUNTIME = Object.freeze({
@@ -677,3 +685,332 @@ test('flushDueAppointmentNotifications skips on preview exact-id-only', async ()
   assert.equal(result.skipped, 'exact_id_only');
   assert.equal(result.processed, 0);
 });
+
+function processorEnv(db, extra = {}) {
+  return {
+    DB: db,
+    ...PRODUCTION_RUNTIME,
+    EMMIWOOD_NOTIFICATION_SECRET: 'secret',
+    TWILIO_ACCOUNT_SID: 'sid',
+    TWILIO_AUTH_TOKEN: 'token',
+    TWILIO_FROM_NUMBER: '+16050000000',
+    ...extra,
+  };
+}
+
+function insertOutbox(db, {
+  id,
+  template = 'booking_confirmation',
+  recipient = '+16055550100',
+  provider = 'twilio',
+  status = 'queued',
+  availableAt = Math.floor(Date.now() / 1000),
+  attemptCount = 0,
+  lastAttemptAt = null,
+  payload = {},
+  appointmentId = null,
+}) {
+  const appointmentSql = appointmentId == null ? 'NULL' : `'${appointmentId}'`;
+  const lastAttemptSql = lastAttemptAt == null ? 'NULL' : String(lastAttemptAt);
+  db.exec(`INSERT INTO emmiwood_notification_outbox(
+      id,shop_id,appointment_id,channel,template,recipient,payload_json,provider,status,available_at,attempt_count,last_attempt_at
+    ) VALUES(
+      '${id}','emmiwood',${appointmentSql},'sms','${template}','${recipient}',
+      '${JSON.stringify(payload).replaceAll("'", "''")}','${provider}','${status}',${availableAt},${attemptCount},${lastAttemptSql}
+    )`);
+}
+
+test('test mode is on by default outside production and only when allowlisted in production', () => {
+  assert.equal(notificationTestMode({ ENVIRONMENT: 'preview' }, 'sms'), true);
+  assert.equal(notificationTestMode({ ENVIRONMENT: 'development' }, 'email'), true);
+  assert.equal(notificationTestMode({}, 'sms'), false);
+  assert.equal(notificationTestMode({ ENVIRONMENT: 'production' }, 'sms'), false);
+  assert.equal(notificationTestMode({
+    ENVIRONMENT: 'production',
+    SMS_TEST_ALLOWLIST: '+16055550100',
+  }, 'sms'), true);
+  const preview = notificationReadiness({ ENVIRONMENT: 'preview' });
+  assert.equal(preview.sms.testMode, true);
+  assert.equal(preview.sms.testAllowlistCount, 0);
+  const production = notificationReadiness({
+    ...PRODUCTION_RUNTIME,
+    EMMIWOOD_NOTIFICATION_SECRET: 'configured',
+    TWILIO_ACCOUNT_SID: 'configured',
+    TWILIO_AUTH_TOKEN: 'configured',
+    TWILIO_FROM_NUMBER: 'configured',
+    SMS_TEST_ALLOWLIST: '+16055550100,+16055550101',
+  });
+  assert.equal(production.sms.testMode, true);
+  assert.equal(production.sms.testAllowlistCount, 2);
+});
+
+test('staleNotificationReason covers past appointments, old reminders, and old notices', () => {
+  const now = 2_000_000;
+  assert.equal(staleNotificationReason({
+    template: 'appointment_reminder',
+    payload_json: JSON.stringify({ start: now - 10 }),
+    available_at: now - 60,
+  }, now), STALE_APPOINTMENT_ERROR);
+  assert.equal(staleNotificationReason({
+    template: 'barber_reminder_15m',
+    payload_json: JSON.stringify({ start: now - 1 }),
+    available_at: now - 60,
+  }, now), STALE_APPOINTMENT_ERROR);
+  assert.equal(staleNotificationReason({
+    template: 'appointment_reminder',
+    payload_json: JSON.stringify({ start: now + 3600 }),
+    available_at: now - REMINDER_STALE_AGE_SECONDS - 1,
+  }, now), STALE_APPOINTMENT_ERROR);
+  assert.equal(staleNotificationReason({
+    template: 'booking_confirmation',
+    payload_json: '{}',
+    available_at: now - NOTICE_STALE_AGE_SECONDS - 1,
+  }, now), STALE_NOTICE_ERROR);
+  assert.equal(staleNotificationReason({
+    template: 'cancellation_confirmation',
+    payload_json: '{}',
+    available_at: now - NOTICE_STALE_AGE_SECONDS - 1,
+  }, now), STALE_NOTICE_ERROR);
+  assert.equal(staleNotificationReason({
+    template: 'reschedule_confirmation',
+    payload_json: '{}',
+    available_at: now - NOTICE_STALE_AGE_SECONDS - 1,
+  }, now), STALE_NOTICE_ERROR);
+  assert.equal(staleNotificationReason({
+    template: 'appointment_reminder',
+    payload_json: JSON.stringify({ start: now + 3600 }),
+    available_at: now - 60,
+  }, now), null);
+});
+
+test('processor expires stale reminders and old confirmation notices', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify({ sid: 'SM-stale' }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    insertOutbox(db, {
+      id: 'stale-reminder',
+      template: 'appointment_reminder',
+      payload: { start: now - 120 },
+    });
+    insertOutbox(db, {
+      id: 'stale-notice',
+      template: 'booking_confirmation',
+      availableAt: now - NOTICE_STALE_AGE_SECONDS - 30,
+    });
+    const env = processorEnv(db);
+    const reminder = await processQueuedNotifications(env, { notificationId: 'stale-reminder' });
+    const notice = await processQueuedNotifications(env, { notificationId: 'stale-notice' });
+    assert.equal(reminder.results[0].status, 'expired');
+    assert.equal(reminder.results[0].error, STALE_APPOINTMENT_ERROR);
+    assert.equal(notice.results[0].status, 'expired');
+    assert.equal(notice.results[0].error, STALE_NOTICE_ERROR);
+    assert.equal(fetchCalls, 0);
+    assert.deepEqual(db.query("SELECT status,error FROM emmiwood_notification_outbox WHERE id='stale-reminder'"), [
+      { status: 'expired', error: STALE_APPOINTMENT_ERROR },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+
+test('allowlisted SMS sends via stubbed Twilio and non-allowlisted stays queued', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), body: String(init?.body || '') });
+    return new Response(JSON.stringify({ sid: 'SM-allow' }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    insertOutbox(db, { id: 'allow-1', recipient: '+16055550100' });
+    insertOutbox(db, { id: 'block-1', recipient: '+16055550999' });
+    const env = processorEnv(db, { SMS_TEST_ALLOWLIST: '+16055550100' });
+    const allowed = await deliverNotification(env, {
+      provider: NOTIFICATION_PROVIDER_TWILIO,
+      channel: 'sms',
+      template: 'booking_confirmation',
+      recipient: '+16055550100',
+      payload_json: '{}',
+    });
+    const blocked = await deliverNotification(env, {
+      provider: NOTIFICATION_PROVIDER_TWILIO,
+      channel: 'sms',
+      template: 'booking_confirmation',
+      recipient: '+16055550999',
+      payload_json: '{}',
+    });
+    assert.equal(allowed.status, 'sent');
+    assert.equal(allowed.providerMessageId, 'SM-allow');
+    assert.equal(blocked.status, 'skipped_test_mode');
+    const sent = await processQueuedNotifications(env, { notificationId: 'allow-1' });
+    const skipped = await processQueuedNotifications(env, { notificationId: 'block-1' });
+    assert.equal(sent.results[0].status, 'sent');
+    assert.equal(skipped.results[0].status, 'skipped_test_mode');
+    assert.equal(skipped.processed, 0);
+    assert.deepEqual(db.query("SELECT status,attempt_count,last_attempt_at FROM emmiwood_notification_outbox WHERE id='block-1'"), [
+      { status: 'queued', attempt_count: 0, last_attempt_at: null },
+    ]);
+    assert.equal(calls.length, 2);
+    assert.match(calls[0].body, /To=%2B16055550100/);
+    assert.match(calls[1].body, /To=%2B16055550100/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+
+test('test mode leaves non-allowlisted outbox rows queued and unclaimed', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify({ sid: 'SM-nope' }), { status: 200 });
+  };
+  try {
+    insertOutbox(db, { id: 'skip-1', recipient: '+16055550999' });
+    const env = processorEnv(db, { SMS_TEST_ALLOWLIST: '+16055550100' });
+    const outcome = await processQueuedNotifications(env, { notificationId: 'skip-1' });
+    assert.equal(outcome.results[0].status, 'skipped_test_mode');
+    assert.equal(outcome.processed, 0);
+    assert.equal(fetchCalls, 0);
+    assert.deepEqual(
+      db.query("SELECT status,attempt_count,last_attempt_at,error FROM emmiwood_notification_outbox WHERE id='skip-1'"),
+      [{ status: 'queued', attempt_count: 0, last_attempt_at: null, error: null }],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+
+test('booking-time flush defers non-allowlisted numbers to the queue', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const { flushDueAppointmentNotifications } = await import('./emmiwood-notifications.js');
+  const db = setupEmmiwoodTestD1();
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify({ sid: 'SM-book' }), { status: 200 });
+  };
+  const start = Math.floor(Date.now() / 1000) + 3600;
+  try {
+    db.exec(`INSERT INTO emmiwood_customers(id,shop_id,name,phone) VALUES('c-skip','emmiwood','G','+16055550999');
+      INSERT INTO emmiwood_appointments(id,shop_id,barber_id,service_id,customer_id,start_at,end_at,claim_end_at,status,manage_token_hash)
+      VALUES('appt-skip','emmiwood','barro','signature','c-skip',${start},${start + 2400},${start + 3000},'booked','hash-skip');`);
+    insertOutbox(db, {
+      id: 'book-skip-1',
+      appointmentId: 'appt-skip',
+      recipient: '+16055550999',
+      payload: { start },
+    });
+    const env = processorEnv(db, { SMS_TEST_ALLOWLIST: '+16055550100' });
+    const outcome = await flushDueAppointmentNotifications(env, 'appt-skip');
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.processed, 0);
+    assert.equal(outcome.results[0].status, 'skipped_test_mode');
+    assert.equal(fetchCalls, 0);
+    assert.deepEqual(
+      db.query("SELECT status,attempt_count,last_attempt_at FROM emmiwood_notification_outbox WHERE id='book-skip-1'"),
+      [{ status: 'queued', attempt_count: 0, last_attempt_at: null }],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+
+test('preview live SMS is skipped when the allowlist is empty', async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify({ sid: 'SM-nope' }), { status: 200 });
+  };
+  try {
+    const result = await deliverNotification({
+      ENVIRONMENT: 'preview',
+      TWILIO_ACCOUNT_SID: 'sid',
+      TWILIO_AUTH_TOKEN: 'token',
+      TWILIO_FROM_NUMBER: '+16050000000',
+    }, {
+      provider: NOTIFICATION_PROVIDER_TWILIO,
+      channel: 'sms',
+      template: 'booking_confirmation',
+      recipient: '+16055550100',
+      payload_json: '{}',
+    });
+    assert.equal(result.status, 'skipped_test_mode');
+    assert.equal(fetchCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('two concurrent processors deliver one queued row exactly once', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const originalFetch = globalThis.fetch;
+  let sends = 0;
+  globalThis.fetch = async () => {
+    sends += 1;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    return new Response(JSON.stringify({ sid: 'SM-once' }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    insertOutbox(db, { id: 'once-1', recipient: '+16055550100' });
+    const env = processorEnv(db);
+    const [first, second] = await Promise.all([
+      processQueuedNotifications(env, { notificationId: 'once-1' }),
+      processQueuedNotifications(env, { notificationId: 'once-1' }),
+    ]);
+    const sent = [first, second].filter((outcome) => outcome.results.some((row) => row.status === 'sent'));
+    const processed = first.processed + second.processed;
+    assert.equal(sends, 1);
+    assert.equal(sent.length, 1);
+    assert.ok(processed <= 1);
+    assert.deepEqual(db.query("SELECT status,provider_message_id,attempt_count FROM emmiwood_notification_outbox WHERE id='once-1'"), [
+      { status: 'sent', provider_message_id: 'SM-once', attempt_count: 1 },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+
+test('reaper returns stale sending rows to queued and counts the attempt', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ sid: 'SM-reaped' }), { status: 200, headers: { 'content-type': 'application/json' } });
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    insertOutbox(db, {
+      id: 'reap-1',
+      status: 'sending',
+      attemptCount: 1,
+      lastAttemptAt: now - STALE_SENDING_SECONDS - 5,
+      payload: { start: now + 3600 },
+    });
+    const outcome = await processQueuedNotifications(processorEnv(db), { notificationId: 'reap-1' });
+    assert.equal(outcome.results[0].status, 'sent');
+    assert.deepEqual(db.query("SELECT status,attempt_count FROM emmiwood_notification_outbox WHERE id='reap-1'"), [
+      { status: 'sent', attempt_count: 3 },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    db.close();
+  }
+});
+

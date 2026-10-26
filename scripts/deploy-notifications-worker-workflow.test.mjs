@@ -37,15 +37,11 @@ test('deploy-notifications-worker is dispatch-only with SHA and confirmation gat
 });
 
 test('Worker has no authenticated test-send route so the workflow only documents one-row cron', () => {
-  assert.match(workerSource, /No processing trigger is exposed over HTTP/);
-  assert.match(workerSource, /async fetch\(request, env\)/);
+  assert.doesNotMatch(workerSource, /async fetch\s*\(/);
+  assert.match(workerSource, /async scheduled\(/);
   assert.doesNotMatch(workerSource, /test-send|test_send|sendOneTest/);
-  assert.match(workerSource, /processQueue\(env\)/);
-  assert.doesNotMatch(
-    workerSource.slice(workerSource.indexOf('async fetch')),
-    /processQueue\(/,
-  );
   assert.match(source, /no authenticated test-send route/);
+  assert.match(source, /no fetch handler/);
   assert.match(source, /notifications\.yml/);
   assert.match(source, /Does not send/);
 });

@@ -159,7 +159,7 @@ jobs:
             echo
             echo '### Send one test'
             echo
-            echo 'This Worker has a liveness-only fetch and no authenticated test-send route.'
+            echo 'This Worker has no fetch handler and no authenticated test-send route.'
             echo 'workers_dev stays false. This step does not send SMS.'
             echo
             echo 'To send one dedicated test row through the cron:'
