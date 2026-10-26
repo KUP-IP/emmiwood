@@ -1,0 +1,174 @@
+name: Deploy notifications Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Full 40-character SHA of the current origin/main tip
+        required: true
+        type: string
+      confirmation:
+        description: Type exactly DEPLOY WORKER <release_sha>
+        required: true
+        type: string
+      process_queue:
+        description: Worker PROCESS_QUEUE var. Keep false unless Isaiah GO says otherwise.
+        required: true
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
+      test_allowlist:
+        description: Optional comma-separated E.164 numbers for Worker SMS_TEST_ALLOWLIST
+        required: false
+        type: string
+        default: ""
+      send_one_test:
+        description: Print the one-row cron test procedure. Does not send. Worker has no HTTP test-send.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-notifications-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy emmiwood-notifications-heartbeat
+    if: github.repository == 'KUP-IP/emmiwood'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - name: Require exact SHA, confirmation, and process_queue
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          PROCESS_QUEUE: ${{ inputs.process_queue }}
+          TEST_ALLOWLIST: ${{ inputs.test_allowlist }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "release_sha must be a full 40-character lowercase hex SHA"
+            exit 1
+          fi
+          expected="DEPLOY WORKER ${RELEASE_SHA}"
+          if [ "$CONFIRMATION" != "$expected" ]; then
+            echo "confirmation must equal exactly: DEPLOY WORKER <release_sha>"
+            exit 1
+          fi
+          if [ "$PROCESS_QUEUE" != "true" ] && [ "$PROCESS_QUEUE" != "false" ]; then
+            echo "process_queue must be exactly true or false"
+            exit 1
+          fi
+          trimmed="$(printf '%s' "$TEST_ALLOWLIST" | tr -d '[:space:]')"
+          if [ -n "$trimmed" ] && [[ ! "$trimmed" =~ ^\+[1-9][0-9]{7,14}(,\+[1-9][0-9]{7,14})*$ ]]; then
+            echo "test_allowlist must be a comma-separated E.164 list"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+          fetch-depth: 0
+
+      - name: Require release_sha equals origin/main
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          main_sha="$(git rev-parse origin/main)"
+          if [ "$RELEASE_SHA" != "$main_sha" ]; then
+            echo "release_sha must equal the origin/main tip"
+            echo "release_sha=${RELEASE_SHA}"
+            echo "origin/main=${main_sha}"
+            exit 1
+          fi
+          test -f workers/notifications-heartbeat/wrangler.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Prepare Worker vars
+        id: vars
+        env:
+          TEST_ALLOWLIST: ${{ inputs.test_allowlist }}
+        run: |
+          set -euo pipefail
+          trimmed="$(printf '%s' "$TEST_ALLOWLIST" | tr -d '[:space:]')"
+          if [ -n "$trimmed" ]; then
+            echo "expect_test_mode=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "expect_test_mode=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "allowlist=${trimmed}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy notifications Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        env:
+          PROCESS_QUEUE: ${{ inputs.process_queue }}
+          EXPECT_TEST_MODE: ${{ steps.vars.outputs.expect_test_mode }}
+          SMS_TEST_ALLOWLIST: ${{ steps.vars.outputs.allowlist }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: npm
+          workingDirectory: workers/notifications-heartbeat
+          command: deploy --config wrangler.toml
+          vars: |
+            PROCESS_QUEUE
+            EXPECT_TEST_MODE
+            SMS_TEST_ALLOWLIST
+
+      - name: Print deployment and version id
+        env:
+          WRANGLER_OUTPUT: ${{ steps.deploy.outputs.command-output }}
+          WRANGLER_OUTPUT_FILE: ${{ runner.temp }}/wrangler-output.ndjson
+        run: |
+          set -euo pipefail
+          {
+            echo '### Worker deployment'
+            echo
+            if [ -f "$WRANGLER_OUTPUT_FILE" ]; then
+              jq -r 'select(.type == "deploy") | "- worker: `\(.worker_name // "unknown")`\n- version_id: `\(.version_id // "unknown")`"' "$WRANGLER_OUTPUT_FILE" || true
+            fi
+            printf '%s\n' "$WRANGLER_OUTPUT" | sed -n -E 's/.*((Current Version ID|Version ID|Deployment ID): *([0-9a-fA-F-]{8,})).*/- \1/p' || true
+            if [ ! -f "$WRANGLER_OUTPUT_FILE" ]; then
+              echo "Wrangler output file was not written. Check the deploy step logs for Current Version ID."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Document one dedicated test row
+        if: inputs.send_one_test
+        run: |
+          set -euo pipefail
+          {
+            echo
+            echo '### Send one test'
+            echo
+            echo 'This Worker has a liveness-only fetch and no authenticated test-send route.'
+            echo 'workers_dev stays false. This step does not send SMS.'
+            echo
+            echo 'To send one dedicated test row through the cron:'
+            echo '1. Set Pages SMS_TEST_ALLOWLIST to the single test E.164.'
+            echo '2. Queue one synthetic outbox row for that number only. Note its id.'
+            echo '3. Deploy with process_queue=true and test_allowlist set to that number.'
+            echo '4. Wait for the next 5-minute cron. Only the allowlisted row is sent.'
+            echo '5. Confirm D1 status=sent and a Twilio SM... SID. Handset proof is Mac-only.'
+            echo
+            echo 'Exact-id alternative that bypasses the Worker: run'
+            echo '.github/workflows/notifications.yml with process=true and that notification_id.'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
