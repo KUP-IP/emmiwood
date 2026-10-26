@@ -91,6 +91,50 @@ npx wrangler deploy
 Confirm `EMMIWOOD_NOTIFICATION_URL` in `wrangler.toml` before deploying.
 Watch it run with `npx wrangler tail`.
 
+## GitHub Actions deploy (operator GO only)
+
+`.github/workflows/deploy-notifications-worker.yml` is `workflow_dispatch`
+only. It does not run on push or schedule. Do not start it from this PR.
+
+Inputs:
+
+- `release_sha`: full 40-character SHA. Must equal the current `origin/main`
+  tip.
+- `confirmation`: exactly `DEPLOY WORKER <release_sha>`.
+- `process_queue`: `"false"` (default) or `"true"`.
+- `test_allowlist`: optional comma-separated E.164 list. The workflow sets
+  Worker vars `SMS_TEST_ALLOWLIST` and `EXPECT_TEST_MODE=true` when the
+  list is non-empty. Pages `SMS_TEST_ALLOWLIST` is still what filters
+  sends. The Worker probe fails if `EXPECT_TEST_MODE` does not match
+  Pages readiness.
+- `send_one_test`: prints the one-row procedure below. It does not send.
+
+The job uses the `production` GitHub environment, `CLOUDFLARE_API_TOKEN`,
+and `CLOUDFLARE_ACCOUNT_ID` through `cloudflare/wrangler-action`. It
+deploys `workers/notifications-heartbeat` with `--config wrangler.toml`
+and writes the Wrangler version id to the job summary.
+
+## Send one test
+
+This Worker has no `fetch` handler and no authenticated test-send route.
+`workers_dev` stays false. Do not add a public HTTP entry just to smoke.
+
+To send one dedicated test SMS after a GO deploy:
+
+1. Set Pages `SMS_TEST_ALLOWLIST` to the single test E.164.
+2. Queue one synthetic outbox row for that number only. Keep
+   `available_at` due now. Note the outbox `id`.
+3. Dispatch the deploy workflow with `process_queue=true` and
+   `test_allowlist` set to that number.
+4. Wait for the next 5-minute cron. The Worker POSTs the queue. Only the
+   allowlisted row should send.
+5. Confirm D1 `status=sent` and a Twilio `SM...` SID. Handset proof stays
+   Mac-only.
+
+Exact-id alternative that bypasses the Worker: run
+`.github/workflows/notifications.yml` with `process=true` and that
+`notification_id`. That POSTs Pages `?id=` with the Bearer secret.
+
 ## Verification plan (separate GO per deploy step)
 
 1. **Local / CI (no GO).** `npm run test:unit`,
@@ -104,11 +148,13 @@ Watch it run with `npx wrangler tail`.
 3. **Prod Pages deploy (Isaiah GO #1).** Deploy Pages with
    `SMS_TEST_ALLOWLIST` set to the test number only, during closed hours,
    while the outbox has no due customer rows. Real customer SMS in this
-   window is suppressed. Keep the window short.
-   Alternative with no suppression risk: skip test mode in prod and rely
+   window stays queued. Keep the window short.
+   Alternative with no test-mode skip: skip test mode in prod and rely
    on step 2 plus the claim and stale guards.
-4. **Worker deploy (Isaiah GO #2).**
-   `npx wrangler secret put EMMIWOOD_NOTIFICATION_SECRET`, then
+4. **Worker deploy (Isaiah GO #2).** Dispatch
+   `.github/workflows/deploy-notifications-worker.yml` with the current
+   `origin/main` SHA and confirmation `DEPLOY WORKER <sha>`, or
+   `npx wrangler secret put EMMIWOOD_NOTIFICATION_SECRET` then
    `npx wrangler deploy` with `PROCESS_QUEUE="true"` and
    `EXPECT_TEST_MODE` matching step 3. Watch `npx wrangler tail` for 3
    cron ticks: `readiness_probe ready=true`, processed counts, no errors.

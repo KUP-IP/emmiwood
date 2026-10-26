@@ -75,7 +75,8 @@ Names confirmed 2026-08-31 by job behavior (this Cloud Agent token cannot list A
 | `EMMIWOOD_CLOUD_DEPLOY` | GitHub Actions **variable** `true` — Path A deploy runs |
 | `CLOUDFLARE_API_TOKEN` | GitHub Actions secret (Pages + D1 edit); same token as Cursor |
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Actions secret or variable (`99ca43ae6713b1fc6be0c77047bc06d7`) |
-| Environment `production` | Used by `deploy` and production D1 migrate (no required-reviewer rules yet) |
+| Environment `production` | Used by `deploy`, production D1 migrate, and the notifications Worker deploy workflow (no required-reviewer rules yet) |
+| Deploy notifications Worker | `workflow_dispatch` only. Inputs `release_sha` (must equal `origin/main`) and confirmation `DEPLOY WORKER <release_sha>`. Optional `test_allowlist`, `process_queue` default `"false"`. Does not send SMS. |
 | Environment `preview` | Preview D1 migrate |
 | Heartbeat | secret `EMMIWOOD_NOTIFICATION_SECRET`; vars `EMMIWOOD_NOTIFICATION_URL`, `EMMIWOOD_NOTIFICATIONS_ENABLED` (process-queue step runs — treat as **enabled**) |
 | `EMMIWOOD_SHOP_ADMIN_SMS_FANOUT` | Pages Function var. `true` copies book/cancel/reschedule staff notices to active manager phones. Missing/`false` = assigned chair only. Production stays **false** until an explicit GO. |

@@ -10,7 +10,7 @@
     "build": "npm --prefix client run build",
     "typecheck": "npm --prefix client run typecheck && tsc -p tsconfig.e2e.json",
     "test:unit": "node --test functions/lib/emmiwood-booking.test.js functions/lib/emmiwood-notifications.test.js functions/lib/emmiwood-admin.test.js functions/lib/emmiwood-launch.test.js functions/lib/emmiwood-runtime.test.js workers/notifications-heartbeat/test/*.test.js",
-    "test:release": "node --test scripts/release-preflight.test.mjs scripts/production-admin-seed.test.mjs scripts/wrangler-live-contract.test.mjs scripts/sms-self-verify-lib.test.mjs scripts/write-dev-vars-from-env.test.mjs scripts/e2e-pages-dev.test.mjs",
+    "test:release": "node --test scripts/release-preflight.test.mjs scripts/production-admin-seed.test.mjs scripts/wrangler-live-contract.test.mjs scripts/sms-self-verify-lib.test.mjs scripts/write-dev-vars-from-env.test.mjs scripts/e2e-pages-dev.test.mjs scripts/deploy-notifications-worker-workflow.test.mjs",
     "e2e:prepare": "node scripts/prepare-e2e-artifact.mjs",
     "test:e2e": "npm run test:e2e:isolated",
     "test:e2e:isolated": "playwright test --config playwright.config.ts",
