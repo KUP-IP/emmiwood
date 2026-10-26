@@ -47,6 +47,8 @@ test('wrangler.toml preview env stays isolated on the preview D1 and origin', ()
   assert.equal(preview.EMMIWOOD_BOOKING_WRITES_ENABLED, 'true');
   assert.equal(preview.EMMIWOOD_NOTIFICATIONS_ENABLED, 'false');
   assert.equal(preview.EMMIWOOD_SHOP_ADMIN_SMS_FANOUT, 'false');
+  assert.equal(preview.SMS_TEST_ALLOWLIST, '+15555550100');
+  assert.equal(preview.EMAIL_TEST_ALLOWLIST, 'sms-test@example.test');
   assert.match(config, /database_name\s*=\s*"emmiwood-standalone-preview-db"/);
   assert.match(config, /database_id\s*=\s*"b4a10012-e0c8-40f0-b203-31474393fb2a"/);
 });
