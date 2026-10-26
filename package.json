@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev client/dist --persist-to .wrangler/state --port 8788 --binding ENVIRONMENT=preview --binding EMMIWOOD_PUBLIC_ORIGIN=http://localhost:8788 --binding EMMIWOOD_BOOKING_WRITES_ENABLED=true --binding EMMIWOOD_NOTIFICATIONS_ENABLED=false --binding EMMIWOOD_SHOP_ADMIN_SMS_FANOUT=false",
+    "dev": "wrangler pages dev client/dist --persist-to .wrangler/state --port 8788 --binding ENVIRONMENT=preview --binding EMMIWOOD_PUBLIC_ORIGIN=http://localhost:8788 --binding EMMIWOOD_BOOKING_WRITES_ENABLED=true --binding EMMIWOOD_NOTIFICATIONS_ENABLED=false --binding EMMIWOOD_SHOP_ADMIN_SMS_FANOUT=false --binding SMS_TEST_ALLOWLIST=+15555550100",
     "dev:vars": "node scripts/write-dev-vars-from-env.mjs",
     "dev:e2e": "npm run e2e:prepare && node scripts/e2e-pages-dev.mjs",
     "build": "npm --prefix client run build",
     "typecheck": "npm --prefix client run typecheck && tsc -p tsconfig.e2e.json",
-    "test:unit": "node --test functions/lib/emmiwood-booking.test.js functions/lib/emmiwood-notifications.test.js functions/lib/emmiwood-admin.test.js functions/lib/emmiwood-launch.test.js functions/lib/emmiwood-runtime.test.js",
+    "test:unit": "node --test functions/lib/emmiwood-booking.test.js functions/lib/emmiwood-notifications.test.js functions/lib/emmiwood-admin.test.js functions/lib/emmiwood-launch.test.js functions/lib/emmiwood-runtime.test.js workers/notifications-heartbeat/test/*.test.js",
     "test:release": "node --test scripts/release-preflight.test.mjs scripts/production-admin-seed.test.mjs scripts/wrangler-live-contract.test.mjs scripts/sms-self-verify-lib.test.mjs scripts/write-dev-vars-from-env.test.mjs scripts/e2e-pages-dev.test.mjs",
     "e2e:prepare": "node scripts/prepare-e2e-artifact.mjs",
     "test:e2e": "npm run test:e2e:isolated",
@@ -33,7 +33,8 @@
     "wrangler": "^4.147.0"
   },
   "overrides": {
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.4",
+    "undici": "7.30.1"
   },
   "engines": {
     "node": ">=22",

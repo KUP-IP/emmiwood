@@ -38,6 +38,8 @@ export function wranglerPagesDevArgs(env = process.env) {
     'EMMIWOOD_NOTIFICATIONS_ENABLED=false',
     '--binding',
     'EMMIWOOD_SHOP_ADMIN_SMS_FANOUT=false',
+    '--binding',
+    'SMS_TEST_ALLOWLIST=+15555550100',
   ];
 }
 
