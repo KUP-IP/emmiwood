@@ -33,7 +33,7 @@ test('wrangler.toml top-level and production vars match the live 2026-08-31 Page
     EMMIWOOD_SHOP_ADMIN_SMS_FANOUT: 'false',
   };
   assert.deepEqual(varsFrom(section('vars')), expected);
-  assert.deepEqual(varsFrom(section('env.production.vars')), expected);
+  assert.deepEqual(varsFrom(section('env.production.vars')), { ...expected, SMS_TEST_ALLOWLIST: '+15078485517' });
   assert.match(config, /database_name\s*=\s*"emmiwood-db"/);
   assert.match(config, /database_id\s*=\s*"a79f099e-396f-4466-801c-2458a0c2b3e2"/);
   assert.doesNotMatch(section('vars'), /localhost/);
