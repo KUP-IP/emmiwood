@@ -102,11 +102,12 @@ Inputs:
   tip.
 - `confirmation`: exactly `DEPLOY WORKER <release_sha>`.
 - `process_queue`: `"false"` (default) or `"true"`.
-- `test_allowlist`: optional comma-separated E.164 list. The workflow sets
-  Worker vars `SMS_TEST_ALLOWLIST` and `EXPECT_TEST_MODE=true` when the
-  list is non-empty. Pages `SMS_TEST_ALLOWLIST` is still what filters
-  sends. The Worker probe fails if `EXPECT_TEST_MODE` does not match
-  Pages readiness.
+- `test_allowlist`: optional comma-separated E.164 list. When the list is
+  non-empty, the workflow passes Worker vars `SMS_TEST_ALLOWLIST` and
+  `EXPECT_TEST_MODE=true`. When it is empty, the deploy does not pass or
+  require `SMS_TEST_ALLOWLIST` and sets `EXPECT_TEST_MODE=false`. Pages
+  `SMS_TEST_ALLOWLIST` is still what filters sends. The Worker probe
+  fails if `EXPECT_TEST_MODE` does not match Pages readiness.
 - `send_one_test`: prints the one-row procedure below. It does not send.
 
 The job uses the `production` GitHub environment, `CLOUDFLARE_API_TOKEN`,
