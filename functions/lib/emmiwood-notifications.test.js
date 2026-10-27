@@ -245,7 +245,7 @@ test('booking confirmation SMS includes absolute manage link and appointment det
     { EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood-barbers-preview.pages.dev' },
     'tok_abc',
   );
-  assert.equal(manageUrl, 'https://emmiwood-barbers-preview.pages.dev/emmiwood/manage#token=tok_abc');
+  assert.equal(manageUrl, 'https://emmiwood-barbers-preview.pages.dev/appt#token=tok_abc');
   const body = renderSms('booking_confirmation', {
     serviceName: 'Signature Haircut',
     barberName: 'Barro',
@@ -255,7 +255,7 @@ test('booking confirmation SMS includes absolute manage link and appointment det
   });
   assert.match(body, /^Emmiwood: You're booked\./);
   assert.match(body, /Signature Haircut with Barro/);
-  assert.match(body, /Change or cancel: https:\/\/emmiwood-barbers-preview\.pages\.dev\/emmiwood\/manage#token=tok_abc/);
+  assert.match(body, /Change or cancel: https:\/\/emmiwood-barbers-preview\.pages\.dev\/appt#token=tok_abc/);
   assert.match(body, /Reply STOP to opt out, HELP for help/);
   assert.doesNotMatch(body, /appointment confirmed at/);
 });
@@ -681,7 +681,7 @@ test('flushDueAppointmentNotifications skips on preview exact-id-only', async ()
 test('guest SMS bodies follow the approved 2026-10-27 formats', () => {
   const start = 1793134800; // Tue, Oct 27, 2026 4:00 PM America/Chicago
   const end = 1793141100; // 5:45 PM
-  const manageUrl = 'https://emmiwood.com/emmiwood/manage#token=tok_abc';
+  const manageUrl = 'https://emmiwood.com/appt#token=tok_abc';
   const booked = renderSms('booking_confirmation', {
     customerName: 'Isaiah Peters',
     serviceName: 'Lineup & Cleanup',
@@ -723,13 +723,13 @@ test('guest SMS bodies follow the approved 2026-10-27 formats', () => {
     manageUrl,
   });
   assert.match(reminder, /^Emmiwood: See you today at 4:00 PM\./);
-  assert.match(reminder, /Change or cancel: https:\/\/emmiwood\.com\/emmiwood\/manage#token=tok_abc/);
+  assert.match(reminder, /Change or cancel: https:\/\/emmiwood\.com\/appt#token=tok_abc/);
 });
 
 test('manage URL never doubles the /emmiwood segment', () => {
   assert.equal(
     manageAppointmentUrl({ EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.com/emmiwood' }, 'tok_abc'),
-    'https://emmiwood.com/emmiwood/manage#token=tok_abc',
+    'https://emmiwood.com/appt#token=tok_abc',
   );
 });
 

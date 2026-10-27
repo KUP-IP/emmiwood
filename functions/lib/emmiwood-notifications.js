@@ -133,8 +133,9 @@ export function publicOrigin(env) {
 }
 
 /** Origin without a trailing /emmiwood segment. EMMIWOOD_PUBLIC_ORIGIN may
- * be configured with the shop path already attached; appending the
- * /emmiwood/... routes again doubles it (.../emmiwood/emmiwood/manage). */
+ * be configured with the shop path already attached; customer links are
+ * built from the site root (the manage link is /appt), so any attached
+ * shop segment comes off first. */
 export function siteOrigin(env) {
   return publicOrigin(env).replace(/\/emmiwood$/, '');
 }
@@ -144,7 +145,7 @@ export function manageAppointmentUrl(env, manageToken) {
   const origin = siteOrigin(env);
   const token = String(manageToken || '').trim();
   if (!origin || !token) return null;
-  return `${origin}/emmiwood/manage#token=${encodeURIComponent(token)}`;
+  return `${origin}/appt#token=${encodeURIComponent(token)}`;
 }
 
 /** Absolute admin deep link to one appointment; null if origin or id missing.

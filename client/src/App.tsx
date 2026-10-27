@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 
 const EmmiwoodPage = lazy(() => import('./pages/emmiwood/EmmiwoodPage'));
 const EmmiwoodAdminPage = lazy(() => import('./pages/emmiwood/EmmiwoodAdminPage'));
@@ -6,6 +6,16 @@ const EmmiwoodBookingPage = lazy(() => import('./pages/emmiwood/EmmiwoodBookingP
 const EmmiwoodManagePage = lazy(() => import('./pages/emmiwood/EmmiwoodManagePage'));
 const EmmiwoodInfoPage = lazy(() => import('./pages/emmiwood/EmmiwoodInfoPage'));
 const EmmiwoodNotFoundPage = lazy(() => import('./pages/emmiwood/EmmiwoodNotFoundPage'));
+
+// Texts sent before 2026-10-27 carry /manage and /emmiwood/manage links;
+// those paths redirect to the canonical /appt, preserving the token
+// fragment (and any query) exactly.
+function LegacyManageRedirect() {
+  useEffect(() => {
+    window.location.replace(`/appt${window.location.search}${window.location.hash}`);
+  }, []);
+  return null;
+}
 
 function currentPath(): string {
   const path = window.location.pathname.replace(/\/$/, '');
@@ -18,7 +28,8 @@ export default function App() {
 
   if (path === '/' || path === '/emmiwood') surface = <EmmiwoodPage />;
   else if (path === '/book' || path === '/emmiwood/book') surface = <EmmiwoodBookingPage />;
-  else if (path === '/manage' || path === '/emmiwood/manage') surface = <EmmiwoodManagePage />;
+  else if (path === '/appt') surface = <EmmiwoodManagePage />;
+  else if (path === '/manage' || path === '/emmiwood/manage') surface = <LegacyManageRedirect />;
   else if (path === '/admin' || path === '/emmiwood/admin') surface = <EmmiwoodAdminPage />;
   else if (path === '/privacy' || path === '/emmiwood/privacy') surface = <EmmiwoodInfoPage kind="privacy" />;
   else if (path === '/sms-terms' || path === '/emmiwood/sms-terms') surface = <EmmiwoodInfoPage kind="sms-terms" />;

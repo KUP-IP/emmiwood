@@ -173,7 +173,7 @@ export function BookingFlow({
         </dl>
         <p className="ew-confirmation-lead">{details.smsConsent ? 'Watch for a text from KUP Solutions. Keep the private link below for changes.' : 'Save the private link below if you need to reschedule or cancel.'}</p>
         <div className="ew-actions ew-confirmation-actions">
-          <a className="ew-button" href={`/emmiwood/manage#token=${encodeURIComponent(confirmation.manageToken)}`}>Manage appointment</a>
+          <a className="ew-button" href={`/appt#token=${encodeURIComponent(confirmation.manageToken)}`}>Manage appointment</a>
           <a className="ew-link" href="/emmiwood">Back to the shop</a>
         </div>
       </section>

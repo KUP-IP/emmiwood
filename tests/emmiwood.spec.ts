@@ -107,7 +107,7 @@ async function fillGuest(page: Page, suffix: string) {
 }
 
 test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', async ({ request }) => {
-  const spaRoutes = ['/emmiwood/', '/emmiwood/book/', '/emmiwood/manage/', '/emmiwood/admin/', '/emmiwood/chair-rental/'];
+  const spaRoutes = ['/emmiwood/', '/emmiwood/book/', '/emmiwood/manage/', '/appt/', '/emmiwood/admin/', '/emmiwood/chair-rental/'];
   for (const route of spaRoutes) {
     const response = await request.get(route);
     expect(response.ok(), route).toBeTruthy();
@@ -529,7 +529,7 @@ test('guest booking exchanges the private fragment for an HttpOnly management se
   await expect(page.getByRole('heading', { name: 'You’re on the books.' })).toBeVisible();
   const manage = page.getByRole('link', { name: 'Manage appointment' });
   const href = await manage.getAttribute('href');
-  expect(href).toMatch(/^\/emmiwood\/manage#token=/);
+  expect(href).toMatch(/^\/appt#token=/);
   expect(href).not.toContain('?token=');
   await manage.click();
   await expect(page.getByRole('heading', { name: 'Manage appointment.' })).toBeVisible();
