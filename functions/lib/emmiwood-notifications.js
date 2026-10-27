@@ -10,7 +10,6 @@ export const SAME_DAY_SHORT_REMINDER_LEAD_SECONDS = 30 * 60;
 // Barber T-15m reminder lead (workflow cron every 5m → accept ±5m delivery jitter).
 export const BARBER_REMINDER_LEAD_SECONDS = 15 * 60;
 export const KUP_APPOINTMENT_SMS_CONSENT_VERSION = 'kup-appointment-texts-v1';
-export const KUP_SMS_BRAND = 'KUP Solutions';
 export const GUEST_SMS_BRAND = 'Emmiwood';
 // On reschedule, a guest reminder whose slot falls within this gap of the
 // change event is suppressed: the "moved" message already carries the new
@@ -600,6 +599,12 @@ export function renderSms(template, payload = {}) {
   const staffWhenService = [when, service].filter(Boolean).join(' · ');
   const manage = payload.manageUrl ? `Manage: ${payload.manageUrl}` : '';
   const changeOrCancel = payload.manageUrl ? `Change or cancel: ${payload.manageUrl}` : '';
+  const guestFooter = smsLines(changeOrCancel, optOut);
+  // Guest bodies separate information blocks with a blank line so each
+  // piece is easy to digest; link + compliance stay together as the footer.
+  const guestBlocks = (...blocks) => blocks
+    .filter((block) => block != null && String(block).trim() !== '')
+    .join('\n\n');
   const view = payload.adminUrl ? `View: ${payload.adminUrl}` : '';
   const bookAgain = payload.bookUrl ? `Book again: ${payload.bookUrl}` : '';
   const last4 = payload.customerPhoneLast4 || phoneLast4(payload.customerPhone);
@@ -609,7 +614,7 @@ export function renderSms(template, payload = {}) {
   switch (template) {
     case 'admin_login_code':
       return smsLines(
-        `${KUP_SMS_BRAND}: Emmiwood staff code ${payload.code || ''}`.trim(),
+        `${GUEST_SMS_BRAND}: Staff code ${payload.code || ''}`.trim(),
         'Expires in 10 minutes.',
       );
     case 'booking_confirmation': {
@@ -617,32 +622,34 @@ export function renderSms(template, payload = {}) {
       const dayTime = payload.start != null
         ? [formatSmsDay(payload.start), formatSmsTimeRange(payload.start, payload.endAt)].filter(Boolean).join(' \u00b7 ')
         : when;
-      return smsLines(
-        first ? `${GUEST_SMS_BRAND}: You're booked, ${first}.` : `${GUEST_SMS_BRAND}: You're booked.`,
+      const headline = first
+        ? `${GUEST_SMS_BRAND}: You're booked, ${first}.`
+        : `${GUEST_SMS_BRAND}: You're booked.`;
+      return guestBlocks(
+        headline,
         serviceWithBarber,
         dayTime,
         payload.shopAddress || DEFAULT_SHOP_ADDRESS,
-        changeOrCancel,
-        optOut,
+        guestFooter,
       );
     }
     case 'appointment_reminder': {
       const relative = payload.start != null ? smsRelativeDay(payload.start, payload.now) : null;
       const startTime = payload.start != null ? formatSmsTime(payload.start) : '';
       const legacyHeadline = !(relative && startTime);
-      return smsLines(
-        legacyHeadline
-          ? `${GUEST_SMS_BRAND}: See you at Emmiwood.`
-          : `${GUEST_SMS_BRAND}: See you ${relative} at ${startTime}.`,
+      const headline = legacyHeadline
+        ? `${GUEST_SMS_BRAND}: See you at Emmiwood.`
+        : `${GUEST_SMS_BRAND}: See you ${relative} at ${startTime}.`;
+      return guestBlocks(
+        headline,
         legacyHeadline ? whenServiceBarber : serviceWithBarber,
         payload.shopAddress || DEFAULT_SHOP_ADDRESS,
-        changeOrCancel,
-        optOut,
+        guestFooter,
       );
     }
     case 'cancellation_confirmation':
       return smsLines(
-        `${KUP_SMS_BRAND}: Your Emmiwood visit is cancelled.`,
+        `${GUEST_SMS_BRAND}: Your Emmiwood visit is cancelled.`,
         whenServiceBarber,
         bookAgain,
         optOut,
@@ -655,18 +662,17 @@ export function renderSms(template, payload = {}) {
         const oldTime = payload.previousStart != null ? formatSmsTime(payload.previousStart) : '';
         dayTime = [day, oldTime && range ? `${oldTime} \u2192 ${range}` : range].filter(Boolean).join(' \u00b7 ');
       }
-      return smsLines(
+      return guestBlocks(
         `${GUEST_SMS_BRAND}: Your appointment moved.`,
         serviceWithBarber,
         dayTime,
         payload.shopAddress || DEFAULT_SHOP_ADDRESS,
-        changeOrCancel,
-        optOut,
+        guestFooter,
       );
     }
     case 'barber_booking_notice':
       return smsLines(
-        `${KUP_SMS_BRAND}: New Emmiwood booking.`,
+        `${GUEST_SMS_BRAND}: New booking.`,
         staffWhenService,
         customerLine,
         view,
@@ -674,7 +680,7 @@ export function renderSms(template, payload = {}) {
       );
     case 'barber_cancellation_notice':
       return smsLines(
-        `${KUP_SMS_BRAND}: Emmiwood booking cancelled.`,
+        `${GUEST_SMS_BRAND}: Booking cancelled.`,
         staffWhenService,
         customerLine,
         view,
@@ -682,7 +688,7 @@ export function renderSms(template, payload = {}) {
       );
     case 'barber_reschedule_notice':
       return smsLines(
-        `${KUP_SMS_BRAND}: Emmiwood booking moved.`,
+        `${GUEST_SMS_BRAND}: Booking moved.`,
         staffWhenService,
         customerLine,
         view,
@@ -690,14 +696,14 @@ export function renderSms(template, payload = {}) {
       );
     case 'barber_reminder_15m':
       return smsLines(
-        `${KUP_SMS_BRAND}: Emmiwood in 15 min.`,
+        `${GUEST_SMS_BRAND}: In 15 min.`,
         staffWhenService,
         customerLine,
         view,
         payload.optOut || STAFF_SMS_OPT_OUT,
       );
     default:
-      return smsLines(`${KUP_SMS_BRAND}: Emmiwood appointment update.`, optOut);
+      return smsLines(`${GUEST_SMS_BRAND}: Appointment update.`, optOut);
   }
 }
 

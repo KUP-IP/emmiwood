@@ -237,7 +237,7 @@ test('mock delivery never performs an external send and copy carries opt-out lan
   assert.deepEqual(result, { provider: NOTIFICATION_PROVIDER_MOCK, status: 'queued' });
   assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /Reply STOP/);
   assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /^Emmiwood: You're booked\./);
-  assert.match(renderSms('admin_login_code', { code: '123456' }), /^KUP Solutions: Emmiwood staff code 123456/);
+  assert.match(renderSms('admin_login_code', { code: '123456' }), /^Emmiwood: Staff code 123456/);
 });
 
 test('booking confirmation SMS includes absolute manage link and appointment detail', () => {
@@ -496,7 +496,7 @@ test('renderSms staff templates include customer details and STOP/HELP', () => {
     customerPhone: '+16055550199',
     optOut: 'Reply STOP to opt out. Reply HELP for help.',
   });
-  assert.match(body, /New Emmiwood booking/);
+  assert.match(body, /^Emmiwood: New booking\./);
   assert.match(body, /Guest · \.\.\.0199/);
   assert.doesNotMatch(body, /\+16055550199/);
   assert.match(body, /STOP/);
@@ -696,9 +696,8 @@ test('guest SMS bodies follow the approved 2026-10-27 formats', () => {
     'Lineup & Cleanup with Barro',
     'Tue, Oct 27 \u00b7 4:00 PM\u20135:45 PM',
     '1118 S Minnesota Ave, Sioux Falls',
-    `Change or cancel: ${manageUrl}`,
-    'Reply STOP to opt out, HELP for help.',
-  ].join('\n'));
+    `Change or cancel: ${manageUrl}\nReply STOP to opt out, HELP for help.`,
+  ].join('\n\n'));
   const bookedNoName = renderSms('booking_confirmation', {
     serviceName: 'Cut', barberName: 'Barro', start, endAt: end, manageUrl,
   });
@@ -713,6 +712,7 @@ test('guest SMS bodies follow the approved 2026-10-27 formats', () => {
     manageUrl,
   });
   assert.match(moved, /^Emmiwood: Your appointment moved\./);
+  assert.match(moved, /moved\.\n\nLineup & Cleanup with Barro\n\nTue, Oct 27/);
   assert.match(moved, /Tue, Oct 27 \u00b7 4:00 PM \u2192 5:45 PM\u20136:30 PM/);
   const reminder = renderSms('appointment_reminder', {
     serviceName: 'Lineup & Cleanup',

@@ -14,7 +14,7 @@ type InfoKind = 'privacy' | 'sms-terms' | 'chair-rental';
 const COPY: Record<InfoKind, { title: string; description: string; eyebrow: string; body: JSX.Element }> = {
   privacy: {
     title: 'Privacy | Emmiwood Barbers',
-    description: 'How Emmiwood Barbers uses booking information. Appointment texts are sent by KUP Solutions.',
+    description: 'How Emmiwood Barbers uses booking information. Appointment texts are sent by Emmiwood.',
     eyebrow: 'Customer privacy',
     body: <>
       <p>Emmiwood Barbers (“Emmiwood,” “we,” “us”) operates the shop booking website at {EMMIWOOD_ADDRESS}. This notice explains booking information collected on this website.</p>
@@ -23,10 +23,10 @@ const COPY: Record<InfoKind, { title: string; description: string; eyebrow: stri
       <h2>How we use information</h2>
       <p>We use this information to schedule and manage appointments, prevent double-booking, support cancellation or rescheduling, operate shop administration, and provide technical support for the booking system.</p>
       <h2>Appointment texts</h2>
-      <p>Optional appointment confirmation and reminder texts are sent by <strong>KUP Solutions</strong>, not by Emmiwood Barbers as a separate messaging brand. Program details: <a href="https://kup.solutions/sms/privacy" target="_blank" rel="noreferrer">SMS privacy</a> · <a href="https://kup.solutions/sms/terms" target="_blank" rel="noreferrer">SMS terms</a>.</p>
+      <p>Optional appointment confirmation and reminder texts are sent by <strong>Emmiwood</strong>. Program details: <a href="https://kup.solutions/sms/privacy" target="_blank" rel="noreferrer">SMS privacy</a> · <a href="https://kup.solutions/sms/terms" target="_blank" rel="noreferrer">SMS terms</a>.</p>
       <p>We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes. Consent is optional and is not required to complete a booking.</p>
       <h2>Access</h2>
-      <p>Authorized Emmiwood staff may access booking data to run the shop. KUP Solutions hosts the booking technology and sends opted-in appointment texts. Infrastructure vendors process data only as needed to provide those services.</p>
+      <p>Authorized Emmiwood staff may access booking data to run the shop. Emmiwood sends the opted-in appointment texts. Infrastructure vendors process data only as needed to provide those services.</p>
       <h2>Retention</h2>
       <p>Booking records are retained for shop operations, customer support, security, and legal requirements, then removed or minimized when no longer needed.</p>
       <h2>Contact</h2>
@@ -35,12 +35,12 @@ const COPY: Record<InfoKind, { title: string; description: string; eyebrow: stri
   },
   'sms-terms': {
     title: 'SMS Terms | Emmiwood Barbers',
-    description: 'Appointment texts for this booking site are sent by KUP Solutions.',
+    description: 'Appointment texts for this booking site are sent by Emmiwood.',
     eyebrow: 'Optional appointment texts',
     body: <>
-      <p>This booking website does not operate a separate Emmiwood Barbers text program. Optional appointment texts are sent by <strong>KUP Solutions</strong>.</p>
-      <p>When you select “Send me appointment texts” on this site, you agree to receive transactional SMS messages from KUP Solutions about the appointment you are booking or managing.</p>
-      <p><strong>We do not share, sell, or provide mobile phone numbers or messaging consent data to third parties or affiliates for marketing or promotional purposes</strong> under the KUP Solutions appointment-text program.</p>
+      <p>Optional appointment texts are sent by <strong>Emmiwood</strong>.</p>
+      <p>When you select “Send me appointment texts” on this site, you agree to receive transactional SMS messages from Emmiwood about the appointment you are booking or managing.</p>
+      <p><strong>We do not share, sell, or provide mobile phone numbers or messaging consent data to third parties or affiliates for marketing or promotional purposes</strong> under the Emmiwood appointment-text program.</p>
       <p><a href="https://kup.solutions/sms" target="_blank" rel="noreferrer">Program</a> · <a href="https://kup.solutions/sms/terms" target="_blank" rel="noreferrer">SMS terms</a> · <a href="https://kup.solutions/sms/privacy" target="_blank" rel="noreferrer">SMS privacy</a></p>
       <p>Message frequency varies. Message and data rates may apply. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help.</p>
     </>,
