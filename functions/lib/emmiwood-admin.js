@@ -473,6 +473,7 @@ export async function rescheduleAdminAppointment(env, id, input, admin) {
         previousStartAt: appointment.start_at,
         serviceName: service.name,
         barberName: chosen.barberName,
+        endAt,
         now: timestamp,
       }),
       ...(await staffSmsStatements(env, {
