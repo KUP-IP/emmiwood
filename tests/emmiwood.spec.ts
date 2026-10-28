@@ -533,7 +533,7 @@ test('guest booking exchanges the private fragment for an HttpOnly management se
   expect(href).not.toContain('?token=');
   await manage.click();
   await expect(page.getByRole('heading', { name: 'Manage appointment.' })).toBeVisible();
-  await expect(page).toHaveURL(/\/emmiwood\/manage\/?$/);
+  await expect(page).toHaveURL(/\/appt\/?$/);
   const cookie = (await context.cookies()).find((item) => item.name === 'emmiwood_manage_session');
   expect(cookie?.httpOnly).toBe(true);
   expect(cookie?.sameSite).toBe('Strict');
