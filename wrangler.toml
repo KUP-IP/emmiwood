@@ -11,7 +11,7 @@ migrations_dir = "migrations"
 
 # Live production snapshot 2026-08-31 from `wrangler pages download config emmiwood`.
 # Git / Direct Upload production deploys use these vars. Local `npm run dev` overrides with --binding.
-# Do not put localhost or frozen-launch defaults here — they would clobber the live shop.
+# Do not put localhost or frozen-launch defaults here. They would clobber the live shop.
 [vars]
 ENVIRONMENT = "production"
 EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood.com"
@@ -43,6 +43,8 @@ EMMIWOOD_PUBLIC_ORIGIN = "https://emmiwood-barbers-preview.pages.dev"
 EMMIWOOD_BOOKING_WRITES_ENABLED = "true"
 EMMIWOOD_NOTIFICATIONS_ENABLED = "false"
 EMMIWOOD_SHOP_ADMIN_SMS_FANOUT = "false"
+SMS_TEST_ALLOWLIST = "+15555550100"
+EMAIL_TEST_ALLOWLIST = "sms-test@example.test"
 
 [[env.preview.d1_databases]]
 binding = "DB"

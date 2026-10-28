@@ -36,6 +36,8 @@ test('wranglerPagesDevArgs keep isolated preview bindings and persist-to state',
     'EMMIWOOD_NOTIFICATIONS_ENABLED=false',
     '--binding',
     'EMMIWOOD_SHOP_ADMIN_SMS_FANOUT=false',
+    '--binding',
+    'SMS_TEST_ALLOWLIST=+15555550100',
   ]);
   assert.equal(e2ePort({}), '8788');
   assert.throws(() => e2ePort({ EMMIWOOD_E2E_PORT: 'nope' }), /numeric TCP port/);

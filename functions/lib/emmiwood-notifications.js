@@ -45,6 +45,89 @@ const SMS_SECRET_NAMES = Object.freeze(['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN
 const PRODUCTION_SMS_SECRET_NAMES = Object.freeze(['TWILIO_ACCOUNT_SID', 'TWILIO_API_KEY_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM_NUMBER']);
 const EMAIL_SECRET_NAMES = DEFERRED_EMAIL_SECRET_NAMES;
 
+export const PROCESSOR_MAX_ATTEMPTS = 3;
+export const STALE_SENDING_SECONDS = 600;
+export const REMINDER_STALE_AGE_SECONDS = 6 * 3600;
+export const NOTICE_STALE_AGE_SECONDS = 24 * 3600;
+export const STALE_APPOINTMENT_ERROR = 'Stale: appointment already started';
+export const STALE_NOTICE_ERROR = 'Stale: notice older than 24h';
+export const REAPED_SENDING_ERROR = 'Reaped stale sending claim';
+export const REMINDER_TEMPLATES = Object.freeze(['appointment_reminder', 'barber_reminder_15m']);
+export const NOTICE_TEMPLATES = Object.freeze([
+  'booking_confirmation',
+  'cancellation_confirmation',
+  'reschedule_confirmation',
+  'barber_booking_notice',
+  'barber_cancellation_notice',
+  'barber_reschedule_notice',
+]);
+
+const REMINDER_TEMPLATE_SET = new Set(REMINDER_TEMPLATES);
+const NOTICE_TEMPLATE_SET = new Set(NOTICE_TEMPLATES);
+
+export function parseTestAllowlist(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+/** Production: on only when an allowlist is set. Preview and development: on by default. */
+export function notificationTestMode(env, channel = 'sms') {
+  const key = channel === 'email' ? 'EMAIL_TEST_ALLOWLIST' : 'SMS_TEST_ALLOWLIST';
+  if (parseTestAllowlist(env?.[key]).length > 0) return true;
+  const environment = String(env?.ENVIRONMENT || '');
+  return environment === 'preview' || environment === 'development';
+}
+
+export function recipientAllowedForTestMode(env, channel, recipient) {
+  if (!notificationTestMode(env, channel)) return true;
+  const key = channel === 'email' ? 'EMAIL_TEST_ALLOWLIST' : 'SMS_TEST_ALLOWLIST';
+  return parseTestAllowlist(env?.[key]).includes(String(recipient || '').trim());
+}
+
+function testModeFields(env, channel) {
+  const key = channel === 'email' ? 'EMAIL_TEST_ALLOWLIST' : 'SMS_TEST_ALLOWLIST';
+  return {
+    testMode: notificationTestMode(env, channel),
+    testAllowlistCount: parseTestAllowlist(env?.[key]).length,
+  };
+}
+
+export function payloadStartAt(row) {
+  try {
+    const start = Number(JSON.parse(row?.payload_json || '{}').start);
+    return Number.isFinite(start) ? start : null;
+  } catch {
+    return null;
+  }
+}
+
+function effectiveAvailableAt(row, now) {
+  const availableAt = Number(row?.available_at);
+  if (Number.isFinite(availableAt) && availableAt > 0) return availableAt;
+  const createdAt = Number(row?.created_at);
+  if (Number.isFinite(createdAt) && createdAt > 0) return createdAt;
+  return Number(now);
+}
+
+export function staleNotificationReason(row, now = Math.floor(Date.now() / 1000), appointmentStartAt = null) {
+  const current = Number(now);
+  const startAt = appointmentStartAt ?? payloadStartAt(row);
+  const availableAt = effectiveAvailableAt(row, current);
+  const template = String(row?.template || '');
+  if (REMINDER_TEMPLATE_SET.has(template)) {
+    if (startAt != null && startAt <= current) return STALE_APPOINTMENT_ERROR;
+    if (template === 'appointment_reminder' && current - availableAt > REMINDER_STALE_AGE_SECONDS) {
+      return STALE_APPOINTMENT_ERROR;
+    }
+  }
+  if (NOTICE_TEMPLATE_SET.has(template) && current - availableAt > NOTICE_STALE_AGE_SECONDS) {
+    return STALE_NOTICE_ERROR;
+  }
+  return null;
+}
+
 function missingNames(env, names) {
   return names.filter((name) => !env?.[name]);
 }
@@ -98,12 +181,14 @@ export function notificationReadiness(env) {
         ready: liveSms ? smsMissing.length === 0 : true,
         provider: smsProvider,
         missing: liveSms ? smsMissing : [],
+        ...testModeFields(env, 'sms'),
       },
       email: {
         ready: true,
         provider: emailProvider,
         missing: [],
         deferred: true,
+        ...testModeFields(env, 'email'),
       },
       configuration,
     };
@@ -115,12 +200,18 @@ export function notificationReadiness(env) {
     environment: 'production',
     exactIdOnly: false,
     processor: { ready: processorMissing.length === 0, missing: processorMissing },
-    sms: { ready: smsMissing.length === 0, provider: smsProvider, missing: smsMissing },
+    sms: {
+      ready: smsMissing.length === 0,
+      provider: smsProvider,
+      missing: smsMissing,
+      ...testModeFields(env, 'sms'),
+    },
     email: {
       ready: emailMissing.length === 0,
       provider: emailProvider,
       missing: emailMissing,
       deferred: true,
+      ...testModeFields(env, 'email'),
     },
     configuration,
   };
@@ -341,7 +432,7 @@ export function appointmentSmsStatements(env, {
     const reason = event === 'cancelled'
       ? 'Unsent appointment update superseded by cancellation.'
       : 'Unsent appointment update superseded by reschedule.';
-    // Guest-only supersede — never cancel barber_* rows (staff path owns those).
+    // Guest-only supersede: never cancel barber_* rows (staff path owns those).
     statements.push(env.DB.prepare(`UPDATE emmiwood_notification_outbox
       SET status='cancelled',error=?
       WHERE appointment_id=? AND channel='sms' AND status='queued' AND template NOT LIKE 'barber_%'`)
@@ -548,6 +639,9 @@ async function fetchWithTimeout(env, label, url, init) {
 export async function deliverNotification(env, row) {
   if (row.provider === NOTIFICATION_PROVIDER_MOCK) return { provider: NOTIFICATION_PROVIDER_MOCK, status: 'queued' };
   if (row.provider === NOTIFICATION_PROVIDER_UNCONFIGURED) throw new Error('Notification delivery is not configured.');
+  if (!recipientAllowedForTestMode(env, row.channel, row.recipient)) {
+    return { provider: row.provider, status: 'skipped_test_mode' };
+  }
   const payload = JSON.parse(row.payload_json || '{}');
   if (row.template === 'admin_login_code' && !payload.code) {
     throw new Error('Staff sign-in code is not stored for retry.');
@@ -732,15 +826,44 @@ export function renderEmail(template, payload) {
   return payload.text || 'Emmiwood Barbers account update.';
 }
 
-const PROCESSOR_MAX_ATTEMPTS = 3;
-
 export function retryDelaySeconds(attempt) {
   return Math.min(3600, 60 * (2 ** Math.max(0, Number(attempt) - 1)));
+}
+
+async function reapStaleSendingClaims(env) {
+  await env.DB.prepare(`UPDATE emmiwood_notification_outbox
+    SET status=CASE WHEN attempt_count+1>=? THEN 'failed' ELSE 'queued' END,
+        attempt_count=attempt_count+1,
+        last_attempt_at=unixepoch(),
+        error=?
+    WHERE status='sending' AND last_attempt_at<unixepoch()-?`)
+    .bind(PROCESSOR_MAX_ATTEMPTS, REAPED_SENDING_ERROR, STALE_SENDING_SECONDS)
+    .run();
+}
+
+async function claimQueuedNotification(env, id) {
+  return env.DB.prepare(`UPDATE emmiwood_notification_outbox
+    SET status='sending', last_attempt_at=unixepoch(), attempt_count=attempt_count+1
+    WHERE id=? AND status='queued'
+    RETURNING attempt_count`)
+    .bind(id)
+    .first();
+}
+
+async function appointmentStartForRow(env, row) {
+  let startAt = payloadStartAt(row);
+  if (!row.appointment_id || !env?.DB) return startAt;
+  const appointment = await env.DB.prepare('SELECT start_at FROM emmiwood_appointments WHERE id=?')
+    .bind(row.appointment_id)
+    .first();
+  if (appointment && Number.isFinite(Number(appointment.start_at))) return Number(appointment.start_at);
+  return startAt;
 }
 
 /**
  * Deliver due queued outbox rows (optionally scoped to one appointment).
  * Used by the internal processor and by booking mutations for near-immediate SMS.
+ * Claim status='sending' before delivery so booking-time flush and the cron cannot double-send.
  */
 export async function processQueuedNotifications(env, {
   notificationId = null,
@@ -751,6 +874,8 @@ export async function processQueuedNotifications(env, {
   if (!readiness.ready) {
     return { ok: false, ready: false, readiness, processed: 0, results: [] };
   }
+
+  await reapStaleSendingClaims(env);
 
   let pending;
   if (notificationId) {
@@ -770,7 +895,27 @@ export async function processQueuedNotifications(env, {
 
   const results = [];
   for (const row of pending.results || []) {
-    const attempt = Number(row.attempt_count || 0) + 1;
+    if (!recipientAllowedForTestMode(env, row.channel, row.recipient)) {
+      results.push({
+        id: row.id,
+        status: 'skipped_test_mode',
+        attempt: Number(row.attempt_count || 0),
+      });
+      continue;
+    }
+    const claimed = await claimQueuedNotification(env, row.id);
+    if (!claimed) continue;
+    const attempt = Number(claimed.attempt_count);
+    const startAt = await appointmentStartForRow(env, row);
+    const stale = staleNotificationReason(row, Math.floor(Date.now() / 1000), startAt);
+    if (stale) {
+      await env.DB.prepare(`UPDATE emmiwood_notification_outbox
+        SET status='expired',last_attempt_at=unixepoch(),error=?
+        WHERE id=?`).bind(stale, row.id).run();
+      results.push({ id: row.id, status: 'expired', attempt, error: stale });
+      continue;
+    }
+
     const resolvedProvider = row.provider === NOTIFICATION_PROVIDER_UNCONFIGURED
       ? notificationProvider(env, row.channel)
       : row.provider;
@@ -780,6 +925,14 @@ export async function processQueuedNotifications(env, {
         await env.DB.prepare(`UPDATE emmiwood_notification_outbox
           SET status='sent',provider=?,sent_at=unixepoch(),last_attempt_at=unixepoch(),attempt_count=?,provider_message_id=?,error=NULL
           WHERE id=?`).bind(resolvedProvider, attempt, delivery.providerMessageId || null, row.id).run();
+      } else if (delivery.status === 'skipped_test_mode' || delivery.status === 'suppressed_test_mode') {
+        await env.DB.prepare(`UPDATE emmiwood_notification_outbox
+          SET status='queued',last_attempt_at=NULL,attempt_count=?
+          WHERE id=?`).bind(Math.max(0, attempt - 1), row.id).run();
+      } else if (delivery.status === 'queued') {
+        await env.DB.prepare(`UPDATE emmiwood_notification_outbox
+          SET status='queued',last_attempt_at=unixepoch(),attempt_count=?
+          WHERE id=?`).bind(Math.max(0, attempt - 1), row.id).run();
       }
       results.push({
         id: row.id,
@@ -805,7 +958,13 @@ export async function processQueuedNotifications(env, {
     }
   }
 
-  return { ok: true, ready: true, readiness, processed: results.length, results };
+  return {
+    ok: true,
+    ready: true,
+    readiness,
+    processed: results.filter((result) => result.status !== 'skipped_test_mode').length,
+    results,
+  };
 }
 
 /** Best-effort immediate flush after book/cancel/reschedule (does not throw).

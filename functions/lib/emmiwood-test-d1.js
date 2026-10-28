@@ -66,7 +66,7 @@ export class EmmiwoodTestD1 {
 
   exec(sql) {
     execFileSync('sqlite3', ['-bail', this.path], {
-      input: `PRAGMA foreign_keys=ON;\n${sql}`,
+      input: `PRAGMA foreign_keys=ON;\nPRAGMA busy_timeout=5000;\n${sql}`,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
   }

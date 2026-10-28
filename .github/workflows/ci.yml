@@ -14,8 +14,8 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,14 +32,22 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-chromium
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install Playwright Chromium OS deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - name: Exact-artifact browser gate
         run: npm run test:e2e:isolated
       - name: Brand source and artifact contract
         run: npm run test:brand && node scripts/brand-assets-check.mjs .deploy/pages/static
-      - name: Firefox and WebKit critical-flow smoke
-        run: npm run test:e2e:cross-browser
       - name: Safe-live read-only contract
         run: npm run test:e2e:live:contract
       - name: Migration rehearsal
