@@ -10,7 +10,11 @@ export const SAME_DAY_SHORT_REMINDER_LEAD_SECONDS = 30 * 60;
 // Barber T-15m reminder lead (workflow cron every 5m → accept ±5m delivery jitter).
 export const BARBER_REMINDER_LEAD_SECONDS = 15 * 60;
 export const KUP_APPOINTMENT_SMS_CONSENT_VERSION = 'kup-appointment-texts-v1';
-export const KUP_SMS_BRAND = 'KUP Solutions';
+export const GUEST_SMS_BRAND = 'Emmiwood';
+// On reschedule, a guest reminder whose slot falls within this gap of the
+// change event is suppressed: the "moved" message already carries the new
+// time, and a paired reminder landing right behind it reads as a duplicate.
+export const RESCHEDULE_REMINDER_MIN_GAP_SECONDS = 60 * 60;
 export const GUEST_SMS_OPT_OUT = 'Reply STOP to opt out, HELP for help.';
 export const STAFF_SMS_OPT_OUT = 'Reply STOP to opt out, HELP for help.';
 export const DEFAULT_SHOP_ADDRESS = '1118 S Minnesota Ave, Sioux Falls';
@@ -219,18 +223,26 @@ export function publicOrigin(env) {
   return String(raw).trim().replace(/\/$/, '');
 }
 
+/** Origin without a trailing /emmiwood segment. EMMIWOOD_PUBLIC_ORIGIN may
+ * be configured with the shop path already attached; customer links are
+ * built from the site root (the manage link is /appt), so any attached
+ * shop segment comes off first. */
+export function siteOrigin(env) {
+  return publicOrigin(env).replace(/\/emmiwood$/, '');
+}
+
 /** Absolute manage URL for a raw manage token; null if origin or token missing. */
 export function manageAppointmentUrl(env, manageToken) {
-  const origin = publicOrigin(env);
+  const origin = siteOrigin(env);
   const token = String(manageToken || '').trim();
   if (!origin || !token) return null;
-  return `${origin}/emmiwood/manage#token=${encodeURIComponent(token)}`;
+  return `${origin}/appt#token=${encodeURIComponent(token)}`;
 }
 
 /** Absolute admin deep link to one appointment; null if origin or id missing.
  *  The admin page requires staff sign-in, then opens that booking. */
 export function adminAppointmentUrl(env, appointmentId) {
-  const origin = publicOrigin(env);
+  const origin = siteOrigin(env);
   const id = String(appointmentId || '').trim();
   if (!origin || !id) return null;
   return `${origin}/emmiwood/admin?appointment=${encodeURIComponent(id)}`;
@@ -252,6 +264,61 @@ export function formatSmsWhen(startAt, timeZone = 'America/Chicago') {
   } catch {
     return '';
   }
+}
+
+/** Chicago calendar-day label for SMS bodies, e.g. "Tue, Oct 27". */
+export function formatSmsDay(startAt, timeZone = 'America/Chicago') {
+  const start = Number(startAt);
+  if (!Number.isFinite(start)) return '';
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone, weekday: 'short', month: 'short', day: 'numeric',
+    }).format(new Date(start * 1000));
+  } catch {
+    return '';
+  }
+}
+
+/** Chicago wall-clock time for SMS bodies, e.g. "4:00 PM". */
+export function formatSmsTime(startAt, timeZone = 'America/Chicago') {
+  const start = Number(startAt);
+  if (!Number.isFinite(start)) return '';
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone, hour: 'numeric', minute: '2-digit',
+    }).format(new Date(start * 1000));
+  } catch {
+    return '';
+  }
+}
+
+/** "4:00 PM-5:45 PM" (en dash) when an end is known; the start alone otherwise. */
+export function formatSmsTimeRange(startAt, endAt, timeZone = 'America/Chicago') {
+  const start = formatSmsTime(startAt, timeZone);
+  if (!start) return '';
+  const end = formatSmsTime(endAt, timeZone);
+  return end && Number(endAt) > Number(startAt) ? `${start}\u2013${end}` : start;
+}
+
+function chicagoDayKey(epochSeconds, timeZone = 'America/Chicago') {
+  const value = Number(epochSeconds);
+  if (!Number.isFinite(value)) return '';
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date(value * 1000));
+  } catch {
+    return '';
+  }
+}
+
+/** 'today' / 'tomorrow' when the start falls on that Chicago day, else null. */
+export function smsRelativeDay(startAt, now = Math.floor(Date.now() / 1000)) {
+  const startKey = chicagoDayKey(startAt);
+  if (!startKey) return null;
+  if (startKey === chicagoDayKey(now)) return 'today';
+  if (startKey === chicagoDayKey(Number(now) + 24 * 60 * 60)) return 'tomorrow';
+  return null;
 }
 
 export function reminderAvailableAt(startAt, now = Math.floor(Date.now() / 1000)) {
@@ -351,6 +418,8 @@ export function appointmentSmsStatements(env, {
   previousStartAt = null,
   serviceName,
   barberName,
+  customerName = null,
+  endAt = null,
   shopName = 'Emmiwood Barbers',
   shopAddress = DEFAULT_SHOP_ADDRESS,
   manageToken = null,
@@ -381,7 +450,7 @@ export function appointmentSmsStatements(env, {
   if (!template) throw new Error(`Unsupported appointment notification event: ${event}`);
 
   const manageUrl = manageAppointmentUrl(env, manageToken);
-  const bookUrl = `${publicOrigin(env)}/emmiwood/book`;
+  const bookUrl = `${siteOrigin(env)}/emmiwood/book`;
   const when = formatSmsWhen(startAt);
   const basePayload = {
     appointmentId,
@@ -392,6 +461,8 @@ export function appointmentSmsStatements(env, {
     shopName,
     shopAddress,
     when,
+    customerName,
+    endAt,
     manageUrl,
     bookUrl,
     optOut: GUEST_SMS_OPT_OUT,
@@ -409,7 +480,14 @@ export function appointmentSmsStatements(env, {
   const reminderAt = (event === 'booked' || event === 'rescheduled')
     ? guestReminderAvailableAt(startAt, now)
     : null;
-  if (reminderAt != null) {
+  // Reschedule pair suppression: a reminder slot inside the gap means the
+  // reminder would land right behind the "moved" text saying the same
+  // thing, so only the moved message is sent for the change event. A
+  // reminder slot genuinely later than the gap is enqueued as usual.
+  const reminderSuppressed = event === 'rescheduled'
+    && reminderAt != null
+    && reminderAt <= now + RESCHEDULE_REMINDER_MIN_GAP_SECONDS;
+  if (reminderAt != null && !reminderSuppressed) {
     statements.push(notificationStatement(env, {
       shopId,
       appointmentId,
@@ -615,6 +693,13 @@ export function renderSms(template, payload = {}) {
   const whenServiceBarber = [when, serviceWithBarber].filter(Boolean).join(' · ');
   const staffWhenService = [when, service].filter(Boolean).join(' · ');
   const manage = payload.manageUrl ? `Manage: ${payload.manageUrl}` : '';
+  const changeOrCancel = payload.manageUrl ? `Change or cancel: ${payload.manageUrl}` : '';
+  const guestFooter = smsLines(changeOrCancel, optOut);
+  // Guest bodies separate information blocks with a blank line so each
+  // piece is easy to digest; link + compliance stay together as the footer.
+  const guestBlocks = (...blocks) => blocks
+    .filter((block) => block != null && String(block).trim() !== '')
+    .join('\n\n');
   const view = payload.adminUrl ? `View: ${payload.adminUrl}` : '';
   const bookAgain = payload.bookUrl ? `Book again: ${payload.bookUrl}` : '';
   const last4 = payload.customerPhoneLast4 || phoneLast4(payload.customerPhone);
@@ -624,43 +709,65 @@ export function renderSms(template, payload = {}) {
   switch (template) {
     case 'admin_login_code':
       return smsLines(
-        `${KUP_SMS_BRAND}: Emmiwood staff code ${payload.code || ''}`.trim(),
+        `${GUEST_SMS_BRAND}: Staff code ${payload.code || ''}`.trim(),
         'Expires in 10 minutes.',
       );
-    case 'booking_confirmation':
-      return smsLines(
-        `${KUP_SMS_BRAND}: You're booked at Emmiwood.`,
-        when,
+    case 'booking_confirmation': {
+      const first = customerFirstName(payload.customerName);
+      const dayTime = payload.start != null
+        ? [formatSmsDay(payload.start), formatSmsTimeRange(payload.start, payload.endAt)].filter(Boolean).join(' \u00b7 ')
+        : when;
+      const headline = first
+        ? `${GUEST_SMS_BRAND}: You're booked, ${first}.`
+        : `${GUEST_SMS_BRAND}: You're booked.`;
+      return guestBlocks(
+        headline,
         serviceWithBarber,
-        manage,
-        optOut,
-      );
-    case 'appointment_reminder':
-      return smsLines(
-        `${KUP_SMS_BRAND}: See you at Emmiwood.`,
-        whenServiceBarber,
+        dayTime,
         payload.shopAddress || DEFAULT_SHOP_ADDRESS,
-        manage,
-        optOut,
+        guestFooter,
       );
+    }
+    case 'appointment_reminder': {
+      const relative = payload.start != null ? smsRelativeDay(payload.start, payload.now) : null;
+      const startTime = payload.start != null ? formatSmsTime(payload.start) : '';
+      const legacyHeadline = !(relative && startTime);
+      const headline = legacyHeadline
+        ? `${GUEST_SMS_BRAND}: See you at Emmiwood.`
+        : `${GUEST_SMS_BRAND}: See you ${relative} at ${startTime}.`;
+      return guestBlocks(
+        headline,
+        legacyHeadline ? whenServiceBarber : serviceWithBarber,
+        payload.shopAddress || DEFAULT_SHOP_ADDRESS,
+        guestFooter,
+      );
+    }
     case 'cancellation_confirmation':
       return smsLines(
-        `${KUP_SMS_BRAND}: Your Emmiwood visit is cancelled.`,
+        `${GUEST_SMS_BRAND}: Your Emmiwood visit is cancelled.`,
         whenServiceBarber,
         bookAgain,
         optOut,
       );
-    case 'reschedule_confirmation':
-      return smsLines(
-        `${KUP_SMS_BRAND}: Your Emmiwood time changed.`,
-        when,
+    case 'reschedule_confirmation': {
+      let dayTime = when;
+      if (payload.start != null) {
+        const day = formatSmsDay(payload.start);
+        const range = formatSmsTimeRange(payload.start, payload.endAt);
+        const oldTime = payload.previousStart != null ? formatSmsTime(payload.previousStart) : '';
+        dayTime = [day, oldTime && range ? `${oldTime} \u2192 ${range}` : range].filter(Boolean).join(' \u00b7 ');
+      }
+      return guestBlocks(
+        `${GUEST_SMS_BRAND}: Your appointment moved.`,
         serviceWithBarber,
-        manage,
-        optOut,
+        dayTime,
+        payload.shopAddress || DEFAULT_SHOP_ADDRESS,
+        guestFooter,
       );
+    }
     case 'barber_booking_notice':
       return smsLines(
-        `${KUP_SMS_BRAND}: New Emmiwood booking.`,
+        `${GUEST_SMS_BRAND}: New booking.`,
         staffWhenService,
         customerLine,
         view,
@@ -668,7 +775,7 @@ export function renderSms(template, payload = {}) {
       );
     case 'barber_cancellation_notice':
       return smsLines(
-        `${KUP_SMS_BRAND}: Emmiwood booking cancelled.`,
+        `${GUEST_SMS_BRAND}: Booking cancelled.`,
         staffWhenService,
         customerLine,
         view,
@@ -676,7 +783,7 @@ export function renderSms(template, payload = {}) {
       );
     case 'barber_reschedule_notice':
       return smsLines(
-        `${KUP_SMS_BRAND}: Emmiwood booking moved.`,
+        `${GUEST_SMS_BRAND}: Booking moved.`,
         staffWhenService,
         customerLine,
         view,
@@ -684,14 +791,14 @@ export function renderSms(template, payload = {}) {
       );
     case 'barber_reminder_15m':
       return smsLines(
-        `${KUP_SMS_BRAND}: Emmiwood in 15 min.`,
+        `${GUEST_SMS_BRAND}: In 15 min.`,
         staffWhenService,
         customerLine,
         view,
         payload.optOut || STAFF_SMS_OPT_OUT,
       );
     default:
-      return smsLines(`${KUP_SMS_BRAND}: Emmiwood appointment update.`, optOut);
+      return smsLines(`${GUEST_SMS_BRAND}: Appointment update.`, optOut);
   }
 }
 

@@ -244,8 +244,8 @@ test('mock delivery never performs an external send and copy carries opt-out lan
   const result = await deliverNotification({}, { provider: 'mock', channel: 'sms' });
   assert.deepEqual(result, { provider: NOTIFICATION_PROVIDER_MOCK, status: 'queued' });
   assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /Reply STOP/);
-  assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /^KUP Solutions:/);
-  assert.match(renderSms('admin_login_code', { code: '123456' }), /^KUP Solutions: Emmiwood staff code 123456/);
+  assert.match(renderSms('booking_confirmation', { optOut: 'Reply STOP to opt out.' }), /^Emmiwood: You're booked\./);
+  assert.match(renderSms('admin_login_code', { code: '123456' }), /^Emmiwood: Staff code 123456/);
 });
 
 test('booking confirmation SMS includes absolute manage link and appointment detail', () => {
@@ -253,7 +253,7 @@ test('booking confirmation SMS includes absolute manage link and appointment det
     { EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood-barbers-preview.pages.dev' },
     'tok_abc',
   );
-  assert.equal(manageUrl, 'https://emmiwood-barbers-preview.pages.dev/emmiwood/manage#token=tok_abc');
+  assert.equal(manageUrl, 'https://emmiwood-barbers-preview.pages.dev/appt#token=tok_abc');
   const body = renderSms('booking_confirmation', {
     serviceName: 'Signature Haircut',
     barberName: 'Barro',
@@ -261,9 +261,9 @@ test('booking confirmation SMS includes absolute manage link and appointment det
     when: 'Wed, Aug 12, 9:00 AM',
     manageUrl,
   });
-  assert.match(body, /^KUP Solutions: You're booked at Emmiwood\./);
+  assert.match(body, /^Emmiwood: You're booked\./);
   assert.match(body, /Signature Haircut with Barro/);
-  assert.match(body, /Manage: https:\/\/emmiwood-barbers-preview\.pages\.dev\/emmiwood\/manage#token=tok_abc/);
+  assert.match(body, /Change or cancel: https:\/\/emmiwood-barbers-preview\.pages\.dev\/appt#token=tok_abc/);
   assert.match(body, /Reply STOP to opt out, HELP for help/);
   assert.doesNotMatch(body, /appointment confirmed at/);
 });
@@ -504,7 +504,7 @@ test('renderSms staff templates include customer details and STOP/HELP', () => {
     customerPhone: '+16055550199',
     optOut: 'Reply STOP to opt out. Reply HELP for help.',
   });
-  assert.match(body, /New Emmiwood booking/);
+  assert.match(body, /^Emmiwood: New booking\./);
   assert.match(body, /Guest · \.\.\.0199/);
   assert.doesNotMatch(body, /\+16055550199/);
   assert.match(body, /STOP/);
@@ -686,6 +686,96 @@ test('flushDueAppointmentNotifications skips on preview exact-id-only', async ()
   assert.equal(result.processed, 0);
 });
 
+test('guest SMS bodies follow the approved 2026-10-27 formats', () => {
+  const start = 1793134800; // Tue, Oct 27, 2026 4:00 PM America/Chicago
+  const end = 1793141100; // 5:45 PM
+  const manageUrl = 'https://emmiwood.com/appt#token=tok_abc';
+  const booked = renderSms('booking_confirmation', {
+    customerName: 'Isaiah Peters',
+    serviceName: 'Lineup & Cleanup',
+    barberName: 'Barro',
+    shopAddress: '1118 S Minnesota Ave, Sioux Falls',
+    start,
+    endAt: end,
+    manageUrl,
+  });
+  assert.equal(booked, [
+    "Emmiwood: You're booked, Isaiah.",
+    'Lineup & Cleanup with Barro',
+    'Tue, Oct 27 \u00b7 4:00 PM\u20135:45 PM',
+    '1118 S Minnesota Ave, Sioux Falls',
+    `Change or cancel: ${manageUrl}\nReply STOP to opt out, HELP for help.`,
+  ].join('\n\n'));
+  const bookedNoName = renderSms('booking_confirmation', {
+    serviceName: 'Cut', barberName: 'Barro', start, endAt: end, manageUrl,
+  });
+  assert.match(bookedNoName, /^Emmiwood: You're booked\./);
+  const moved = renderSms('reschedule_confirmation', {
+    serviceName: 'Lineup & Cleanup',
+    barberName: 'Barro',
+    shopAddress: '1118 S Minnesota Ave, Sioux Falls',
+    start: end,
+    endAt: end + 2700,
+    previousStart: start,
+    manageUrl,
+  });
+  assert.match(moved, /^Emmiwood: Your appointment moved\./);
+  assert.match(moved, /moved\.\n\nLineup & Cleanup with Barro\n\nTue, Oct 27/);
+  assert.match(moved, /Tue, Oct 27 \u00b7 4:00 PM \u2192 5:45 PM\u20136:30 PM/);
+  const reminder = renderSms('appointment_reminder', {
+    serviceName: 'Lineup & Cleanup',
+    barberName: 'Barro',
+    shopAddress: '1118 S Minnesota Ave, Sioux Falls',
+    start,
+    now: start - 2 * 3600,
+    manageUrl,
+  });
+  assert.match(reminder, /^Emmiwood: See you today at 4:00 PM\./);
+  assert.match(reminder, /Change or cancel: https:\/\/emmiwood\.com\/appt#token=tok_abc/);
+});
+
+test('manage URL never doubles the /emmiwood segment', () => {
+  assert.equal(
+    manageAppointmentUrl({ EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.com/emmiwood' }, 'tok_abc'),
+    'https://emmiwood.com/appt#token=tok_abc',
+  );
+});
+
+test('reschedule suppresses a reminder landing inside the change gap; later slots still queue', async () => {
+  const { setupEmmiwoodTestD1 } = await import('./emmiwood-test-d1.js');
+  const db = setupEmmiwoodTestD1();
+  const env = { DB: db, ENVIRONMENT: 'preview', EMMIWOOD_PUBLIC_ORIGIN: 'https://emmiwood.example' };
+  const now = 1000000;
+  try {
+    db.exec(`INSERT INTO emmiwood_customers(id,shop_id,name,phone) VALUES('c-gap','emmiwood','G','+16055550100');
+      INSERT INTO emmiwood_appointments(id,shop_id,barber_id,service_id,customer_id,start_at,end_at,claim_end_at,status,manage_token_hash)
+      VALUES('appt-near','emmiwood','barro','signature','c-gap',${now + 5400},${now + 7800},${now + 8400},'booked','hash-near');
+      INSERT INTO emmiwood_appointments(id,shop_id,barber_id,service_id,customer_id,start_at,end_at,claim_end_at,status,manage_token_hash)
+      VALUES('appt-far','emmiwood','barro','signature','c-gap',${now + 48 * 3600},${now + 48 * 3600 + 2400},${now + 48 * 3600 + 3000},'booked','hash-far');`);
+    const nearStart = now + 5400; // reminder slot = start-30m = now+3600, inside the 60m gap
+    await db.batch(appointmentSmsStatements(env, {
+      shopId: 'emmiwood', appointmentId: 'appt-near', recipient: '+16055550100', smsConsent: true,
+      smsConsentVersion: 'kup-appointment-texts-v1', event: 'rescheduled', startAt: nearStart,
+      previousStartAt: now, serviceName: 'Cut', barberName: 'Barro', manageToken: 'tok', now,
+    }));
+    assert.deepEqual(
+      db.query("SELECT template FROM emmiwood_notification_outbox WHERE appointment_id='appt-near' ORDER BY template"),
+      [{ template: 'reschedule_confirmation' }],
+    );
+    const farStart = now + 48 * 3600; // reminder slot = start-24h, far outside the gap
+    await db.batch(appointmentSmsStatements(env, {
+      shopId: 'emmiwood', appointmentId: 'appt-far', recipient: '+16055550100', smsConsent: true,
+      smsConsentVersion: 'kup-appointment-texts-v1', event: 'rescheduled', startAt: farStart,
+      previousStartAt: now, serviceName: 'Cut', barberName: 'Barro', manageToken: 'tok', now,
+    }));
+    assert.deepEqual(
+      db.query("SELECT template FROM emmiwood_notification_outbox WHERE appointment_id='appt-far' ORDER BY template"),
+      [{ template: 'appointment_reminder' }, { template: 'reschedule_confirmation' }],
+    );
+  } finally {
+    db.close();
+  }
+});
 function processorEnv(db, extra = {}) {
   return {
     DB: db,

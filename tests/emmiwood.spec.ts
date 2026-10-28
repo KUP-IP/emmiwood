@@ -107,7 +107,7 @@ async function fillGuest(page: Page, suffix: string) {
 }
 
 test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', async ({ request }) => {
-  const spaRoutes = ['/emmiwood/', '/emmiwood/book/', '/emmiwood/manage/', '/emmiwood/admin/', '/emmiwood/chair-rental/'];
+  const spaRoutes = ['/emmiwood/', '/emmiwood/book/', '/emmiwood/manage/', '/appt/', '/emmiwood/admin/', '/emmiwood/chair-rental/'];
   for (const route of spaRoutes) {
     const response = await request.get(route);
     expect(response.ok(), route).toBeTruthy();
@@ -146,7 +146,8 @@ test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', a
     expect(await (await request.get(alias)).text(), alias).toBe(privacy);
   }
   expect(privacy).toMatch(/do not share, sell/i);
-  expect(privacy).toContain('KUP Solutions');
+  expect(privacy).not.toContain('KUP Solutions');
+  expect(privacy).toContain('sent by Emmiwood');
   expect(privacy).toContain('https://kup.solutions/sms/privacy');
   expect(privacy).not.toContain('id="root"');
   expect(privacy).not.toMatch(/texts from Emmiwood/i);
@@ -160,7 +161,7 @@ test('every Emmiwood route stays shop-owned; legal pages stay crawler-static', a
   expect(sms).not.toContain('Emmiwood Barbers Appointment Texts');
 
   const evidence = await (await request.get('/emmiwood/opt-in-evidence/')).text();
-  expect(evidence).toContain('KUP Solutions');
+  expect(evidence).not.toContain('KUP Solutions');
   expect(evidence).toContain('Send me appointment texts.');
   expect(evidence).toContain('Reply STOP to opt out, HELP for help.');
   expect(evidence).toContain('https://kup.solutions/sms/terms');
@@ -482,7 +483,7 @@ test('booking uses explicit stages, next availability, consent, and review', asy
   await consent.check();
   await expect(page.getByRole('link', { name: 'SMS terms' })).toHaveAttribute('href', 'https://kup.solutions/sms/terms');
   await expect(page.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', 'https://kup.solutions/sms/privacy');
-  await expect(page.getByText('from KUP Solutions about this appointment')).toBeVisible();
+  await expect(page.getByText('from Emmiwood about this appointment')).toBeVisible();
   await expect(page.getByText('Reply STOP to opt out, HELP for help.')).toBeVisible();
   await page.getByRole('button', { name: 'Review appointment' }).click();
   await expect(page.getByRole('heading', { name: 'Review before we reserve it.' })).toBeVisible();
@@ -528,11 +529,11 @@ test('guest booking exchanges the private fragment for an HttpOnly management se
   await expect(page.getByRole('heading', { name: 'You’re on the books.' })).toBeVisible();
   const manage = page.getByRole('link', { name: 'Manage appointment' });
   const href = await manage.getAttribute('href');
-  expect(href).toMatch(/^\/emmiwood\/manage#token=/);
+  expect(href).toMatch(/^\/appt#token=/);
   expect(href).not.toContain('?token=');
   await manage.click();
   await expect(page.getByRole('heading', { name: 'Manage appointment.' })).toBeVisible();
-  await expect(page).toHaveURL(/\/emmiwood\/manage\/?$/);
+  await expect(page).toHaveURL(/\/appt\/?$/);
   const cookie = (await context.cookies()).find((item) => item.name === 'emmiwood_manage_session');
   expect(cookie?.httpOnly).toBe(true);
   expect(cookie?.sameSite).toBe('Strict');
